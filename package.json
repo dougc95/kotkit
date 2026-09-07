@@ -1,0 +1,31 @@
+{
+  "name": "attention-lab",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Attention Lab — 14-day attention practice experiment. P0 prototype.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "db:up": "docker start attention-lab-pg || docker run -d --name attention-lab-pg -e POSTGRES_PASSWORD=devpassword -e POSTGRES_USER=attention -e POSTGRES_DB=attention_lab -p 55432:5432 postgres:17-alpine",
+    "db:down": "docker stop attention-lab-pg",
+    "db:push": "npm run db:push -w @attention-lab/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:domain": "npm run test -w @attention-lab/shared",
+    "test:api": "npm run test -w @attention-lab/api",
+    "build": "npm run build -w @attention-lab/shared && npm run build -w @attention-lab/api && npm run build -w @attention-lab/web",
+    "dev:api": "npm run dev -w @attention-lab/api",
+    "dev:web": "npm run dev -w @attention-lab/web"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "5.9.3",
+    "vitest": "^5.0.0"
+  }
+}
