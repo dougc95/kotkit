@@ -61,7 +61,11 @@ export function AttemptTable({ attempts }: AttemptTableProps) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    // See ExactValuesTable.tsx's identical comment: `tabIndex={0}` for axe's
+    // "scrollable-region-focusable" (WCAG 2.1.1); no `role="region"` (the
+    // table's own caption already names it, and a second named landmark
+    // collided with other same-page region names in practice).
+    <div className="overflow-x-auto" tabIndex={0}>
       <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
         <caption className="sr-only">Benchmark attempts</caption>
         <thead>

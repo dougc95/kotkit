@@ -51,9 +51,22 @@ export async function advance(page: Page, demo: DemoClient, seconds: number): Pr
  * fake clock DOES run so the 5-second heartbeat (design.md D5) is the first
  * thing to notice the drift — the same detection path a real background/
  * foreground cycle exercises, per design.md's clock-gap flow.
+ *
+ * The jump is computed from the PAGE's own current fake time
+ * (`page.evaluate(() => Date.now())`), never the Node test-runner's real
+ * `Date.now()`: `page.clock.install()` freezes the page's clock at whatever
+ * moment it was installed, and any prior `advance()` in the same test moves
+ * ONLY that page-side fake clock forward (`page.clock.runFor`), not real
+ * wall-clock time. Reading Node's own `Date.now()` here would silently
+ * discard every earlier `advance()`'s progress — a `sleep()` chained after
+ * an `advance()` (a common real sequence: run some real time, then jump)
+ * would jump from "now, for real" instead of "from where the page's clock
+ * already was", producing a `gapSeconds` far larger than `seconds` once the
+ * heartbeat compares it against server truth.
  */
 export async function sleep(page: Page, demo: DemoClient, seconds: number): Promise<void> {
-  await page.clock.setSystemTime(Date.now() + seconds * 1000)
+  const pageNowMs = await page.evaluate(() => Date.now())
+  await page.clock.setSystemTime(pageNowMs + seconds * 1000)
   const currentOffset = await demo.offset()
   await demo.setClock(currentOffset + seconds)
   await page.clock.runFor(5000)

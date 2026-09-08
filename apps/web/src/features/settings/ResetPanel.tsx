@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { AlertDialog } from 'radix-ui'
 import { useNavigate } from 'react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -50,6 +50,16 @@ export function ResetPanel() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
+  // See TransitionControls.tsx's identical comment: Radix's AlertDialog does
+  // not auto-focus its content on open in this app (confirmed empirically),
+  // so focus into the dialog is moved explicitly via a callback ref — not a
+  // `useEffect` (also confirmed empirically: `AlertDialog.Content` portals
+  // its children, so an effect keyed on `open` can run before "Cancel"'s own
+  // DOM node exists) — which React calls exactly when the node mounts.
+  const focusOnMount = useCallback((node: HTMLButtonElement | null) => {
+    node?.focus()
+  }, [])
+
   const resetMutation = useMutation({
     mutationFn: () => api.demo.reset(),
     onSuccess: async () => {
@@ -97,7 +107,12 @@ export function ResetPanel() {
             ) : null}
 
             <div className="mt-6 flex justify-end gap-3">
-              <Button variant="secondary" disabled={resetMutation.isPending} onClick={() => handleOpenChange(false)}>
+              <Button
+                ref={focusOnMount}
+                variant="secondary"
+                disabled={resetMutation.isPending}
+                onClick={() => handleOpenChange(false)}
+              >
                 Cancel
               </Button>
               <Button variant="primary" disabled={resetMutation.isPending} onClick={handleConfirm}>

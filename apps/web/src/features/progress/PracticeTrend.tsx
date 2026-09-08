@@ -119,7 +119,11 @@ export function PracticeTrend({ practice }: PracticeTrendProps) {
 
       {chartData.length > 0 ? (
         <div aria-hidden="true" data-testid="practice-trend-chart" className="overflow-x-auto">
-          <BarChart width={CHART_WIDTH} height={CHART_HEIGHT} data={chartData}>
+          {/* See DailyTrend.tsx's identical comment: Recharts' root `<svg>`
+              defaults to `tabindex="0"`, which — inside this
+              `aria-hidden="true"` wrapper — is a Tab stop with no announced
+              content (axe's "aria-hidden-focus", WCAG 4.1.2). */}
+          <BarChart width={CHART_WIDTH} height={CHART_HEIGHT} data={chartData} tabIndex={-1}>
             <CartesianGrid stroke={GRIDLINE} strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="label" tick={{ fill: AXIS_INK, fontSize: 11 }} />
             <YAxis

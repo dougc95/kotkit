@@ -25,7 +25,17 @@ export function ExactValuesTable({ caption, columns, rows, emptyMessage }: Exact
   }
 
   return (
-    <div className="overflow-x-auto">
+    // `tabIndex={0}`: axe's "scrollable-region-focusable" (WCAG 2.1.1) — a
+    // horizontally-scrollable region with real (non-hidden) content must
+    // itself be reachable and operable by keyboard, since a mouse-only
+    // drag/scroll gesture is the only other way to reach columns past the
+    // viewport edge. No `role="region"`/`aria-label` here: the table's own
+    // `caption` already gives it an accessible name, and adding a SECOND
+    // named landmark on top collided with other same-page region names in
+    // practice (confirmed empirically — `day8-revision.spec.ts`'s own
+    // `getByRole('region', {name: 'Practice'})` started matching two
+    // elements once this wrapper's "Practice blocks" label was added).
+    <div className="overflow-x-auto" tabIndex={0}>
       <table className="w-full min-w-[720px] border-collapse text-left text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead>

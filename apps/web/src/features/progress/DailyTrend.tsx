@@ -120,7 +120,13 @@ export function DailyTrend({ days }: DailyTrendProps) {
 
       {chartData.length > 0 ? (
         <div aria-hidden="true" data-testid="daily-trend-chart" className="overflow-x-auto">
-          <LineChart width={CHART_WIDTH} height={CHART_HEIGHT} data={chartData}>
+          {/* `tabIndex={-1}`: Recharts renders its root `<svg>` with
+              `tabindex="0"` by default (its own built-in keyboard
+              affordance) — inside this `aria-hidden="true"` wrapper, that
+              gives Tab a stop with no announced content at all (axe's
+              "aria-hidden-focus", WCAG 4.1.2). The `ExactValuesTable` below
+              is this data's real, focusable, accessible form. */}
+          <LineChart width={CHART_WIDTH} height={CHART_HEIGHT} data={chartData} tabIndex={-1}>
             <CartesianGrid stroke={GRIDLINE} strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="day"

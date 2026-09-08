@@ -91,7 +91,15 @@ export function ExportPreview({ programId }: ExportPreviewProps) {
           <p data-testid="export-label-line" className="text-sm font-medium text-[var(--color-text)]">
             {firstLine}
           </p>
-          <div className="overflow-x-auto rounded border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+          {/* See ExactValuesTable.tsx's identical comment: `tabIndex={0}` for
+              axe's "scrollable-region-focusable" (WCAG 2.1.1); no
+              `role="region"` (a named landmark here would repeat "Export",
+              already this section's own `aria-labelledby` name, and could
+              collide the same way the table wrappers' did in practice). */}
+          <div
+            className="overflow-x-auto rounded border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
+            tabIndex={0}
+          >
             <pre data-testid="export-preview-text" className="whitespace-pre text-xs">
               {text}
             </pre>

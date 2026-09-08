@@ -98,10 +98,19 @@ export type CreateSessionBodyValue = Static<typeof CreateSessionBody>
  * distinguish "this event type never has a reason" from "this one happened
  * to have none". Client-submitted event types (`off_task`, `external`,
  * `agent_check`, `visibility`) never populate this field either way.
+ *
+ * `hidden` is `visibility`'s own field (D39, opt-in `preferences.
+ * visibilityContext`): `useSessionEvents.ts`'s `visibilitychange` listener
+ * posts `{ hidden: document.hidden }` — omitted here (as with `alsoOffTask`/
+ * `reason`) this rejected EVERY opt-in `visibility` event outright (`Obj`'s
+ * `additionalProperties: false`, confirmed empirically: `POST .../events`
+ * 400 `malformed_request`, `details.hidden: "is not an accepted field"`),
+ * silently breaking D39's whole opt-in feature since it was implemented.
  */
 export const EventDetailsSchema = Obj({
   alsoOffTask: Type.Optional(Type.Boolean()),
   reason: Type.Optional(Type.Union([Type.String({ minLength: 1, maxLength: 100 }), Type.Null()])),
+  hidden: Type.Optional(Type.Boolean()),
 })
 export type EventDetailsValue = Static<typeof EventDetailsSchema>
 
@@ -191,6 +200,7 @@ export type EventsBatchResponseValue = Static<typeof EventsBatchResponse>
 const EventDetailsResponseSchema = Obj({
   alsoOffTask: Type.Optional(Type.Boolean()),
   reason: Type.Optional(Type.Union([Type.String({ minLength: 1, maxLength: 100 }), Type.Null()])),
+  hidden: Type.Optional(Type.Boolean()),
   reconciliation_warning: Type.Optional(Type.Literal(true)),
 })
 const ClockGapDetailsResponseSchema = Obj({

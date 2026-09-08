@@ -704,24 +704,45 @@ export function reviewNotePatch(review: ReviewInputValue): string | null {
 // ---------------------------------------------------------------------------
 
 /**
- * D26: true when at least one non-voided `clock_gap` event's stored
- * `details` carries no `resolution` at all — the client posted the gap but
- * the prompt was never (or not yet) answered, so this interval's timing
- * cannot be trusted. `buildEventInsertRow` (5.3.1) guarantees an unresolved
- * gap's `details` round-trips with no `resolution` key present (never a
- * stored `null`), so `=== undefined` is the exact test; a resolved gap
- * (`resolution` set to any of the three literal values) and a voided gap are
- * both ignored, and every non-`clock_gap` event is irrelevant here. Mirrors
- * the brief's own `SELECT 1 FROM session_events WHERE type = 'clock_gap' AND
- * voided_at IS NULL AND details->>'resolution' IS NULL LIMIT 1`.
+ * D26: true when the MOST RECENT (by `elapsedMs`, nulls sorting lowest —
+ * mirrors `useClockGap.ts`'s own `findUnresolvedClockGap`, the exact same
+ * question asked client-side for whether to reopen the prompt) non-voided
+ * `clock_gap` event's stored `details` carries no `resolution` at all — the
+ * client posted the gap but the prompt was never (or not yet) answered, so
+ * this interval's timing cannot be trusted. `buildEventInsertRow` (5.3.1)
+ * guarantees an unresolved gap's `details` round-trips with no `resolution`
+ * key present (never a stored `null`), so `=== undefined` is the exact test.
+ *
+ * Deliberately NOT "any unresolved event, regardless of order" (D9: events
+ * are append-only, so a resolution is always a NEW row, never an edit of the
+ * old one): `resolveClockGap` (session.ts) writes no `session_events` row at
+ * all, so when a gap reopens the prompt from an already-server-stored
+ * unresolved event with no local outbox draft to update (`useClockGap.ts`'s
+ * own "reopened from server" branch), `resolve()`'s only way to reflect that
+ * resolution IN THE EVENT LOG is a brand-new `clock_gap` row carrying it —
+ * the original row stays unresolved forever, by design. Checking "any"
+ * instead of "latest" would mean that original row permanently re-forces
+ * `timer_quality` back to `'uncertain'` at every future finalize, silently
+ * discarding a resolution the dedicated `/clock-gap` endpoint already
+ * committed (confirmed empirically: `POST .../clock-gap {resolution:
+ * 'continued'}` correctly set `timerQuality: 'ok'` immediately, but a later
+ * finalize call reverted it, because the fixture's own pre-seeded unresolved
+ * event was still — and would always be — found by a plain `.some()`).
  */
 export function hasUnresolvedClockGap(events: readonly SessionEventRow[]): boolean {
-  return events.some(
-    (event) =>
-      event.type === 'clock_gap' &&
-      event.voidedAt === null &&
-      (event.details as { readonly resolution?: unknown }).resolution === undefined,
-  )
+  let latest: SessionEventRow | null = null
+  for (const event of events) {
+    if (event.type !== 'clock_gap' || event.voidedAt !== null) {
+      continue
+    }
+    if (latest === null || (event.elapsedMs ?? -Infinity) > (latest.elapsedMs ?? -Infinity)) {
+      latest = event
+    }
+  }
+  if (latest === null) {
+    return false
+  }
+  return (latest.details as { readonly resolution?: unknown }).resolution === undefined
 }
 
 /**

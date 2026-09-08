@@ -33,11 +33,26 @@
  *     `useStartSession`, 7.4.4) flips `isActive()` immediately.
  *  2. Runs exactly ONCE, on the FIRST successful resolution after app boot
  *     (D17, guarded by a ref — never re-armed by a later `setQueryData` or
- *     refetch): replays the active session's outbox (`replayOnLoad`, 7.3.2)
- *     then purges every other session's rows (`purgeOtherSessions`, 7.3.1);
- *     with no active session, purges the whole outbox (D6: the buffer holds
- *     only an active session's rows, and none is active). No navigation
- *     happens here — screens alone decide what to render.
+ *     refetch): replays the active session's outbox (`replayOnLoad`, 7.3.2),
+ *     invalidates BOTH that session's own query (`queryKeys.sessions.byId`,
+ *     Focus.tsx's own source) AND `queryKeys.sessions.active` (Running.tsx's
+ *     source, via `useActiveSession()` — the exact query this provider
+ *     itself owns) so whichever screen is mounted, its `useSessionEvents` —
+ *     which re-seeds its tally reducer from whatever `eventCount` growth it
+ *     observes, entirely independent of this replay — refetches and picks up
+ *     whatever the replay just landed server-side, then purges every other
+ *     session's rows
+ *     (`purgeOtherSessions`, 7.3.1); with no active session, purges the whole
+ *     outbox (D6: the buffer holds only an active session's rows, and none is
+ *     active). No navigation happens here — screens alone decide what to
+ *     render.
+ *
+ *     Without the invalidation: a row buffered before reload (e.g. a network
+ *     failure) that this replay successfully flushes reaches the SERVER, but
+ *     a screen already showing that session's tally from its own, unrelated
+ *     seed never re-renders with it — the on-screen count silently diverges
+ *     from server truth for the rest of the session (confirmed empirically
+ *     against `e2e/invariants/refresh.spec.ts`'s own reload-replay case).
  */
 import {
   createContext,
@@ -46,7 +61,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { SessionResponseValue } from '@attention-lab/shared'
 
 import { api } from '../api/client.js'
@@ -109,6 +124,7 @@ export interface SessionModeProviderProps {
 }
 
 export function SessionModeProvider({ modeRef, children }: SessionModeProviderProps) {
+  const queryClient = useQueryClient()
   const { data, isSuccess } = useQuery({
     queryKey: queryKeys.sessions.active,
     queryFn: api.sessions.active,
@@ -133,14 +149,38 @@ export function SessionModeProvider({ modeRef, children }: SessionModeProviderPr
     bootHandledRef.current = true
 
     if (activeSession !== null) {
-      void replayOnLoad(activeSession.id, api).then(() => purgeOtherSessions(activeSession.id))
+      const sessionId = activeSession.id
+      void replayOnLoad(sessionId, api)
+        .then(() => api.sessions.get(sessionId))
+        .then((freshSession) => {
+          // See the module doc comment: without this, a screen already
+          // reading this session never learns the flush just landed. Writes
+          // the SAME freshly-fetched session into BOTH cache keys — never
+          // `invalidateQueries({queryKey: queryKeys.sessions.active})`,
+          // which re-runs `sessions.active`'s OWN queryFn (`GET
+          // /sessions/active`, a different question — "whichever session is
+          // active now" — than "this one session's current state") and can
+          // race a session started while this replay was still in flight:
+          // confirmed empirically (`useStartSession.test.tsx`) that
+          // invalidating unconditionally clobbered a just-started session's
+          // freshly-`setQueryData`'d cache entry with a stale refetch.
+          // `sessions.byId` is scoped to `sessionId` and always safe to
+          // overwrite; `sessions.active` is shared and only touched when it
+          // still names the session this replay was actually for.
+          queryClient.setQueryData(queryKeys.sessions.byId(sessionId), freshSession)
+          const stillActive = queryClient.getQueryData<SessionResponseValue>(queryKeys.sessions.active)
+          if (stillActive?.id === sessionId) {
+            queryClient.setQueryData(queryKeys.sessions.active, freshSession)
+          }
+        })
+        .then(() => purgeOtherSessions(sessionId))
     } else {
       void purgeOtherSessions(null)
     }
     // `activeSession`/`isSuccess` are read once, guarded above by the ref —
     // listed as deps only so lint rules are satisfied, never causing a
     // second run.
-  }, [isSuccess, activeSession])
+  }, [isSuccess, activeSession, queryClient])
 
   const value: SessionModeContextValue = {
     isActive: isActiveLifecycle(activeSession),

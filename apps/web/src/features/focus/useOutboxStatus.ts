@@ -111,16 +111,28 @@ async function refreshUnsentCount(sessionId: string): Promise<void> {
   patch(sessionId, { unsentCount: rows.length })
 }
 
-/** Runs one flush attempt, purges a rejected row (if any), then re-derives `unsentCount`. Shared by the mount-time replay and `retry()`. */
+/**
+ * Runs one flush attempt, purges a rejected row (if any), then re-derives
+ * `unsentCount`. Shared by the mount-time replay and `retry()`. The whole
+ * body runs inside try/finally: `replayOnLoad`/`flush`/`ack`/
+ * `refreshUnsentCount` all eventually touch IndexedDB (`lib/outbox/store.js`),
+ * and a boot-time failure there (IndexedDB unavailable/throwing) must not
+ * leave `inFlight` stranded `true` forever — that would permanently show
+ * 'Pending' with an inert Retry even once the event has genuinely reached
+ * the server through some other path (e.g. `sendDirectNow`).
+ */
 async function runFlushCycle(sessionId: string, flushApi: FlushApi, useReplay: boolean): Promise<void> {
   patch(sessionId, { inFlight: true })
-  const result = useReplay ? await replayOnLoad(sessionId, flushApi) : await flush(sessionId, flushApi)
-  if (result.outcome === 'rejected' && result.offendingClientEventId !== undefined) {
-    await ack([result.offendingClientEventId])
-    patch(sessionId, { rejectedNotice: IMPOSSIBLE_OFFSET_NOTICE })
+  try {
+    const result = useReplay ? await replayOnLoad(sessionId, flushApi) : await flush(sessionId, flushApi)
+    if (result.outcome === 'rejected' && result.offendingClientEventId !== undefined) {
+      await ack([result.offendingClientEventId])
+      patch(sessionId, { rejectedNotice: IMPOSSIBLE_OFFSET_NOTICE })
+    }
+    await refreshUnsentCount(sessionId)
+  } finally {
+    patch(sessionId, { inFlight: false })
   }
-  await refreshUnsentCount(sessionId)
-  patch(sessionId, { inFlight: false })
 }
 
 /**
@@ -183,7 +195,11 @@ export function useOutboxStatus(sessionId: string): UseOutboxStatusResult {
       return
     }
     entry.replayStarted = true
-    void runFlushCycle(sessionId, api, true)
+    // Best-effort, fire-and-forget: a boot-time failure already leaves
+    // `inFlight` correctly reset (runFlushCycle's own try/finally) — this
+    // catch only prevents an unhandled promise rejection console warning
+    // for a background effect nothing awaits.
+    void runFlushCycle(sessionId, api, true).catch(() => {})
   }, [sessionId])
 
   const retry = useCallback(() => runFlushCycle(sessionId, api, false), [sessionId])

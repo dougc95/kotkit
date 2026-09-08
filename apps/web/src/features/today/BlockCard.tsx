@@ -230,7 +230,16 @@ export function BlockCard({ block, target, isNext, programId }: BlockCardProps) 
         <span className="text-sm text-[var(--color-text-muted)]">{STATUS_LABEL[block.status]}</span>
       </div>
       <p className="text-sm text-[var(--color-text-muted)]">{formatMinutes(target)}</p>
-      {isNext ? <StartPracticeForm programId={programId} targetSeconds={target} /> : null}
+      {/* `nextPracticeBlock` (apps/api/src/services/program/nextAction.ts)
+          deliberately points `isNext` at an `in_progress` block (its own
+          running session) before falling back to the first `not_started`
+          one — so `isNext` alone is not "safe to start". Today (8.2.1)
+          already renders `ActiveSessionCard` in that case; this form must
+          stay hidden here too, or it offers a second, guaranteed-409 Start
+          control for a block whose session is already running. */}
+      {isNext && block.status === 'not_started' ? (
+        <StartPracticeForm programId={programId} targetSeconds={target} />
+      ) : null}
     </div>
   )
 }

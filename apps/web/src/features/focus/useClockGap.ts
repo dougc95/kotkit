@@ -277,17 +277,34 @@ export function useClockGap(
       setStatus('pending')
       setErrorMessage(null)
 
-      if (gap.clientEventId !== null && gap.elapsedMs !== null && gap.occurredAt !== null) {
+      // A gap reopened from an already-server-stored unresolved event
+      // (`gap.clientEventId === null`, D26's reload case) has no local
+      // outbox draft to overwrite — but the server's own finalize-time check
+      // (`hasUnresolvedClockGap`, review.ts) reads the MOST RECENT clock_gap
+      // event, and D9 (events are append-only) means that original row can
+      // never itself be edited into a resolved one. Without recording a NEW
+      // event here, that original row stays unresolved forever and
+      // finalize keeps re-forcing `timer_quality` back to `'uncertain'`,
+      // silently discarding the resolution the dedicated `/clock-gap` call
+      // below already committed. A fresh stamp (this moment, not the
+      // original gap's) is correct: this row's only job is to be the
+      // latest, resolved one.
+      const stamp = gap.elapsedMs !== null && gap.occurredAt !== null
+        ? { elapsedMs: gap.elapsedMs, occurredAt: gap.occurredAt }
+        : stampNow()
+      const clientEventId = gap.clientEventId ?? crypto.randomUUID()
+
+      if (stamp !== null) {
         try {
           await storeEnqueue(
             sessionRef.current.id,
             {
               type: 'clock_gap',
-              elapsedMs: gap.elapsedMs,
-              occurredAt: gap.occurredAt,
+              elapsedMs: stamp.elapsedMs,
+              occurredAt: stamp.occurredAt,
               details: { gapSeconds: gap.gapSeconds, resolution },
             },
-            gap.clientEventId,
+            clientEventId,
           )
         } catch {
           // Same rationale as the initial enqueue above: a local write

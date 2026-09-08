@@ -57,7 +57,13 @@ export function serverNowMs(anchor: ClockAnchor, monotonicNowMs: number): number
 /** Elapsed milliseconds since `startedAt`, excluding paused time, as of
  * `monotonicNowMs`. Unclamped (can be negative before start, or exceed
  * `targetSeconds` past the deadline) — used for event stamping, where the
- * raw value is what the server needs to reconcile a batch. */
+ * value is what the server needs to reconcile a batch. Rounded to the
+ * nearest whole millisecond: `performance.now()` carries sub-millisecond
+ * precision, but `EventInput.elapsedMs` (contracts/sessions.ts) is a wire
+ * integer — an unrounded value here fails the server's schema validation on
+ * every single event submission (confirmed empirically: `POST
+ * /sessions/{id}/events` 400 `malformed_request`, `elapsedMs: "must be
+ * integer"`, whenever this ran against a real, un-faked monotonic clock). */
 export function elapsedMsForEvent(
   fields: ServerTimerFields,
   anchor: ClockAnchor,
@@ -69,7 +75,7 @@ export function elapsedMsForEvent(
   if (fields.lifecycle === 'paused' && fields.currentPauseStartedAt !== null) {
     pausedMs += nowMs - Date.parse(fields.currentPauseStartedAt)
   }
-  return nowMs - startedAtMs - pausedMs
+  return Math.round(nowMs - startedAtMs - pausedMs)
 }
 
 /** Derives remaining time and display state purely from server-truth

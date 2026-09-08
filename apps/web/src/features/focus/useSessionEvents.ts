@@ -289,14 +289,28 @@ export function useSessionEvents(
   const [state, dispatch] = useReducer(reducer, undefined, initialState)
   const [undoNotice, setUndoNotice] = useState<string | null>(null)
 
-  // Seed once per session id — a route only ever hosts one session, so this
-  // hook instance's whole lifetime is that one session's (a genuinely
-  // different session means a remounted screen, and therefore a fresh hook
-  // instance with its own ref starting at `null` again).
-  const seededSessionIdRef = useRef<string | null>(null)
-  if (session !== null && seededSessionIdRef.current !== session.id) {
+  // Seeds from `session.events` whenever the server's own `eventCount` (D21)
+  // grows beyond what this hook has already ingested for this session id —
+  // not merely once per mount. The reducer's own 'seed' case only ADDS a
+  // clientEventId this hook has never seen (`if (!byId.has(...))`), so
+  // re-seeding is always safe: it can never overwrite a locally-dispatched
+  // record, undo, or sent flag. A route only ever hosts one session, so a
+  // session-id change here always means a remounted screen (a fresh hook
+  // instance, its own ref starting over) — this guard's real job is
+  // catching a row that reached the server through a path OTHER than this
+  // hook's own `record()` (a page reload's boot-time outbox replay,
+  // `sessionMode.tsx`'s `SessionModeProvider`, is exactly such a path):
+  // without re-seeding on every `eventCount` growth, a screen already
+  // mounted when that replay lands would show a tally permanently stuck
+  // below server truth (confirmed empirically against
+  // `e2e/invariants/refresh.spec.ts`'s own reload-replay case).
+  const seededStateRef = useRef<{ sessionId: string | null; eventCount: number }>({ sessionId: null, eventCount: -1 })
+  if (
+    session !== null &&
+    (seededStateRef.current.sessionId !== session.id || seededStateRef.current.eventCount < session.eventCount)
+  ) {
     dispatch({ kind: 'seed', events: seedFromSession(session) })
-    seededSessionIdRef.current = session.id
+    seededStateRef.current = { sessionId: session.id, eventCount: session.eventCount }
   }
 
   // D5: the anchor is re-derived whenever the session's `serverNow` moves

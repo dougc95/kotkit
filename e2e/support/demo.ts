@@ -38,6 +38,7 @@ import type {
   CurrentProgramResponseValue,
   DemoScenarioName,
   MeResponseValue,
+  OutputQuality,
   ProgramResponseValue,
   PutSlotsBodyValue,
   PutSlotsResponseValue,
@@ -91,6 +92,24 @@ function localDateAt(instant: Date, timeZone: string): string {
     throw new Error(`Could not resolve a local date for timeZone "${timeZone}"`)
   }
   return `${year}-${month}-${day}`
+}
+
+/**
+ * `localDate` (`YYYY-MM-DD`) plus `days` calendar days (positive or
+ * negative) — plain integer arithmetic, no timezone involved, matching
+ * `LocalDate`'s own definition as a calendar date rather than an instant.
+ * Added for `setDay()` (task 9.1.1).
+ */
+function addDaysToLocalDate(localDate: string, days: number): string {
+  const [year, month, day] = localDate.split('-').map(Number)
+  if (year === undefined || month === undefined || day === undefined) {
+    throw new Error(`Malformed local date: "${localDate}"`)
+  }
+  const shifted = new Date(Date.UTC(year, month - 1, day + days))
+  const yyyy = shifted.getUTCFullYear()
+  const mm = String(shifted.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(shifted.getUTCDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 /** `timeZone`'s UTC offset in milliseconds AT `instant` (varies across a DST transition). */
@@ -166,6 +185,13 @@ export interface ReadyProgramResult {
   readonly programId: string
   readonly slots: readonly SlotResponseValue[]
   readonly revision: RevisionResponseValue
+}
+
+/** `completePracticeBlock()`'s optional overrides — defaults produce a QUALIFYING block (`domain/progression.ts`'s `blockQualifies`); pass either to deliberately produce a non-qualifying one. */
+export interface CompletePracticeBlockOptions {
+  readonly outputQuality?: OutputQuality
+  readonly episodeCount?: number
+  readonly intendedOutput?: string
 }
 
 /**
@@ -286,9 +312,94 @@ export class DemoClient {
 
     return { programId: created.program.id, slots: slotsResult.slots, revision: created.revision }
   }
+
+  /**
+   * Sets the demo clock so "now" lands on program day `day` (0-indexed from
+   * the current program's `baselineDate`) at local `hhmm` (default 09:00) —
+   * the same fixed-point local-time arithmetic `readyProgram()` uses for Day
+   * 0. Requires an existing program (task 9.1.1; `9.2.5`/`9.2.6`'s own
+   * `setDay(8)`/`qualify()` helpers build on this).
+   */
+  async setDay(day: number, hhmm = '09:00'): Promise<void> {
+    const [me, current] = await Promise.all([this.me(), this.current()])
+    if (current.program === null) {
+      throw new Error('setDay: no program exists — call readyProgram() or create one first')
+    }
+    const localDate = addDaysToLocalDate(current.program.baselineDate, day)
+    const targetMs = zonedWallClockToUtcMs(localDate, hhmm, me.timezone)
+    const offsetSeconds = Math.round((targetMs - Date.now()) / 1000)
+    await this.setClock(offsetSeconds)
+  }
+
+  /**
+   * Raw-API "run a full practice block out and finalize it" shortcut for
+   * tests that need qualifying (or deliberately non-qualifying) practice
+   * history without driving the real screens (task 9.1.1; used by
+   * `9.1.5`/`9.2.5`/`9.2.6`). Starts a practice session at `targetSeconds`,
+   * advances the demo clock past it, ends the interval, then finalizes with
+   * zero recorded events and the given (or qualifying-by-default) review —
+   * `domain/progression.ts`'s `blockQualifies` requires `finalized`,
+   * `completeInterval === true`, `outputQuality === 'yes'` and
+   * `episodeCount <= 1`, all of which the defaults satisfy.
+   */
+  async completePracticeBlock(
+    programId: string,
+    targetSeconds: number,
+    options: CompletePracticeBlockOptions = {},
+  ): Promise<{ sessionId: string }> {
+    const startResponse = await this.context.post('sessions', {
+      headers: { 'Idempotency-Key': newIdempotencyKey() },
+      data: {
+        programId,
+        kind: 'practice',
+        intendedOutput: options.intendedOutput ?? 'Acceptance-harness practice block',
+        targetSeconds,
+      },
+    })
+    const session = await readJson<SessionResponseValue>(startResponse)
+
+    const currentOffset = await this.offset()
+    await this.setClock(currentOffset + targetSeconds + 5)
+
+    const endResponse = await this.context.post(`sessions/${session.id}/transitions`, {
+      data: { type: 'end', expectedVersion: session.version },
+    })
+    await expectStatus(endResponse, 200)
+
+    const finalizeResponse = await this.context.post(`sessions/${session.id}/finalize`, {
+      headers: { 'Idempotency-Key': newIdempotencyKey() },
+      data: {
+        expectedEventCount: 0,
+        review: {
+          outputQuality: options.outputQuality ?? 'yes',
+          episodeCount: options.episodeCount ?? 0,
+          // Required whenever a count is reported at all (the server
+          // rejects an episodeCount with no accompanying method) — 'event'
+          // matches this helper's own zero-recorded-events reality.
+          countMethod: 'event' as const,
+        },
+      },
+    })
+    await expectStatus(finalizeResponse, 200)
+
+    return { sessionId: session.id }
+  }
 }
 
 export interface DemoFixtures {
+  /**
+   * A per-PROJECT test OPTION (not a per-test fixture) — set it via a
+   * project's own `use: { apiBaseURL: '...' }` in playwright.config.ts, the
+   * same way `use.baseURL` scopes `page.goto()`. Defaults to
+   * `DEMO_API_BASE_URL` (the `shell`/`acceptance-dev` dev-server pair's
+   * origin), so every spec written before task 9.1.1 keeps working
+   * unchanged. The `acceptance` project (9.1.1, D37's single-origin
+   * build-and-serve topology) overrides this to its own server's origin —
+   * a DIFFERENT port from the dev API, since Playwright's `webServer` array
+   * starts every entry for any run through this one config file, and two
+   * server processes cannot both bind the dev API's port at once.
+   */
+  readonly apiBaseURL: string
   readonly demo: DemoClient
 }
 
@@ -298,8 +409,9 @@ export interface DemoFixtures {
  * `@playwright/test` directly, so the fixture is always available (D16).
  */
 export const test = base.extend<DemoFixtures>({
-  demo: async ({}, use) => {
-    const context = await apiRequest.newContext({ baseURL: DEMO_API_BASE_URL })
+  apiBaseURL: [DEMO_API_BASE_URL, { option: true }],
+  demo: async ({ apiBaseURL }, use) => {
+    const context = await apiRequest.newContext({ baseURL: apiBaseURL })
     await use(new DemoClient(context))
     await context.dispose()
   },

@@ -240,6 +240,27 @@ export function TransitionControls({ session, onTransition }: TransitionControls
   const { status, message, currentSession, transition } = useTransition(session.id)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
+  // Radix's `AlertDialog.Content` is documented to auto-focus its first
+  // tabbable child on open, but does not do so here in practice (confirmed
+  // empirically against the real, built app: the dialog's own DOM — both
+  // buttons present, neither disabled — is correct, yet keyboard focus
+  // simply stays on the "Finish early" trigger indefinitely; a manual
+  // `.focus()` call on "Keep going" works immediately once called). A
+  // `useEffect` keyed on `confirmOpen` is NOT the right tool here either
+  // (confirmed empirically, a second real bug): `AlertDialog.Content`
+  // portals its children, so on the render where `confirmOpen` first flips
+  // true, the effect can run before "Keep going"'s own DOM node exists —
+  // `keepGoingRef.current` reads `null` right when the effect fires. A
+  // callback ref sidesteps both problems: React calls it exactly when the
+  // node attaches (mount) or detaches (unmount), never early, regardless of
+  // portal timing or Radix's own (non-firing) auto-focus — and a stable
+  // (`useCallback`, no deps) identity means it is NOT re-invoked on every
+  // unrelated re-render while the dialog stays open, so it never steals
+  // focus back from wherever the user has since tabbed to.
+  const focusOnMount = useCallback((node: HTMLButtonElement | null) => {
+    node?.focus()
+  }, [])
+
   if (status === 'stale') {
     return <ActiveSessionCard session={currentSession ?? session} staleNotice />
   }
@@ -318,7 +339,12 @@ export function TransitionControls({ session, onTransition }: TransitionControls
                 Your recorded time and events stay saved; you&apos;ll review what you completed next.
               </AlertDialog.Description>
               <div className="mt-6 flex justify-end gap-3">
-                <Button variant="secondary" disabled={isPending} onClick={() => handleDialogOpenChange(false)}>
+                <Button
+                  ref={focusOnMount}
+                  variant="secondary"
+                  disabled={isPending}
+                  onClick={() => handleDialogOpenChange(false)}
+                >
                   Keep going
                 </Button>
                 <Button variant="primary" disabled={isPending} onClick={handleFinishConfirm}>

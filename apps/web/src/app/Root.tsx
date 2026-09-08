@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router'
 import { LiveRegion } from '../ui/LiveRegion.js'
 import { AppBootstrap } from './AppBootstrap.js'
+import { ScrollToTop } from './ScrollToTop.js'
 import { SessionLeaveGuard } from './SessionLeaveGuard.js'
 
 /**
@@ -9,13 +10,15 @@ import { SessionLeaveGuard } from './SessionLeaveGuard.js'
  * — is already inside that provider's tree without needing to repeat it here.
  * Nesting order below: `LiveRegion` (outermost, so `useAnnouncer()` is
  * available to every route) > `AppBootstrap` (gates rendering on `GET /me`)
- * > `SessionLeaveGuard` (a sibling of `Outlet`, not a descendant of either
- * layout, so it watches navigation regardless of which layout is current).
+ * > `ScrollToTop`/`SessionLeaveGuard` (both siblings of `Outlet`, not
+ * descendants of either layout, so both apply regardless of which layout is
+ * current).
  */
 export function Root() {
   return (
     <LiveRegion>
       <AppBootstrap>
+        <ScrollToTop />
         <SessionLeaveGuard />
         <Outlet />
       </AppBootstrap>
