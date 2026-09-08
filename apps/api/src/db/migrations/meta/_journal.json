@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788801654455,
+      "tag": "0000_profiles_programs_slots",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788802939581,
+      "tag": "0001_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788803267181,
+      "tag": "0002_days_receipts",
+      "breakpoints": true
+    }
+  ]
+}

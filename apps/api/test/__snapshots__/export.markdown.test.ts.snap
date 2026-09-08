@@ -1,0 +1,56 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`GET /api/v1/programs/{id}/export?format=markdown (integration, attention_lab_test) > comparable-change scenario Markdown matches the committed snapshot 1`] = `
+"# Demonstration data — synthetic local-demo records, not a real measurement
+
+# Attention Lab program record
+
+## Program
+
+| program_id | realm | identity_mode | baseline_date | timezone | status | leisure_allowance_min | feed_estimate_min | exported_at |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| <uuid-1> | demo | local-demo | 2026-09-05 | Europe/Madrid | active | 20 |  | <timestamp-1> |
+
+## Revisions
+
+| revision | effective_day | practice_target_seconds | band_ceilings | leisure_allowance_min | reason | created_at |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 0 | 600 | [{"toDay":3,"fromDay":1,"minutes":10},{"toDay":7,"fromDay":4,"minutes":15},{"toDay":10,"fromDay":8,"minutes":20},{"toDay":14,"fromDay":11,"minutes":25}] | 20 | initial plan | <timestamp-2> |
+
+## Attempts
+
+_All counts are self-reported_
+
+| attempt_id | phase | label | local_date | realm | time_source | s | s_method | t_state | t_seconds | t_method | recall_score | e | m | disruption | device_format | language | material_level | accommodations | eligible | exclusion_reasons | protocol_revision | recall_flags | replacement_reason | lifecycle |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| <uuid-2> | baseline | A | 2026-09-05 | demo | demo_clock | 6 | event | known | 620 | event | 4 | 1 | 1 | no | laptop | en | intermediate |  | true |  | 1 |  |  | finalized |
+| <uuid-3> | baseline | B | 2026-09-05 | demo | demo_clock | 4 | event | known | 540 | event | 4 | 1 | 1 | no | laptop | en | intermediate |  | true |  | 1 |  |  | finalized |
+| <uuid-4> | final | A | 2026-09-19 | demo | demo_clock | 3 | event | known | 900 | event | 4 | 1 | 1 | no | laptop | en | intermediate |  | true |  | 1 |  |  | finalized |
+| <uuid-5> | final | B | 2026-09-19 | demo | demo_clock | 3 | event | known | 840 | event | 4 | 1 | 1 | no | laptop | en | intermediate |  | true |  | 1 |  |  | finalized |
+
+## Days
+
+| program_day | local_date | sleep_minutes | stress | mindfulness_minutes | status |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 2026-09-05 |  |  |  | not_reported |
+| 1 | 2026-09-06 |  |  |  | not_reported |
+| 2 | 2026-09-07 |  |  |  | not_reported |
+| 3 | 2026-09-08 |  |  |  | not_reported |
+| 4 | 2026-09-09 |  |  |  | not_reported |
+| 5 | 2026-09-10 |  |  |  | not_reported |
+| 6 | 2026-09-11 |  |  |  | not_reported |
+| 7 | 2026-09-12 |  |  |  | not_reported |
+| 8 | 2026-09-13 |  |  |  | not_reported |
+| 9 | 2026-09-14 |  |  |  | not_reported |
+| 10 | 2026-09-15 |  |  |  | not_reported |
+| 11 | 2026-09-16 |  |  |  | not_reported |
+| 12 | 2026-09-17 |  |  |  | not_reported |
+| 13 | 2026-09-18 |  |  |  | not_reported |
+| 14 | 2026-09-19 |  |  |  | not_reported |
+
+## Feed rows
+
+| local_date | device | platform | minutes | short_video_minutes | measurement_scope | source | planned_window |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+"
+`;

@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/*
+ * Accessibility baseline (7.1.6): color tokens with documented contrast,
+ * a global :focus-visible outline for every interactive element, and a
+ * prefers-reduced-motion block. Contrast ratios below are WCAG relative-
+ * luminance computations for the exact hex pairs used, not estimates.
+ */
+@layer base {
+  :root {
+    /* Page and surface. */
+    --color-bg: #ffffff;
+    --color-surface: #f1f5f9;
+    --color-border: #cbd5e1; /* decorative only — never used for text */
+
+    /* Text. Both pairs are checked against --color-bg (#ffffff). */
+    --color-text: #111827; /* ~17.7:1 against --color-bg */
+    --color-text-muted: #475569; /* ~7.6:1 against --color-bg */
+
+    /* Primary control. White text on this fill is ~5.2:1 (>= 4.5:1). */
+    --color-primary: #2563eb;
+    --color-primary-text: #ffffff;
+
+    /*
+     * Focus ring. Pure black clears >= 3:1 against every background this
+     * palette uses: ~21:1 against --color-bg / --color-surface, and
+     * ~4.1:1 against the darkest control fill (--color-primary). Chosen
+     * deliberately over a colored ring so one token works everywhere,
+     * including directly against --color-primary when an element's own
+     * offset does not clear the fill (e.g. a small control near an edge).
+     */
+    --color-focus-ring: #000000;
+
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  /*
+   * One rule for every interactive element (buttons, links, inputs,
+   * Radix primitives) — nothing under src/ui/ or src/app/ overrides
+   * :focus-visible with its own outline; component styling only adds
+   * color/size, never suppresses this.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  /*
+   * app-shell spec, "Reduced motion": when the system prefers reduced
+   * motion, transitions and progress animations are disabled or replaced
+   * with instant state changes. This is the enforcement layer — no
+   * per-component reduced-motion CSS should be needed.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
