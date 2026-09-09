@@ -19,8 +19,9 @@ experiment: establish a baseline with fixed 20-minute reading benchmarks, protec
 blocks, manage AI-agent waiting periods, log cross-device recreational feed use, and compare Day 14
 results against baseline. Product owner: Douglas Rojas. Every run in this repository so far has used
 the `local-demo` identity mode (fixed principal, loopback-only, synthetic fixture data, permanent demo
-banner); `real` identity refuses to boot until its prerequisites are met (D2). All demonstrated numbers
-remain synthetic; **no real measurement has ever been collected.**
+banner); `real` identity refuses to boot, and its four prerequisites are necessary but not sufficient,
+since Better Auth is still to be wired in the follow-up change `add-real-identity` (D2). All
+demonstrated numbers remain synthetic; **no real measurement has ever been collected.**
 
 ## Commands
 
@@ -84,6 +85,15 @@ statements conflict:
 critical invariants and the two ready-to-paste briefs; note it is unreachable from README's reading
 order, which still points at the old `CODEX-HANDOFF.md` filename.
 
+## Document pointers — correction dated 2026-09-08
+
+The section above is kept byte-identical to the original bundle by
+`scripts/check-claude-md.mjs`, so its closing sentence still describes README's reading order as it
+stood on 6 September. That sentence is now out of date in one respect: README's reading order links
+directly to `HANDOFF.md` as item 5, so the invariants are reachable from it. `CODEX-HANDOFF.md`
+survives in README only inside the `## Integrity` section, where it explains why the checksum
+manifest reports a missing file. Everything else in the section above stands unchanged.
+
 ## The no-code constraint (history)
 
 Every design document states that no application code was to be created. That described the scope
@@ -121,14 +131,16 @@ measurement, which is the failure mode this whole bundle is organized against.
 - Real identity, ownership, persistence, export and deletion are prerequisites before any real
   personal record is stored.
 
-## Proposed architecture (for when implementation is authorized)
+## Architecture as built
 
 React + TypeScript + Vite frontend, React Router, TanStack Query, Tailwind + Radix, Recharts on the
-Progress screen only. Node LTS + Fastify + TypeScript backend with TypeBox contracts shared with the
-frontend, Better Auth with invite-only Google OAuth, PostgreSQL via Drizzle, pnpm workspaces, Vitest
-and Playwright. One origin serves both the compiled frontend and the API. No versions are pinned
-anywhere in the bundle and no compatibility has been tested — verify at kickoff rather than trusting
-a version implied by the documents.
+Progress screen only. Node + Fastify + TypeScript backend with TypeBox contracts shared with the
+frontend, PostgreSQL via Drizzle, npm workspaces (D1), Vitest and Playwright. One origin serves both
+the built frontend and the API in the Playwright `acceptance` project (D37), while day-to-day
+development runs Vite and the API on separate ports. Better Auth with invite-only Google OAuth is the
+one part of this stack still unbuilt, deferred to the follow-up change `add-real-identity`. Every
+dependency is pinned to an exact version and the set was verified together — `LIMITATIONS.md`'s
+"Version pins (D3)" table records what was pinned, the one package stepped back and why.
 
 The domain centers on `programs` → immutable `protocol_revisions` → `benchmark_slots` (baseline A/B
 and final A/B, optionally a Day 7 midpoint) → `focus_sessions` (kind `practice` or `benchmark`) →

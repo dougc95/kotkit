@@ -1,11 +1,12 @@
-# Attention Lab — local Codex handoff
+# Attention Lab — P0 prototype and design bundle
 
-Design snapshot: 6 September 2026.
+Design bundle snapshot: 6 September 2026. Prototype built and verified: 8 September 2026.
 
 ## Start here
 
-Open this repository in your local Codex workspace and use the brief in HANDOFF.md; it also carries
-the critical invariants. All included file/image references are relative to the repo root.
+To run the prototype, follow "## Local setup" below. HANDOFF.md carries the critical invariants and
+the two briefs this implementation was commissioned from; read it before changing anything that
+affects a measurement. All included file/image references are relative to the repo root.
 
 This repository is now a working **P0 prototype**, not only a design handoff: an npm-workspaces
 monorepo with `apps/web` (React + TypeScript, served by Vite), `apps/api` (Fastify, run under `tsx`)
@@ -27,7 +28,7 @@ need internet; no real credentials or real personal data are included or should 
 4. [Wireframe index](wireframes/README.md): screen mapping and known corrections.
 5. [Handoff briefs](HANDOFF.md): a ready-to-paste review brief and an optional implementation brief.
 
-The user's direct current instruction governs the work. The documents' no-code statements describe the design-only scope authorized in the original conversation. Packaging this archive does not itself authorize implementation. A new explicit instruction to implement on the PC can change that scope; do not treat old design-stage wording as a permanent ban after such an instruction.
+The user's direct current instruction governs the work. The documents' no-code statements describe the design-only scope authorized in the original conversation, and packaging this archive did not itself authorize implementation. That constraint was lifted by explicit instruction on 6 September 2026, and the P0 prototype in this repository is the result, so read those statements as history rather than as a live restriction.
 
 ## Local setup
 
@@ -46,10 +47,12 @@ npm run dev:web         # Vite dev server, http://localhost:5173 (separate termi
 Then, as needed:
 
 ```bash
-npm run test        # shared + api + web unit tests, every workspace
-npm run e2e          # Playwright, against a real built API + web bundle
+npm run test         # shared + api + web unit tests, every workspace
+npm run e2e          # Playwright, all four projects; the `acceptance` project (120 of the 166
+                     # tests) runs against a real built API and web bundle on port 8788, while
+                     # `shell` and `acceptance-dev` run against the dev-server pair
 npm run verify:all   # fresh container: db:up -> db:push -> typecheck -> test -> build -> e2e,
-                      # stopping at the first failure
+                     # stopping at the first failure
 ```
 
 The API only binds to a loopback interface (`127.0.0.1`, `localhost` or `::1`); with
