@@ -7,3 +7,6 @@ dist/
 coverage/
 test-results/
 playwright-report/
+
+# Pitch demo recordings (Playwright video output) — never committed.
+demo-output/
