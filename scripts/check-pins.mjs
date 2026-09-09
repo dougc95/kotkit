@@ -21,8 +21,15 @@ const rows = section
 
 if (rows.length === 0) throw new Error('No pin rows found under "## Version pins (D3)"')
 
+// Table cells carry Markdown emphasis for readability (the one stepped-back
+// pin is bolded, package names are sometimes code-spanned). Compare the
+// version values themselves, not their markup.
+const plain = (cell) => cell.replace(/[`*]/g, '').trim()
+
 const mismatches = []
-for (const [pkg, , pinned] of rows) {
+for (const [pkgCell, , pinnedCell] of rows) {
+  const pkg = plain(pkgCell)
+  const pinned = plain(pinnedCell)
   const key = `node_modules/${pkg}`
   const resolved = lock.packages[key]?.version
   if (!resolved) {

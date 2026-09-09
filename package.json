@@ -25,7 +25,8 @@
     "dev:api": "npm run dev -w @attention-lab/api",
     "dev:web": "npm run dev -w @attention-lab/web",
     "e2e": "playwright test -c e2e/playwright.config.ts",
-    "e2e:install": "playwright install chromium"
+    "e2e:install": "playwright install chromium",
+    "verify:all": "node scripts/verify-all.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
