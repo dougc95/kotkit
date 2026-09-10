@@ -75,6 +75,8 @@ them did not exist yet; only `typecheck` was run against them here, not the full
 | clsx | 2.1.1 | 2.1.1 | none |
 | tailwind-merge | 3.6.0 | 3.6.0 | none |
 | lucide-react | 1.43.0 | 1.43.0 | none |
+| @fontsource/ibm-plex-sans | 5.3.0 | 5.3.0 | none |
+| @fontsource/ibm-plex-mono | 5.3.0 | 5.3.0 | none |
 
 **Type-level conflict found during 3.5.1, no version step-back taken.**
 `@fastify/type-provider-typebox@6.1.0`'s ESM entry point imports its `TSchema`/`Static<>` machinery
