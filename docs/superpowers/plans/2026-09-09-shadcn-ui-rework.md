@@ -66,7 +66,7 @@ Spec §5 says `format.ts` and `trendFormat.ts` gain the `absenceTier` predicate.
 | `apps/web/src/ui/reported.ts` | `ValueTier`, `absenceTier` |
 | `apps/web/src/ui/Reported.tsx` | the `<Reported>` component that applies a tier |
 | `apps/web/src/ui/Reported.test.tsx` | taxonomy tests, including the `20+, capped` case |
-| `apps/web/src/ui/field.test.ts` | ARIA wiring tests |
+| `apps/web/src/ui/field.test.tsx` | ARIA wiring tests |
 
 **Modified in Wave 0:** `apps/web/src/index.css` (tokens replaced, accessibility baseline preserved), `apps/web/src/ui/Button.tsx` (+`asChild`), `apps/web/package.json`, `package-lock.json`, `LIMITATIONS.md`.
 
@@ -625,7 +625,7 @@ export function Button({ variant = 'primary', type, asChild = false, className, 
 - [ ] **Step 4: Run the full Button suite**
 
 Run: `npm run test -w @attention-lab/web -- Button`
-Expected: PASS, including the three pre-existing tests.
+Expected: PASS — the one pre-existing test (`Button primary renders type=button with data-variant=primary and its accessible name`) plus the two new ones. The file already imports `render`, `screen`, `describe`, `expect` and `it`, so the new cases need no added imports.
 
 - [ ] **Step 5: Verify no consumer broke**
 
