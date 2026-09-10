@@ -64,6 +64,18 @@ in the original 6 Sep list because it only covered group 1-6 packages:
 | fake-indexeddb | 6.2.5 | 6.2.5 | none |
 | jsdom | 30.0.1 | **29.1.1** | `jsdom@30.0.1` declares `engines.node: "^22.22.2 \|\| ^24.15.0 \|\| >=26.0.0"`; this machine runs Node 24.14.1, one minor below the 24.x floor, so `npm install` printed an `EBADENGINE` warning (not a failure). Per D3's step-back policy the package was stepped back one major to `jsdom@29.1.1`, whose floor is `>=24.0.0` — this range includes 24.14.1 with no warning. Vitest's `jsdom` environment behaves identically for this change's needs at 29.x; nothing in the harness exercises a jsdom-30-only API. |
 
+**shadcn/ui primitive dependencies (`shadcn-ui-rework` task 1), added to the registry check on
+2026-09-09** — not in the original 6 Sep list because they predate that UI rework change; only
+`typecheck` was run against them here, not the full boot + `db:push` + `playwright --list` sweep
+the 6 Sep table's packages were verified together with:
+
+| package | registry version (2026-09-09) | pinned | step-back reason |
+|---|---|---|---|
+| class-variance-authority | 0.7.1 | 0.7.1 | none |
+| clsx | 2.1.1 | 2.1.1 | none |
+| tailwind-merge | 3.6.0 | 3.6.0 | none |
+| lucide-react | 1.43.0 | 1.43.0 | none |
+
 **Type-level conflict found during 3.5.1, no version step-back taken.**
 `@fastify/type-provider-typebox@6.1.0`'s ESM entry point imports its `TSchema`/`Static<>` machinery
 from its own bundled `typebox` package (v1.3.x, the successor library), not from
