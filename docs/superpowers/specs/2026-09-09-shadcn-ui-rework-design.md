@@ -84,7 +84,18 @@ written down. This removes an entire accessory and matches what a log is.
 
 **No red for measurement outcomes, ever.** shadcn's `--destructive` is retained but scoped strictly
 to destructive *actions* — "Reset demo data", "Abandon session", "Delete". More switches on Day 14
-than at baseline is a result, not a failure, and renders in ink like every other result. The eight
+than at baseline is a result, not a failure, and renders in ink like every other result.
+
+**An error is not a destructive action, and never takes the destructive treatment.** A 422 realm
+mismatch, a 409 conflict, a failed save and a validation message all keep their existing
+`role="alert"` and take the `attention` token, not red. A first plan draft reached for
+`variant="destructive"` on the realm-mismatch banner; that is wrong. Red in this app marks a thing
+you are about to destroy, and nothing else — which is what keeps it meaningful when it does appear.
+
+So `attention` carries both of its stated jobs, on two different surfaces. On a **value**, amber
+means the app is unsure — `Unknown`, `Timing uncertain`, applied by `<Reported>`. On a **message**,
+amber means you need to do something — a validation error, "Still needed", a failed save with a
+Retry beside it. Everything recorded, and everything merely informational, stays ink. The eight
 result states in `ResultState.tsx` already vary neither colour nor styling; this design makes that
 existing correctness legible as a decision rather than an accident.
 
@@ -98,10 +109,15 @@ against Inter and Geist deliberately: those are the defaults in every shadcn pro
 drawn for an engineering company, has genuine tabular figures, and carries the instrument
 connotation this direction is built on.
 
-**Mono is restricted to three contexts and no others:** timer digits, the exact-values tables, and
-tabular figures in comparisons. Never for labels, metadata, status words, or prose containing a
-number. Four of the eleven screen designs drifted outside this rule on first pass; the
-implementation plan names the permitted sites explicitly rather than leaving it to judgement.
+**Mono is restricted to three contexts and no others:** timer digits, the dense data tables
+(`AttemptTable` and `ExactValuesTable` alike — digits must not shift in either), and tabular figures
+in comparisons. Never for labels, metadata, status words, or prose containing a number, including an
+inline preview line such as `First switch, preview: 6:10 (event)`.
+
+Two drafting rounds both misread this rule, in opposite directions — four screen designs applied
+mono to prose, and a plan reviewer read "the exact-values tables" as excluding `AttemptTable`
+because `ExactValuesTable` is a literal component name. The wording above is the corrected form;
+the implementation plan names the permitted sites explicitly rather than leaving it to judgement.
 
 **Scale.** Approximately 13 / 14 / 16 / 20 / 25 px, with the timer at 56 px. Body copy caps at 72
 characters.
@@ -443,3 +459,7 @@ Every wave is Sonnet-driven, as is the survey and design work that produced this
 | U11 | 2026-09-09 | One primary per interactive surface; a modal is its own surface. |
 | U12 | 2026-09-09 | Chart palette re-stepped and script-validated; planned-vs-completed re-encoded as frame and fill. |
 | U13 | 2026-09-09 | Five pre-existing defects fixed en route, listed in §9. |
+| U14 | 2026-09-09 | Mono is permitted in both dense data tables, `AttemptTable` and `ExactValuesTable`. Clarifies §4 after a plan reviewer read the original wording as excluding the former. |
+| U15 | 2026-09-09 | An error never takes the destructive treatment. Red marks a thing about to be destroyed and nothing else. Clarifies §3 after a plan draft used `variant="destructive"` on a 422 banner. |
+| U15a | 2026-09-09 | Correction to U15 as first written: errors take `attention`, not neutral ink. U15's first wording banned amber alongside red, which contradicted the token's own stated "needs-you" job. Amber marks an unsure *value* and a *message* you must act on; ink is for recorded and informational content. |
+| U16 | 2026-09-09 | Tests never assert on shadcn internals (`data-slot`, generated class names, primitive DOM shape). They assert visible text, role, accessible name, or the `data-tier` attribute `<Reported>` emits. |
