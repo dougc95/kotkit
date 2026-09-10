@@ -264,7 +264,7 @@ Replace the existing `:root` declarations inside `@layer base`. **Keep the `body
 
     /* Text, and recorded data. */
     --color-ink: #16232B;       /* ~14.7:1 */
-    --color-ink-muted: #455761; /* ~6.6:1 */
+    --color-ink-muted: #455761; /* ~6.9:1 */
 
     /* State. */
     --color-signal: #0B5F63;    /* white on this fill is ~7.4:1 */
@@ -275,9 +275,20 @@ Replace the existing `:root` declarations inside `@layer base`. **Keep the `body
     --color-destructive: #8C2F1B;
     --color-destructive-text: #FFFFFF;
 
-    /* Focus ring: unchanged from the previous palette. Pure black clears
-     * >= 3:1 against every background this palette uses, including directly
-     * against --color-signal, so one token works everywhere. */
+    /*
+     * Focus ring. `outline-offset: 2px` paints the ring entirely outside a
+     * control's border box, so it never renders on that control's own fill —
+     * only on whatever surrounds it. Against both surfaces this palette uses
+     * for that, pure black is far clear of any threshold: ~19.2:1 on
+     * --color-paper and 21:1 on --color-card.
+     *
+     * Recorded limitation: black does NOT clear 3:1 against two of this
+     * palette's fills — ~2.8:1 on --color-signal and ~2.5:1 on
+     * --color-destructive. That only bites if a focusable control is ever
+     * nested inside a signal- or destructive-filled surface, which no screen
+     * in this app does today. If one is ever introduced, that surface needs
+     * its own ring colour; do not assume this token covers it.
+     */
     --color-focus-ring: #000000;
 
     --radius: 0.375rem;

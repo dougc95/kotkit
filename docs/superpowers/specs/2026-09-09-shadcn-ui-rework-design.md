@@ -73,7 +73,7 @@ follows.
 | `card` | `#FFFFFF` | Raised surfaces only. | — |
 | `rule` | `#D5DBDA` | Hairlines and field slots. Never text. | decorative only |
 | `ink` | `#16232B` | All text, and all recorded data. | ~14.7:1 on paper |
-| `ink-muted` | `#455761` | Secondary text; the "not a value" mark. | ~6.6:1 on paper |
+| `ink-muted` | `#455761` | Secondary text; the "not a value" mark. | ~6.9:1 on paper |
 | `signal` | `#0B5F63` | Petrol. Primary actions, and anything live or being measured. | white on it ~7.4:1 |
 | `attention` | `#8A5A00` | Amber. Needs-you, and uncertainty. | ~5.4:1 text, ~5.9:1 as fill |
 
@@ -432,6 +432,13 @@ Every wave is Sonnet-driven, as is the survey and design work that produced this
 
 ## 12. Open questions and risks
 
+- **The focus ring does not clear 3:1 against two of this palette's own fills** — pure black measures
+  ~2.8:1 on `signal` and ~2.5:1 on `destructive`, against 19.2:1 on paper and 21:1 on card. It does
+  not bite today, because `outline-offset: 2px` paints the ring entirely outside a control's border
+  box, so it renders on what surrounds the control and never on the control's own fill, and no
+  screen nests a focusable control inside a signal- or destructive-filled surface. Introducing such
+  a surface means giving it its own ring colour. This was found by the Task 2 review recomputing the
+  figures rather than trusting them; §3 originally asserted the opposite.
 - **The single motion beat is asserted by nothing.** Reduced motion is tested; "only one animation
   exists" is not. If that rule matters beyond this change, it needs a test — a grep for animation
   utilities outside the approved site would do.
