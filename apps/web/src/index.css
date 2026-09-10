@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --color-paper: #F3F5F5;
+  --color-card: #FFFFFF;
+  --color-rule: #D5DBDA;
+  --color-ink: #16232B;
+  --color-ink-muted: #455761;
+  --color-signal: #0B5F63;
+  --color-attention: #8A5A00;
+  --color-destructive: #8C2F1B;
+  --radius-DEFAULT: 0.375rem;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
 /*
  * Accessibility baseline (7.1.6): color tokens with documented contrast,
  * a global :focus-visible outline for every interactive element, and a
@@ -8,35 +22,63 @@
  */
 @layer base {
   :root {
-    /* Page and surface. */
-    --color-bg: #ffffff;
-    --color-surface: #f1f5f9;
-    --color-border: #cbd5e1; /* decorative only — never used for text */
+    /* ---- Instrument log tokens. Contrast figures are computed for the exact
+     * hex pairs below, against --color-paper unless stated otherwise. ---- */
 
-    /* Text. Both pairs are checked against --color-bg (#ffffff). */
-    --color-text: #111827; /* ~17.7:1 against --color-bg */
-    --color-text-muted: #475569; /* ~7.6:1 against --color-bg */
+    /* Ground and surface. */
+    --color-paper: #F3F5F5;   /* page ground, cool-neutral off-white */
+    --color-card: #FFFFFF;    /* raised surfaces only */
+    --color-rule: #D5DBDA;    /* hairlines and field slots — never text */
 
-    /* Primary control. White text on this fill is ~5.2:1 (>= 4.5:1). */
-    --color-primary: #2563eb;
-    --color-primary-text: #ffffff;
+    /* Text, and recorded data. */
+    --color-ink: #16232B;       /* ~14.7:1 */
+    --color-ink-muted: #455761; /* ~6.6:1 */
 
-    /*
-     * Focus ring. Pure black clears >= 3:1 against every background this
-     * palette uses: ~21:1 against --color-bg / --color-surface, and
-     * ~4.1:1 against the darkest control fill (--color-primary). Chosen
-     * deliberately over a colored ring so one token works everywhere,
-     * including directly against --color-primary when an element's own
-     * offset does not clear the fill (e.g. a small control near an edge).
-     */
+    /* State. */
+    --color-signal: #0B5F63;    /* white on this fill is ~7.4:1 */
+    --color-signal-text: #FFFFFF;
+    --color-attention: #8A5A00; /* ~5.4:1 as text, white on it ~5.9:1 */
+
+    /* Destructive ACTIONS only — never a measurement outcome. */
+    --color-destructive: #8C2F1B;
+    --color-destructive-text: #FFFFFF;
+
+    /* Focus ring: unchanged from the previous palette. Pure black clears
+     * >= 3:1 against every background this palette uses, including directly
+     * against --color-signal, so one token works everywhere. */
     --color-focus-ring: #000000;
+
+    --radius: 0.375rem;
+
+    /* ---- shadcn alias names. The generated primitives are written against
+     * these; they are aliases, not a second palette. ---- */
+    --background: var(--color-paper);
+    --foreground: var(--color-ink);
+    --card: var(--color-card);
+    --card-foreground: var(--color-ink);
+    --popover: var(--color-card);
+    --popover-foreground: var(--color-ink);
+    --primary: var(--color-signal);
+    --primary-foreground: var(--color-signal-text);
+    --secondary: var(--color-card);
+    --secondary-foreground: var(--color-ink);
+    --muted: var(--color-card);
+    --muted-foreground: var(--color-ink-muted);
+    --accent: var(--color-card);
+    --accent-foreground: var(--color-ink);
+    --destructive: var(--color-destructive);
+    --destructive-foreground: var(--color-destructive-text);
+    --border: var(--color-rule);
+    --input: var(--color-rule);
+    --ring: var(--color-focus-ring);
 
     color-scheme: light;
   }
 
   body {
-    background-color: var(--color-bg);
-    color: var(--color-text);
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   }
 
   /*
