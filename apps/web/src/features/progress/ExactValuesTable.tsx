@@ -52,7 +52,7 @@ export function ExactValuesTable({ caption, columns, rows, emptyMessage }: Exact
     // — `day8-revision.spec.ts`'s own `getByRole('region', {name:
     // 'Practice'})` started matching two elements once this wrapper's
     // 'Practice blocks' label was added).
-    <div className="overflow-x-auto" tabIndex={0}>
+    <div className="relative overflow-x-auto" tabIndex={0}>
       <table className="w-full min-w-[720px] border-collapse text-left text-sm">
         <TableCaption className="sr-only">{caption}</TableCaption>
         <TableHeader>

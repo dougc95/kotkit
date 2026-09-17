@@ -170,7 +170,7 @@ export function CountField({ label, value, method, onChange, prefilled, disabled
         disabled={disabled}
         placeholder="leave blank if unknown"
         aria-describedby={prefilled ? hintId : undefined}
-        className="w-28 disabled:opacity-100"
+        className="w-52 disabled:opacity-100"
         onChange={(event) => {
           const raw = event.target.value
           if (!isValidDigitsInput(raw)) {
@@ -351,7 +351,7 @@ export function CountFields({ session, value, onChange }: CountFieldsProps) {
           value={value.mindWanderingCount}
           placeholder="leave blank if unknown"
           aria-describedby="mind-wandering-count-hint"
-          className="w-28"
+          className="w-52"
           onChange={(event) => {
             if (!isValidDigitsInput(event.target.value)) {
               return
@@ -374,7 +374,7 @@ export function CountFields({ session, value, onChange }: CountFieldsProps) {
             inputMode="numeric"
             value={value.estimateMinutes}
             placeholder="leave blank if unknown"
-            className="w-28"
+            className="w-52"
             onChange={(event) => handleEstimateChange(event.target.value)}
           />
         </div>

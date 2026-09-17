@@ -587,4 +587,18 @@ describe('PracticeReview', () => {
     expect(tallies.className).toMatch(/grid-cols-3/)
     expect(attested.className).toMatch(/grid-cols-3/)
   })
+
+  it('CountField uses CSS subgrid so labels, inputs and hints share rows at every width (pre-existing)', async () => {
+    const session = makeSession({ tallies: { offTask: 1, external: 0, agentChecks: 0 } })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    const episodeInput = screen.getByLabelText('How many times did you switch away?')
+    const root = episodeInput.parentElement
+    expect(root).not.toBeNull()
+    expect(root?.className).toContain('grid-rows-subgrid')
+    expect(root?.className).toContain('row-span-3')
+  })
 })
