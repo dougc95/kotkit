@@ -49,7 +49,9 @@ Full detail in the spec §1 and §6. The load-bearing items:
 
 ### Correction to the spec
 
-Spec §5 says `format.ts` and `trendFormat.ts` gain the `absenceTier` predicate. Those files live under `features/progress/`, but the taxonomy is needed by `checkin`, `benchmark`, `review` and `today` as well. `absenceTier` therefore lives in `src/ui/reported.ts` (Task 6). The formatter files are unchanged and keep returning their exact current strings.
+Spec §5 says `format.ts` and `trendFormat.ts` gain the `absenceTier` predicate. Those files live under `features/progress/`, but the taxonomy is needed by `checkin`, `benchmark`, `review` and `today` as well. `absenceTier` therefore lives in `src/ui/valueTier.ts` (Task 6). The formatter files are unchanged and keep returning their exact current strings.
+
+The module is named `valueTier.ts`, not `reported.ts` as first drafted: `reported.ts` beside `Reported.tsx` differs from it only in case, and on a case-insensitive filesystem (this repository is developed on Windows) `./Reported.js` resolves to `reported.ts` before `Reported.tsx` is tried — TypeScript reports TS1149 and TS2305 under `forceConsistentCasingInFileNames`. Verified with a two-file reproduction on 2026-09-17, before Task 6 was dispatched.
 
 ---
 
@@ -63,7 +65,7 @@ Spec §5 says `format.ts` and `trendFormat.ts` gain the `absenceTier` predicate.
 | `apps/web/src/lib/cn.ts` | the `cn()` class-merge helper |
 | `apps/web/src/ui/shadcn/*.tsx` | generated primitives, focus rings stripped |
 | `apps/web/src/ui/field.ts` | `useField` — id generation and ARIA wiring for form controls |
-| `apps/web/src/ui/reported.ts` | `ValueTier`, `absenceTier` |
+| `apps/web/src/ui/valueTier.ts` | `ValueTier`, `absenceTier` |
 | `apps/web/src/ui/Reported.tsx` | the `<Reported>` component that applies a tier |
 | `apps/web/src/ui/Reported.test.tsx` | taxonomy tests, including the `20+, capped` case |
 | `apps/web/src/ui/field.test.tsx` | ARIA wiring tests |
@@ -655,7 +657,7 @@ git commit -m "Add asChild to Button via Radix Slot, keeping data-variant and th
 ### Task 6: The value taxonomy — absenceTier and Reported
 
 **Files:**
-- Create: `apps/web/src/ui/reported.ts`, `apps/web/src/ui/Reported.tsx`, `apps/web/src/ui/Reported.test.tsx`
+- Create: `apps/web/src/ui/valueTier.ts`, `apps/web/src/ui/Reported.tsx`, `apps/web/src/ui/Reported.test.tsx`
 
 **Interfaces:**
 - Consumes: `cn()` (Task 1).
@@ -683,7 +685,7 @@ The third case is the one this whole component exists for.
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { absenceTier } from './reported.js'
+import { absenceTier } from './valueTier.js'
 import { Reported } from './Reported.js'
 
 describe('absenceTier', () => {
@@ -737,7 +739,7 @@ Expected: FAIL — module not found.
 Matching is against an explicit closed set, never a substring or a heuristic. `20+, capped` and any numeric string fall through to `recorded` by design.
 
 ```ts
-// apps/web/src/ui/reported.ts
+// apps/web/src/ui/valueTier.ts
 
 /**
  * Which of the three visual registers a rendered value belongs to.
@@ -773,7 +775,7 @@ export function absenceTier(text: string): ValueTier {
 import type { ReactElement } from 'react'
 
 import { cn } from '../lib/cn.js'
-import { absenceTier, type ValueTier } from './reported.js'
+import { absenceTier, type ValueTier } from './valueTier.js'
 
 export interface ReportedProps {
   readonly children: string
@@ -814,7 +816,7 @@ Expected: PASS, all seven cases.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/web/src/ui/reported.ts apps/web/src/ui/Reported.tsx apps/web/src/ui/Reported.test.tsx
+git add apps/web/src/ui/valueTier.ts apps/web/src/ui/Reported.tsx apps/web/src/ui/Reported.test.tsx
 git commit -m "Add the three-tier value taxonomy, keeping 20+, capped as a recorded measurement"
 ```
 
@@ -9612,7 +9614,7 @@ Replace the component's entire `return (...)` statement — starting at the `ret
 Four deliberate decisions worth naming explicitly, since a reviewer needs the reasoning, not just the diff:
 1. The recorded-time line (`{elapsedMinutes} min recorded of {targetMinutes} min target ...`) is **not** wrapped in `<Reported>`. `elapsedSeconds`/`targetSeconds` are non-nullable numbers with no absent/uncertain state to represent, and `PracticeReview.test.tsx`'s existing `'recorded-time line reads X min recorded...'` test asserts the whole sentence as one `getByText` string — splitting it across a nested `<span>` would break that exact-string match for no taxonomy benefit.
 2. The three `dd` tally values are left as plain numbers (not wrapped in `<Reported>`) for the same reason: `tallies.offTask/external/agentChecks` are non-nullable, so their tier is trivially always `'recorded'`, and the existing `.nextElementSibling?.textContent` assertions expect the `dd`'s only content to be the bare number.
-3. `Timing uncertain` is wrapped in `<Reported>` inside the `Badge` rather than styled by hand with a bespoke amber className. Design.md's three-tier taxonomy (`## 5. The three-tier value taxonomy`) already classifies `Timing uncertain` as an uncertain-tier string alongside `Unknown` (the `UNCERTAIN` set in `docs/superpowers/plans/2026-09-09-shadcn-ui-rework.md`'s `reported.ts`), so routing it through the same `<Reported>` component keeps one taxonomy implementation instead of a second hand-rolled amber class, and gives Step 1's test a real, non-internal signal (`data-tier="uncertain"`) to assert on.
+3. `Timing uncertain` is wrapped in `<Reported>` inside the `Badge` rather than styled by hand with a bespoke amber className. Design.md's three-tier taxonomy (`## 5. The three-tier value taxonomy`) already classifies `Timing uncertain` as an uncertain-tier string alongside `Unknown` (the `UNCERTAIN` set in `docs/superpowers/plans/2026-09-09-shadcn-ui-rework.md`'s `valueTier.ts`), so routing it through the same `<Reported>` component keeps one taxonomy implementation instead of a second hand-rolled amber class, and gives Step 1's test a real, non-internal signal (`data-tier="uncertain"`) to assert on.
 4. The `role="status"` sync message (`statusMessage(...)`) becomes `text-attention` rather than staying neutral `text-ink`: "Some entries have not been saved yet" and "The review could not be saved. Retry." are both need-you states with a visible Retry action, which is exactly the job design.md's Colour table (§3) scopes the `attention` token to — its `attention` row reads "Amber. Needs-you, and uncertainty." This is a visual-only change with no dedicated test — verify by opening `/review/:id` after forcing `mockApi.sessions.finalize` to reject (or, live, triggering an `event_count_mismatch`) and confirming the message renders in amber, not the page's default ink.
 
 - [ ] **Step 4: Run the tests**
