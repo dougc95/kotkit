@@ -195,6 +195,35 @@ describe('NextAction', () => {
       cleanup()
     }
   })
+
+  it('practice next action renders as the quiet variant so BlockCard\'s own Start stays the only primary control', () => {
+    renderWithProviders(
+      <NextAction
+        nextAction={{ kind: 'practice', block: 1 }}
+        programId="program-1"
+        slots={ALL_SLOTS}
+        onFocusBlock={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Block 1 is next' })).toHaveAttribute('data-variant', 'quiet')
+  })
+
+  it('benchmark next action link still carries data-variant primary via Button asChild', () => {
+    renderWithProviders(
+      <NextAction
+        nextAction={{ kind: 'benchmark', slotId: 'slot-baseline-a' }}
+        programId="program-1"
+        slots={ALL_SLOTS}
+        onFocusBlock={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Start with your baseline' })).toHaveAttribute(
+      'data-variant',
+      'primary',
+    )
+  })
 })
 
 describe('Today', () => {
