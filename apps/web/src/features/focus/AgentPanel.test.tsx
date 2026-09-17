@@ -331,4 +331,23 @@ describe('AgentPanel', () => {
     await user.type(workstream, 'a')
     expect((workstream as HTMLInputElement).value).toHaveLength(200)
   })
+
+  it('the trigger is the shared quiet Button, not a hand-rolled trigger className', async () => {
+    renderWithProviders(<AgentPanel sessionId="focus-session" sessionVersion={1} plan={null} lifecycle="running" />)
+
+    const trigger = screen.getByRole('button', { name: 'Waiting on an agent?' })
+    expect(trigger).toHaveAttribute('data-variant', 'quiet')
+  })
+
+  it('every field carries no retired --color- token', async () => {
+    const { user } = renderWithProviders(
+      <AgentPanel sessionId="focus-session" sessionVersion={1} plan={null} lifecycle="running" />,
+    )
+    await openPanel(user)
+
+    expect(screen.getByLabelText('Workstream').className).not.toMatch(/--color-/)
+    expect(screen.getByLabelText('Useful task while waiting').className).not.toMatch(/--color-/)
+    expect(screen.getByLabelText('Resume note').className).not.toMatch(/--color-/)
+    expect(screen.getByRole('combobox', { name: 'Next review checkpoint' }).className).not.toMatch(/--color-/)
+  })
 })

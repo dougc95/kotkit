@@ -1,7 +1,10 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const css = readFileSync(new URL('./index.css', import.meta.url), 'utf8')
+const srcDir = fileURLToPath(new URL('./', import.meta.url))
 
 // A shadcn "alias" declaration in :root looks like `--<name>: var(--color-<token>);`
 // (e.g. `--background: var(--color-paper);`, `--ring: var(--color-focus-ring);`).
@@ -121,5 +124,54 @@ describe('index.css token contract', () => {
     expect(accentMatch).not.toBeNull()
     expect(popoverMatch).not.toBeNull()
     expect(accentMatch![1]!.trim()).not.toBe(popoverMatch![1]!.trim())
+  })
+})
+
+// Recursively lists every file under src (this file's own directory),
+// relative to it and with forward slashes regardless of OS, so callers can
+// filter with plain string matching.
+function listSourceFiles(): string[] {
+  return (readdirSync(srcDir, { recursive: true }) as string[])
+    .map((relPath) => relPath.split('\\').join('/'))
+    .filter((relPath) => !statSync(join(srcDir, relPath)).isDirectory())
+}
+
+describe('index.css dark-variant scoping (this app is light-only)', () => {
+  it('declares the class-scoped dark variant', () => {
+    // Tolerant of whitespace only: this is the exact shadcn Tailwind-4 idiom,
+    // not a pattern with legitimate variants.
+    expect(css).toMatch(/@custom-variant\s+dark\s*\(\s*&:is\(\s*\.dark\s+\*\s*\)\s*\)/)
+  })
+
+  it('declares no dark palette, pinning the light-only premise', () => {
+    // If a dark palette is ever added, this guard must be revisited alongside it.
+    // Matches an actual `@media (prefers-color-scheme...)` rule, not the
+    // explanatory comment above `@custom-variant` that names the term.
+    expect(css).not.toMatch(/@media[^{]*prefers-color-scheme/)
+    expect(css).not.toMatch(/\.dark\s*\{/)
+  })
+
+  it('nothing outside the generated shadcn primitives sets the dark class', () => {
+    // Built from concatenated parts, not as a literal, so this guard's own
+    // source is never itself a Tailwind-scannable "dark" class candidate.
+    const classNameDark = 'class' + 'Name="' + 'dark' + '"'
+    const classListAddDark = 'classList.add(' + "'" + 'dark' + "'" + ')'
+
+    const offenders = listSourceFiles().filter((relPath) => {
+      if (relPath.startsWith('ui/shadcn/')) return false
+      if (relPath.endsWith('.test.ts') || relPath.endsWith('.test.tsx')) return false
+      if (relPath === 'index.css') return false
+      const source = readFileSync(join(srcDir, relPath), 'utf8')
+      return source.includes(classNameDark) || source.includes(classListAddDark)
+    })
+
+    expect(offenders).toEqual([])
+  })
+})
+
+describe('index.css Tailwind source scanning', () => {
+  it('excludes test files from the source scan, so a guard test naming a forbidden class does not ship it as dead CSS', () => {
+    expect(css).toMatch(/@source not ["']\.\/\*\*\/\*\.test\.ts["'];/)
+    expect(css).toMatch(/@source not ["']\.\/\*\*\/\*\.test\.tsx["'];/)
   })
 })

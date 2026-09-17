@@ -53,4 +53,44 @@ describe('generated shadcn primitives', () => {
     // none of those contain the literal `aria-invalid:` prefix this checks for.
     expect(source).not.toMatch(/aria-invalid:[\w/-]*destructive/)
   })
+
+  it('input.tsx floors the input height at 44px (min-h-11), not the generated 36px (h-9)', () => {
+    // Guards D40 (24px floor) and the app's 44px control convention against a shadcn
+    // regeneration reverting to the default h-9 (36px) input height.
+    const source = readFileSync(join(dir, 'input.tsx'), 'utf8')
+    expect(source).toContain('min-h-11')
+    // Matches a standalone `h-9` token wherever it sits in the string — including as the
+    // first or last token, where it is bounded by a quote rather than whitespace, which a
+    // `(^|\s)`/`(?=\s|$)` check would miss — via token-boundary lookaround instead. Still
+    // does not flag `min-h-9`, `file:h-9` or `data-[size=default]:h-9`.
+    expect(source).not.toMatch(/(?<![\w:./-])h-9(?![\w./-])/)
+  })
+
+  it('select.tsx floors the trigger at 44px and keeps SelectItem a 44px touch target', () => {
+    // Guards D40 and the app's 44px convention against a regeneration reverting the
+    // default trigger height to h-9 (36px) or leaving SelectItem at its ~32px generated height.
+    const source = readFileSync(join(dir, 'select.tsx'), 'utf8')
+    expect(source).toContain('data-[size=default]:min-h-11')
+    // Built from two parts so this literal — naming a class that must NOT exist — never
+    // appears whole in this file: Tailwind 4 scans test files too, and the intact string
+    // would be picked up as a candidate class and emitted as a dead rule in the built CSS.
+    const generatedSelectTriggerHeight = 'data-[size=default]:' + 'h-9'
+    expect(source).not.toContain(generatedSelectTriggerHeight)
+    const selectItemBlock = source.slice(
+      source.indexOf('function SelectItem('),
+      source.indexOf('function SelectSeparator(')
+    )
+    expect(selectItemBlock).toContain('min-h-11')
+  })
+
+  it.each(['checkbox.tsx', 'radio-group.tsx'])(
+    '%s extends its 16px control to a 24px hit area (after:-inset-1) per D40',
+    (file) => {
+      // Guards D40's 24px hit-area floor for the 16px checkbox/radio visual box against a
+      // regeneration dropping the pseudo-element hit-area extension.
+      const source = readFileSync(join(dir, file), 'utf8')
+      expect(source).toMatch(/\bafter:absolute\b/)
+      expect(source).toMatch(/\bafter:-inset-1\b/)
+    }
+  )
 })

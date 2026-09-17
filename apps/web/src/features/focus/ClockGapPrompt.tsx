@@ -22,10 +22,18 @@
  * ≤ 0 — never the word "completed" (D24: a GET/client timer never confirms
  * completion).
  */
-import { AlertDialog } from 'radix-ui'
 import type { SessionResponseValue } from '@attention-lab/shared'
 
 import { Button } from '../../ui/Button.js'
+import { Reported } from '../../ui/Reported.js'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogOverlay,
+  AlertDialogPortal,
+  AlertDialogTitle,
+} from '../../ui/shadcn/alert-dialog.js'
 import { useClockGap, type CreateGapDetector } from './useClockGap.js'
 
 export interface ClockGapPromptProps {
@@ -42,61 +50,62 @@ export function ClockGapPrompt({ session, createDetector }: ClockGapPromptProps)
 
   return (
     <>
-      <AlertDialog.Root open={open} onOpenChange={() => {}}>
-        <AlertDialog.Portal>
-          <AlertDialog.Overlay data-testid="clock-gap-overlay" className="fixed inset-0 z-50 bg-black/40" />
-          <AlertDialog.Content
-            className="fixed left-1/2 top-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-lg"
-            onEscapeKeyDown={(event) => event.preventDefault()}
-          >
-            {/* Outside click/interact are already unconditionally prevented
-                inside Radix's own AlertDialogContent (`onPointerDownOutside`/
-                `onInteractOutside` are deliberately omitted from its public
-                props so a consumer cannot weaken that) — only Escape needs
-                suppressing here. */}
-            <AlertDialog.Title className="text-base font-semibold text-[var(--color-text)]">
-              Did the interval continue uninterrupted?
-            </AlertDialog.Title>
-            <AlertDialog.Description className="mt-2 text-sm text-[var(--color-text-muted)]">
-              Your device&apos;s clock and the session timer disagreed by more than a minute — this can happen when
-              a laptop sleeps or a system clock changes.
-            </AlertDialog.Description>
+      <AlertDialog open={open} onOpenChange={() => {}}>
+        {/* `AlertDialogContent` (below) already renders its own
+            `AlertDialogPortal`/`AlertDialogOverlay` internally — this extra,
+            explicit `AlertDialogOverlay` exists solely so the existing
+            'Escape and outside click do not close the dialog' case has a
+            real, addressable `data-testid="clock-gap-overlay"` element to
+            click (the component's frozen `AlertDialogContent` wrapper takes
+            no prop that would let a testid reach ITS internal overlay). It
+            is made `bg-transparent` so it never doubles the dimming the real,
+            internal overlay already draws. */}
+        <AlertDialogPortal>
+          <AlertDialogOverlay data-testid="clock-gap-overlay" className="bg-transparent" />
+        </AlertDialogPortal>
+        <AlertDialogContent onEscapeKeyDown={(event) => event.preventDefault()}>
+          {/* Outside click/interact are already unconditionally prevented
+              inside Radix's own AlertDialogContent (`onPointerDownOutside`/
+              `onInteractOutside` are deliberately omitted from its public
+              props so a consumer cannot weaken that) — only Escape needs
+              suppressing here. */}
+          <AlertDialogTitle>Did the interval continue uninterrupted?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Your device&apos;s clock and the session timer disagreed by more than a minute — this can happen when
+            a laptop sleeps or a system clock changes.
+          </AlertDialogDescription>
 
-            {errorMessage !== null ? (
-              <p role="alert" className="mt-3 text-sm text-[var(--color-text-muted)]">
-                {errorMessage}
-              </p>
-            ) : null}
+          {errorMessage !== null ? (
+            <p role="alert" className="mt-3 text-sm text-attention">
+              {errorMessage}
+            </p>
+          ) : null}
 
-            <div className="mt-6 flex flex-col gap-2">
-              <Button variant="primary" disabled={isPending} onClick={() => void resolve('continued')}>
-                Yes, it continued
-              </Button>
-              <Button variant="secondary" disabled={isPending} onClick={() => void resolve('uncertain')}>
-                No
-              </Button>
-              <Button variant="secondary" disabled={isPending} onClick={() => void resolve('uncertain')}>
-                Not sure
-              </Button>
-              <Button variant="quiet" disabled={isPending} onClick={() => void resolve('save_incomplete')}>
-                Save as incomplete
-              </Button>
-            </div>
-          </AlertDialog.Content>
-        </AlertDialog.Portal>
-      </AlertDialog.Root>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button variant="primary" disabled={isPending} onClick={() => void resolve('continued')}>
+              Yes, it continued
+            </Button>
+            <Button variant="secondary" disabled={isPending} onClick={() => void resolve('uncertain')}>
+              No
+            </Button>
+            <Button variant="secondary" disabled={isPending} onClick={() => void resolve('uncertain')}>
+              Not sure
+            </Button>
+            <Button variant="quiet" disabled={isPending} onClick={() => void resolve('save_incomplete')}>
+              Save as incomplete
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {latestSession.timerQuality === 'uncertain' ? (
-        <p
-          role="status"
-          className="fixed bottom-4 left-4 z-40 inline-block rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-0.5 text-xs text-[var(--color-text-muted)]"
-        >
-          Timing uncertain
+        <p role="status" className="fixed bottom-4 left-4 z-40 inline-block rounded-full border border-rule bg-card px-2 py-0.5 text-xs">
+          <Reported>Timing uncertain</Reported>
         </p>
       ) : null}
 
       {latestSession.timing.remainingSeconds <= 0 ? (
-        <p role="status" className="fixed bottom-4 left-32 z-40 text-xs text-[var(--color-text-muted)]">
+        <p role="status" className="fixed bottom-4 left-32 z-40 text-xs text-ink-muted">
           Awaiting review
         </p>
       ) : null}

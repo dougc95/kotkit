@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+/*
+ * This app is light-only. The generated shadcn primitives carry `dark:` utilities, and Tailwind 4's
+ * default `dark` variant is the prefers-color-scheme media query, so without this line a user whose
+ * OS is in dark mode would get dark-theme tints on individual controls on an otherwise light page.
+ * Scoping the variant to a `.dark` class that this app never sets makes every `dark:` utility inert.
+ * If a dark theme is ever designed, it starts by setting that class and defining its palette.
+ */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Tailwind's source scanner is not language-aware: a class name inside a test's string literal or
+ * comment is emitted as real CSS even though no component uses it (proved with a real build:
+ * `ui/shadcn/conventions.test.ts` merely MENTIONS `min-h-9`, `file:h-9` and `data-[size=default]:h-9`
+ * to explain what a guard must NOT match, and all three used to ship as dead CSS). Excluding test
+ * files from the scan fixes this once, at the source, instead of contorting every guard test that
+ * names a forbidden class.
+ */
+@source not "./**/*.test.ts";
+@source not "./**/*.test.tsx";
+
 @theme {
   --color-paper: #F3F5F5;
   --color-card: #FFFFFF;

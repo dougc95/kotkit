@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
@@ -295,5 +297,48 @@ describe('Ready', () => {
     await screen.findByRole('button', { name: 'Start' })
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
     expectNoIdentifiers(document.body)
+  })
+
+  it('shows the fixed 20:00 duration in ink before the session starts, not mono', async () => {
+    renderReady(makeSlot())
+
+    await screen.findByRole('button', { name: 'Start' })
+    const duration = screen.getByTestId('benchmark-fixed-duration')
+    expect(duration).toHaveTextContent('20:00')
+    expect(duration.className).toMatch(/\btext-ink\b/)
+    expect(duration.className).not.toMatch(/font-mono/)
+  })
+
+  it('replacement reason counter is associated with the textarea via aria-describedby', async () => {
+    const attempts: SlotAttemptValue[] = [
+      { sessionId: 'prior-1', lifecycle: 'finalized', eligible: false, excludedByAmendment: false },
+    ]
+    const { user } = renderReady(makeSlot({ attempts }))
+
+    const textarea = await screen.findByLabelText('Reason for replacement')
+    const describedById = textarea.getAttribute('aria-describedby')
+    expect(describedById).toBeTruthy()
+    expect(document.getElementById(describedById as string)).toHaveTextContent('0/500')
+
+    await user.type(textarea, 'Fire alarm')
+    expect(document.getElementById(describedById as string)).toHaveTextContent('10/500')
+  })
+})
+
+describe('token conversion', () => {
+  it('Ready.tsx and Running.tsx use no legacy --color-* token and no decorative amber class', () => {
+    // A bare string base is silently ignored by this jsdom environment's URL
+    // constructor, which falls back to window.location.href instead of the
+    // given file:// path — wrapping it in `new URL(...)` first resolves
+    // correctly. Verified by direct reproduction on 2026-09-17.
+    const readyPath = fileURLToPath(new URL('./Ready.tsx', new URL(import.meta.url)))
+    const runningPath = fileURLToPath(new URL('./Running.tsx', new URL(import.meta.url)))
+    const readySource = readFileSync(readyPath, 'utf8')
+    const runningSource = readFileSync(runningPath, 'utf8')
+
+    for (const source of [readySource, runningSource]) {
+      expect(source).not.toMatch(/--color-(bg|surface|border|text|primary|focus-ring)/)
+      expect(source).not.toMatch(/amber-/)
+    }
   })
 })

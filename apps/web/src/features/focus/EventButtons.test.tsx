@@ -156,6 +156,28 @@ describe('EventButtons + useSessionEvents', () => {
     expect(screen.queryByText('2')).not.toBeInTheDocument()
   })
 
+  it('the also-off-task control is a real checkbox (shadcn/Radix), not the old bare <input>, and the confirm group carries no legacy --color- token', async () => {
+    await mountReady()
+
+    fireEvent.click(screen.getByText('Agent check'))
+    const alsoOffTask = screen.getByLabelText('This was also an off-task episode')
+
+    expect(alsoOffTask).toHaveAttribute('role', 'checkbox')
+    expect(alsoOffTask.tagName).not.toBe('INPUT')
+
+    const group = screen.getByRole('group', { name: 'Confirm agent check' })
+    expect(group.className).toMatch(/\bborder-rule\b/)
+    expect(group.className).not.toMatch(/--color-/)
+  })
+
+  it('Tallies renders its labels in the ink-muted token, not the retired --color-text-muted variable', async () => {
+    await mountReady()
+
+    const offTaskLabel = screen.getByText('Off-task')
+    expect(offTaskLabel.className).toMatch(/\btext-ink-muted\b/)
+    expect(offTaskLabel.className).not.toMatch(/--color-/)
+  })
+
   it('agent check without the flag -> offTask 0, agentChecks 1', async () => {
     await mountReady()
 

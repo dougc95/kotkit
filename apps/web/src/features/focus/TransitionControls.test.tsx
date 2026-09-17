@@ -251,6 +251,36 @@ describe('TransitionControls', () => {
     await screen.findByText('Review screen')
   })
 
+  // Regression guard, not a newly-failing case: the current, unmodified
+  // TransitionControls.tsx already attaches this exact `focusOnMount`
+  // callback ref to the same "Keep going" Button (see the file's own doc
+  // comment: "a manual `.focus()` call on 'Keep going' works immediately
+  // once called"), so this assertion already passes before this task's
+  // change. It stays in the suite to catch the one thing this task could
+  // silently break: dropping the ref, or losing it in translation, while
+  // moving this JSX onto the shadcn AlertDialog primitives.
+  it('opening the finish-early dialog moves focus to Keep going (the focusOnMount ref must survive the shadcn AlertDialog swap)', async () => {
+    const session = makeSession({ version: 5 })
+    respond('sessions.get', session)
+
+    const { user } = renderWithProviders(<Harness sessionId={session.id} />)
+    await screen.findByRole('button', { name: 'Pause' })
+    await openFinishDialog(user)
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep going' }))
+  })
+
+  it('the alertdialog carries no retired --color- token', async () => {
+    const session = makeSession()
+    respond('sessions.get', session)
+
+    const { user } = renderWithProviders(<Harness sessionId={session.id} />)
+    await screen.findByRole('button', { name: 'Pause' })
+    await openFinishDialog(user)
+
+    expect(screen.getByRole('alertdialog').className).not.toMatch(/--color-/)
+  })
+
   it('finish early while paused posts end and routes to review', async () => {
     const session = makeSession({ lifecycle: 'paused', version: 8, currentPauseStartedAt: START_ISO })
     respond('sessions.get', session)
