@@ -279,7 +279,7 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
           onChange={(event) => {
             if (isFeedDevice(event.target.value)) patch({ device: event.target.value })
           }}
-          className="min-h-11 w-full max-w-40 rounded-md border border-rule bg-card px-3 py-2 text-sm text-ink"
+          className="min-h-11 w-full max-w-40 rounded-md border border-rule bg-transparent px-3 py-2 text-base text-ink md:text-sm"
         >
           {FEED_DEVICES.map((device) => (
             <option key={device} value={device}>

@@ -36,6 +36,7 @@ import type {
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
 import { useField } from '../../ui/field.js'
 import { LoadingState } from '../../ui/LoadingState.js'
 import { Input } from '../../ui/shadcn/input.js'
@@ -434,16 +435,13 @@ export function ReadinessForm() {
 
   if (query.isError || query.data === undefined) {
     return (
-      <div>
-        <p>Could not reach the server</p>
-        <Button
-          onClick={() => {
-            void query.refetch()
-          }}
-        >
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        onRetry={() => {
+          void query.refetch()
+        }}
+      >
+        Could not reach the server
+      </ErrorState>
     )
   }
 
@@ -523,9 +521,11 @@ export function ReadinessForm() {
   }
 
   return (
-    <div>
-      <h1>Readiness</h1>
-      <p>Reading elsewhere is allowed; tallying on paper is fine.</p>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-lg font-semibold text-ink">Readiness</h1>
+        <p className="text-sm text-ink-muted">Reading elsewhere is allowed; tallying on paper is fine.</p>
+      </div>
 
       {notice !== null ? (
         <p role="status" className="text-sm text-attention">

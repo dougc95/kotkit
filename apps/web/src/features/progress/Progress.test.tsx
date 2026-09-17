@@ -111,6 +111,17 @@ describe('Progress', () => {
     expect(screen.getByText(EXCLUSION_REASON_COPY.count_unknown)).toBeInTheDocument()
   })
 
+  it('attempts table wrapper is relative so the sr-only Actions header cannot escape the scroll clip (task V5 check 1)', async () => {
+    const attempt = makeAttempt({ attemptId: 'attempt-relative', label: 'A' })
+    mount(makeReport({ attempts: [attempt] }))
+
+    const table = await screen.findByRole('table', { name: 'Benchmark attempts' })
+    const wrapper = table.parentElement
+    expect(wrapper).not.toBeNull()
+    expect(wrapper?.className).toContain('relative')
+    expect(wrapper?.className).toContain('overflow-x-auto')
+  })
+
   it('null S renders Not reported and the S cell never contains 0', async () => {
     const attempt = makeAttempt({
       attemptId: 'attempt-null-s',

@@ -176,7 +176,7 @@ export function DailyTrend({ days }: DailyTrendProps) {
               label={{ value: 'Minutes', angle: -90, position: 'insideLeft', fill: AXIS_INK }}
             />
             <Tooltip />
-            <Legend />
+            <Legend formatter={(value: string) => <span className="text-ink">{value}</span>} />
             <Line
               type="monotone"
               dataKey="sleepMinutes"

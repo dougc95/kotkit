@@ -140,6 +140,22 @@ describe('CountFields', () => {
     expect(readDebugValue()).toEqual(BLANK_COUNT_FIELDS_VALUE)
   })
 
+  it('S, E and M inputs are wide enough to show their full leave-blank-if-unknown placeholder (pre-existing)', () => {
+    const session = makeSession({ events: [] })
+
+    renderHarness(session)
+
+    const sInput = screen.getByLabelText('Off-task episodes (S)')
+    const eInput = screen.getByLabelText('External interruptions (E)')
+    const mInput = screen.getByLabelText('Noticed mind-wandering (M)')
+
+    for (const input of [sInput, eInput, mInput]) {
+      expect(input.className).toContain('w-52')
+      expect(input.className).not.toContain('w-28')
+      expect(input).toHaveAttribute('placeholder', 'leave blank if unknown')
+    }
+  })
+
   it('events -> S prefilled 2 with method event', () => {
     const session = makeSession({
       events: [

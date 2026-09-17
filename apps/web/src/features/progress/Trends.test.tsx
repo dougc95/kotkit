@@ -35,6 +35,7 @@ afterEach(() => {
 interface RechartsCaptured {
   barChartData?: unknown
   lineChartData?: unknown
+  dailyLegendFormatter?: (value: string) => ReactNode
 }
 
 vi.mock('recharts', () => {
@@ -77,7 +78,16 @@ vi.mock('recharts', () => {
   // `Legend` component would: call it if it's a function, render it as-is if
   // it's already an element. `DailyTrend` never passes `content`, so it still
   // renders nothing, same as before this mock grew this branch.
-  function Legend({ content }: { content?: ReactNode | ((props: Record<string, never>) => ReactNode) }) {
+  function Legend({
+    content,
+    formatter,
+  }: {
+    content?: ReactNode | ((props: Record<string, never>) => ReactNode)
+    formatter?: (value: string) => ReactNode
+  }) {
+    if (formatter !== undefined) {
+      captured.dailyLegendFormatter = formatter
+    }
     if (typeof content === 'function') {
       return <>{content({})}</>
     }
@@ -395,6 +405,17 @@ describe('PracticeTrend / DailyTrend / ExactValuesTable', () => {
     expect(table.className).not.toContain('font-mono')
   })
 
+  it('ExactValuesTable wrapper is relative so its sr-only caption cannot escape the scroll clip (task V5 check 1)', () => {
+    const days = [makeDayRow({ localDate: '2026-09-01', day: 1 })]
+    renderWithProviders(<DailyTrend days={days} />)
+
+    const table = screen.getByRole('table')
+    const wrapper = table.parentElement
+    expect(wrapper).not.toBeNull()
+    expect(wrapper?.className).toContain('relative')
+    expect(wrapper?.className).toContain('overflow-x-auto')
+  })
+
   it('ExactValuesTable header cells wrap and body cells stay top-aligned', () => {
     const days = [makeDayRow({ localDate: '2026-09-01', day: 1 })]
     renderWithProviders(<DailyTrend days={days} />)
@@ -424,6 +445,19 @@ describe('PracticeTrend / DailyTrend / ExactValuesTable', () => {
     const completedSwatch = screen.getByTestId('legend-swatch-completedMinutes')
     expect(completedSwatch.style.backgroundColor).not.toBe('transparent')
     expect(completedSwatch.style.backgroundColor).not.toBe('')
+  })
+
+  it('daily trend legend renders label text in ink, never the series colour (Task V4)', () => {
+    const days = [makeDayRow({ localDate: '2026-09-01', day: 1 })]
+    renderWithProviders(<DailyTrend days={days} />)
+
+    const formatter = getCaptured().dailyLegendFormatter
+    expect(formatter).toBeDefined()
+
+    const rendered = formatter?.('Sleep') as { props?: { className?: string; children?: unknown } } | null
+    expect(rendered).not.toBeNull()
+    expect(rendered?.props?.className).toBe('text-ink')
+    expect(rendered?.props?.children).toBe('Sleep')
   })
 
   it('feed totals are labelled device-minutes', () => {

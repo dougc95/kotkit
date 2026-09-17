@@ -118,6 +118,16 @@ describe('Preferences', () => {
     )
   })
 
+  it('the Timezone select sits on the page ground like every other field, not raised card white (task V5)', async () => {
+    mount()
+
+    const select = await screen.findByLabelText('Timezone')
+    expect(select.className).toContain('bg-transparent')
+    expect(select.className).not.toContain('bg-card')
+    expect(select.className).toContain('text-base')
+    expect(select.className).toContain('md:text-sm')
+  })
+
   it('Save sends only the changed fields', async () => {
     respond('me.patchPreferences', { ...BASE_ME, preferences: { ...BASE_ME.preferences, hideTimerDefault: true } })
     const { user } = mount()

@@ -78,7 +78,9 @@ export function ResetPanel() {
 
       <AlertDialog open={open} onOpenChange={handleOpenChange}>
         <AlertDialogTrigger asChild>
-          <Button variant="secondary">Reset demo data</Button>
+          <Button variant="secondary" className="self-start">
+            Reset demo data
+          </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>

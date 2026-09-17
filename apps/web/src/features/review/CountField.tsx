@@ -39,7 +39,7 @@ export function CountField({ id, label, value, onChange, prefilled }: CountField
   const hintId = `${id}-hint`
 
   return (
-    <div className="space-y-1">
+    <div className="grid grid-rows-subgrid row-span-3 gap-1">
       <Label htmlFor={id} className="block text-sm font-medium text-ink">
         {label}
       </Label>
