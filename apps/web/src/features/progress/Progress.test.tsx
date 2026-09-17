@@ -327,4 +327,25 @@ describe('Progress', () => {
     expect(revisionCell).toHaveTextContent('—')
     expect(revisionCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'absent')
   })
+
+  it('the Conditions and Exclusion-reasons cells wrap prose, numeric cells stay nowrap, and body cells align to top', async () => {
+    const attempt = makeAttempt({
+      attemptId: 'attempt-wrap',
+      label: 'A',
+      eligible: false,
+      exclusionReasons: ['count_unknown'],
+    })
+    mount(makeReport({ attempts: [attempt] }))
+
+    const exclusionCell = await screen.findByTestId('exclusion-attempt-wrap')
+    expect(exclusionCell.className).toContain('whitespace-normal')
+    expect(exclusionCell.className).toContain('align-top')
+
+    const conditionsCell = screen.getByTestId('conditions-attempt-wrap')
+    expect(conditionsCell.className).toContain('whitespace-normal')
+
+    const sCell = screen.getByTestId('s-attempt-wrap')
+    expect(sCell.className).not.toContain('whitespace-normal')
+    expect(sCell.className).toContain('align-top')
+  })
 })

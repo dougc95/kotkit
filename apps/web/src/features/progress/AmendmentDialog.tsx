@@ -217,7 +217,13 @@ export function AmendmentDialog({ sessionId, amendments }: AmendmentDialogProps)
         <DialogTrigger asChild>
           <Button variant="secondary">Explain or exclude</Button>
         </DialogTrigger>
-        <DialogContent>
+        {/* `showCloseButton={false}`: the generated X is a 16 px icon-only
+            target (`absolute top-4 right-4`, a `size-4` icon, no padding),
+            under this project's explicit 24 px hit-area floor
+            (`e2e/a11y/axe-shell.spec.ts`, WCAG 2.2 AA 2.5.8, D40) and its own
+            44 px controls. The labelled `Cancel` button below already does
+            the same job, and Escape still closes the dialog. */}
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Explain or exclude this attempt</DialogTitle>
             <DialogDescription>
@@ -245,13 +251,16 @@ export function AmendmentDialog({ sessionId, amendments }: AmendmentDialogProps)
                 }}
               />
               {reasonField.errorProps !== undefined ? (
-                // ink, not red or amber: the rework spec §3 names "a validation
-                // message" alongside the 422/409/failed-save banners as
-                // something that "renders neutrally, in ink, keeping its
-                // existing role='alert'". Amber is reserved for the
-                // uncertain data tier (§5: 'Unknown', 'Timing uncertain'),
-                // never a form validation prompt.
-                <p {...reasonField.errorProps} className="text-sm text-ink">
+                // attention, never red or neutral ink: spec decision U15a says a
+                // validation error message takes `text-attention`, not the
+                // shadcn primitive's own destructive red and not the neutral
+                // ink a data-absence cell uses. This reuses the same amber
+                // `--color-attention` token the three-tier taxonomy's
+                // UNCERTAIN tier renders in (§5: 'Unknown', 'Timing
+                // uncertain'), but for a different reason: there it names an
+                // uncertain data state, here it draws the eye to a form
+                // validation prompt that blocks submission.
+                <p {...reasonField.errorProps} className="text-sm text-attention">
                   {reasonError}
                 </p>
               ) : null}

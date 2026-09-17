@@ -108,37 +108,46 @@ export function AttemptTable({ attempts }: AttemptTableProps) {
 
             return (
               <TableRow key={attempt.attemptId} className="border-b border-rule align-top">
-                <TableCell className="px-2 py-2">{formatPhase(attempt.phase)}</TableCell>
-                <TableCell className="px-2 py-2">{attempt.label}</TableCell>
-                <TableCell className="px-2 py-2">{attempt.localDate}</TableCell>
-                <TableCell className="px-2 py-2">{formatTimeSource(attempt.timeSource)}</TableCell>
-                <TableCell className="px-2 py-2" data-testid={`status-${attempt.attemptId}`}>
+                <TableCell className="px-2 py-2 align-top">{formatPhase(attempt.phase)}</TableCell>
+                <TableCell className="px-2 py-2 align-top">{attempt.label}</TableCell>
+                <TableCell className="px-2 py-2 align-top">{attempt.localDate}</TableCell>
+                <TableCell className="px-2 py-2 align-top">{formatTimeSource(attempt.timeSource)}</TableCell>
+                <TableCell className="px-2 py-2 align-top" data-testid={`status-${attempt.attemptId}`}>
                   {formatLifecycle(attempt.lifecycle)}
                 </TableCell>
-                <TableCell className="px-2 py-2" data-testid={`s-${attempt.attemptId}`}>
+                <TableCell className="px-2 py-2 align-top" data-testid={`s-${attempt.attemptId}`}>
                   <Reported mono>
                     {finalized ? formatEpisodeCount(attempt.episodeCount, attempt.countMethod) : NOT_FINALIZED}
                   </Reported>
                 </TableCell>
-                <TableCell className="px-2 py-2" data-testid={`t-${attempt.attemptId}`}>
+                <TableCell className="px-2 py-2 align-top" data-testid={`t-${attempt.attemptId}`}>
                   <Reported mono>{finalized ? formatFirstSwitch(attempt.firstSwitch) : NOT_FINALIZED}</Reported>
                 </TableCell>
-                <TableCell className="px-2 py-2" data-testid={`recall-${attempt.attemptId}`}>
+                <TableCell className="px-2 py-2 align-top" data-testid={`recall-${attempt.attemptId}`}>
                   <Reported mono>{finalized ? formatReportedCount(attempt.recallScore) : NOT_FINALIZED}</Reported>
                 </TableCell>
-                <TableCell className="px-2 py-2" data-testid={`e-${attempt.attemptId}`}>
+                <TableCell className="px-2 py-2 align-top" data-testid={`e-${attempt.attemptId}`}>
                   <Reported mono>{finalized ? formatReportedCount(attempt.externalCount) : NOT_FINALIZED}</Reported>
                 </TableCell>
-                <TableCell className="px-2 py-2" data-testid={`m-${attempt.attemptId}`}>
+                <TableCell className="px-2 py-2 align-top" data-testid={`m-${attempt.attemptId}`}>
                   <Reported mono>{finalized ? formatReportedCount(attempt.mindWanderingCount) : NOT_FINALIZED}</Reported>
                 </TableCell>
-                <TableCell className="px-2 py-2" data-testid={`disruption-${attempt.attemptId}`}>
+                <TableCell className="px-2 py-2 align-top" data-testid={`disruption-${attempt.attemptId}`}>
                   <Reported>{finalized ? formatDisruption(attempt.materiallyDisrupted) : NOT_FINALIZED}</Reported>
                 </TableCell>
-                <TableCell className="px-2 py-2" data-testid={`conditions-${attempt.attemptId}`}>
+                {/* `whitespace-normal`: this column's content is a
+                    comma-joined prose list (`formatConditions`), which
+                    `TableCell`'s own base `whitespace-nowrap` would otherwise
+                    force onto one unbreakable line, pushing the table far
+                    past its `min-w-[1080px]`. `cn()` inside `TableCell`
+                    merges this class last, so it wins over the base. */}
+                <TableCell
+                  className="px-2 py-2 align-top whitespace-normal"
+                  data-testid={`conditions-${attempt.attemptId}`}
+                >
                   <Reported>{formatConditions(attempt.conditions)}</Reported>
                 </TableCell>
-                <TableCell className="px-2 py-2" data-testid={`eligibility-${attempt.attemptId}`}>
+                <TableCell className="px-2 py-2 align-top" data-testid={`eligibility-${attempt.attemptId}`}>
                   {/* `eligible` is `Type.Boolean()` on the wire (report.ts's
                       AttemptSchema) — never null — so only NOT_FINALIZED
                       ever hits the absent tier here; 'Eligible'/'Not
@@ -148,13 +157,19 @@ export function AttemptTable({ attempts }: AttemptTableProps) {
                       "count". */}
                   <Reported>{finalized ? (attempt.eligible ? 'Eligible' : 'Not eligible') : NOT_FINALIZED}</Reported>
                 </TableCell>
-                <TableCell className="px-2 py-2" data-testid={`exclusion-${attempt.attemptId}`}>
+                {/* `whitespace-normal`: this column's content is a full
+                    sentence per exclusion reason (`formatExclusionReasons`),
+                    the same unbreakable-line problem `Conditions` has above. */}
+                <TableCell
+                  className="px-2 py-2 align-top whitespace-normal"
+                  data-testid={`exclusion-${attempt.attemptId}`}
+                >
                   <Reported>{formatExclusionReasons(attempt.exclusionReasons)}</Reported>
                 </TableCell>
-                <TableCell className="px-2 py-2" data-testid={`revision-${attempt.attemptId}`}>
+                <TableCell className="px-2 py-2 align-top" data-testid={`revision-${attempt.attemptId}`}>
                   <Reported>{revisionText}</Reported>
                 </TableCell>
-                <TableCell className="px-2 py-2">
+                <TableCell className="px-2 py-2 align-top">
                   {finalized ? (
                     // KNOWN LIMITATION: the report's AttemptValue schema carries no
                     // per-attempt amendments[] field (only the derived
