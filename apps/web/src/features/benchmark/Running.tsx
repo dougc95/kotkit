@@ -173,7 +173,7 @@ export function Running({ session }: RunningProps) {
         <p className="text-sm text-ink-muted">{LEAVING_NOTE}</p>
       </header>
 
-      <TimerDisplay remainingSeconds={remainingSeconds} />
+      <TimerDisplay remainingSeconds={remainingSeconds} tone="signal" />
 
       {deadlineReached ? (
         <div className="space-y-3">

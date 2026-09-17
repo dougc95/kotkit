@@ -310,4 +310,11 @@ describe('Running', () => {
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
     await screen.findByText(/Pending|Saved/)
   })
+
+  it('the live countdown renders inside a petrol (text-signal) wrapper', async () => {
+    await mountReady({ session: benchmarkSession({ id: 'session-petrol' }) })
+
+    const digits = screen.getByTestId('timer-digits')
+    expect(digits.closest('.text-signal')).not.toBeNull()
+  })
 })
