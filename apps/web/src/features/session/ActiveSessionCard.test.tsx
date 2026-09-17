@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, screen } from '@testing-library/react'
 import type { SessionResponseValue } from '@attention-lab/shared'
@@ -183,5 +186,21 @@ describe('ActiveSessionCard', () => {
       '/review/session-h',
     )
     expect(screen.queryByRole('link', { name: 'Return to your session' })).not.toBeInTheDocument()
+  })
+})
+
+describe('ActiveSessionCard token migration', () => {
+  it('the card container and its text no longer reference the retired --color-border/surface/text-muted/text tokens', () => {
+    const source = readFileSync(
+      fileURLToPath(new URL('./ActiveSessionCard.tsx', new URL(import.meta.url))),
+      'utf8',
+    )
+
+    expect(source).not.toMatch(/--color-border/)
+    expect(source).not.toMatch(/--color-surface/)
+    expect(source).not.toMatch(/--color-text-muted/)
+    expect(source).not.toMatch(/--color-text\)/)
+    expect(source).toContain('<Card')
+    expect(source).not.toContain('CONTAINER_CLASSES')
   })
 })
