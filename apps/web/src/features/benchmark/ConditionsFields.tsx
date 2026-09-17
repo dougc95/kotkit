@@ -21,6 +21,9 @@
  */
 import { ACCOMMODATIONS, type Accommodation, type ObservedConditionsValue } from '@attention-lab/shared'
 
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
+
 const ACCOMMODATION_COPY: Record<Accommodation, string> = {
   screen_reader: 'Screen reader',
   magnification: 'Magnification',
@@ -63,14 +66,13 @@ export function ConditionsFields({ value, confirmed, onChange }: ConditionsField
       <div className="grid gap-3 sm:grid-cols-3">
         {TEXT_FIELDS.map((field) => (
           <div key={field.key} className="space-y-1">
-            <label htmlFor={field.id} className="block text-sm font-medium text-[var(--color-text)]">
+            <Label htmlFor={field.id} className="text-sm font-medium text-ink">
               {field.label}
-            </label>
-            <input
+            </Label>
+            <Input
               id={field.id}
               type="text"
               value={value[field.key] ?? ''}
-              className="min-h-11 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm text-[var(--color-text)]"
               onChange={(event) => handleTextChange(field.key, event.target.value)}
             />
           </div>
@@ -78,11 +80,11 @@ export function ConditionsFields({ value, confirmed, onChange }: ConditionsField
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="block text-sm font-medium text-[var(--color-text)]">Accommodations</legend>
+        <legend className="block text-sm font-medium text-ink">Accommodations</legend>
         {ACCOMMODATIONS.map((accommodation) => {
           const id = `conditions-accommodation-${accommodation}`
           return (
-            <label key={accommodation} htmlFor={id} className="flex items-center gap-2 text-sm text-[var(--color-text)]">
+            <label key={accommodation} htmlFor={id} className="flex items-center gap-2 text-sm text-ink">
               <input
                 id={id}
                 type="checkbox"
@@ -97,7 +99,7 @@ export function ConditionsFields({ value, confirmed, onChange }: ConditionsField
 
       <label
         htmlFor="conditions-confirmed"
-        className="flex items-center gap-2 text-sm font-medium text-[var(--color-text)]"
+        className="flex items-center gap-2 text-sm font-medium text-ink"
       >
         <input
           id="conditions-confirmed"
