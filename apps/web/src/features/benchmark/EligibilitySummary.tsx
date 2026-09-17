@@ -33,6 +33,20 @@
  * (e.g. immediately after its own `GET /programs/current`) can pass it
  * through for context; the click handler never trusts it for the actual
  * routing decision.
+ *
+ * shadcn-ui-rework (2026-09-09) fixed a real defect here: `eligible` is
+ * `boolean | null` (a benchmark's `focus_sessions.eligible` column is
+ * nullable end to end), and this component used to render `null` exactly
+ * like `false` — `eligible === true ? 'Eligible' : 'Not eligible'` — which
+ * silently turned "not yet determined" into a reported negative result, the
+ * same failure class CLAUDE.md's "unknown != zero" exists to catch, just in
+ * the eligibility column instead of a count. `eligibilityLabel` below gives
+ * `null` its own string, and every data row (including this one) now routes
+ * through `@/ui/Reported.js`'s `Reported`, so "Not reported" renders under
+ * the absent tier (ink-muted, ruled) rather than reading like a plain
+ * sentence, and a real "Eligible"/"Not eligible" outcome renders in ink
+ * under the taxonomy's catch-all "recorded" tier — a determined result,
+ * whichever way it went, is ink, never colour-coded good/bad.
  */
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -49,6 +63,7 @@ import {
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { Reported } from '../../ui/Reported.js'
 
 export interface EligibilitySummaryProps {
   readonly session: SessionResponseValue
@@ -65,6 +80,21 @@ function formatEpisodeCount(value: number | null): string {
 
 function formatRecallScore(value: number | null): string {
   return value === null ? 'Not reported' : `${value}/5 (self-reported)`
+}
+
+/**
+ * `eligible: null` is a benchmark whose eligibility has genuinely not been
+ * decided — never a synonym for `false`. It gets its own absent-tier string
+ * rather than being folded into "Not eligible" (this file's fixed defect).
+ */
+function eligibilityLabel(eligible: boolean | null): string {
+  if (eligible === true) {
+    return 'Eligible'
+  }
+  if (eligible === false) {
+    return 'Not eligible'
+  }
+  return 'Not reported'
 }
 
 export function EligibilitySummary({ session, review, eligible, exclusionReasons }: EligibilitySummaryProps) {
@@ -89,32 +119,40 @@ export function EligibilitySummary({ session, review, eligible, exclusionReasons
 
   return (
     <div className="space-y-4" data-testid="eligibility-summary">
-      <p className="text-base font-semibold text-[var(--color-text)]">{eligible === true ? 'Eligible' : 'Not eligible'}</p>
+      <p className="text-base font-semibold">
+        <Reported>{eligibilityLabel(eligible)}</Reported>
+      </p>
 
       {eligible !== true && exclusionReasons.length > 0 ? (
-        <ul className="space-y-1 text-sm text-[var(--color-text-muted)]">
+        <ul className="space-y-1 text-sm text-ink-muted">
           {exclusionReasons.map((reason) => (
             <li key={reason}>{EXCLUSION_REASON_COPY[reason]}</li>
           ))}
         </ul>
       ) : null}
 
-      <dl className="space-y-1 text-sm text-[var(--color-text)]">
+      <dl className="space-y-1 text-sm text-ink">
         <div>
-          <dt className="inline text-[var(--color-text-muted)]">Local date: </dt>
+          <dt className="inline text-ink-muted">Local date: </dt>
           <dd className="inline">{session.localDate}</dd>
         </div>
         <div>
-          <dt className="inline text-[var(--color-text-muted)]">Off-task episodes (S): </dt>
-          <dd className="inline">{formatEpisodeCount(review.episodeCount)}</dd>
+          <dt className="inline text-ink-muted">Off-task episodes (S): </dt>
+          <dd className="inline">
+            <Reported>{formatEpisodeCount(review.episodeCount)}</Reported>
+          </dd>
         </div>
         <div>
-          <dt className="inline text-[var(--color-text-muted)]">Recall score: </dt>
-          <dd className="inline">{formatRecallScore(review.recallScore)}</dd>
+          <dt className="inline text-ink-muted">Recall score: </dt>
+          <dd className="inline">
+            <Reported>{formatRecallScore(review.recallScore)}</Reported>
+          </dd>
         </div>
         <div>
-          <dt className="inline text-[var(--color-text-muted)]">First switch: </dt>
-          <dd className="inline">{review.firstSwitch === null ? 'Not reported' : formatFirstSwitch(review.firstSwitch)}</dd>
+          <dt className="inline text-ink-muted">First switch: </dt>
+          <dd className="inline">
+            <Reported>{review.firstSwitch === null ? 'Not reported' : formatFirstSwitch(review.firstSwitch)}</Reported>
+          </dd>
         </div>
       </dl>
 

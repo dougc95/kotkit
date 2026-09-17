@@ -260,6 +260,26 @@ describe('FinalizeSection / FinalizeBar / EligibilitySummary', () => {
     expect(within(sRow as HTMLElement).queryByText('0')).not.toBeInTheDocument()
   })
 
+  it('undetermined eligibility (eligible: null) renders Not reported under the absent tier, never Not eligible', () => {
+    mockHook({
+      status: 'success',
+      result: makeFinalizeResult({
+        eligible: null,
+        exclusionReasons: [],
+        review: makeReview({ episodeCount: 2, recallScore: 4, firstSwitch: { kind: 'known', seconds: 90 } }),
+      }),
+    })
+    renderSection()
+
+    // episodeCount/recallScore/firstSwitch are all given real values above so
+    // exactly one "Not reported" renders on the page — the eligibility line —
+    // and getByText stays unambiguous.
+    const heading = screen.getByText('Not reported')
+    expect(heading).toHaveAttribute('data-tier', 'absent')
+    expect(screen.queryByText('Not eligible')).not.toBeInTheDocument()
+    expect(screen.queryByText('Eligible')).not.toBeInTheDocument()
+  })
+
   it('reviewNote included only when non-blank', async () => {
     const blank = mockHook()
     const { user } = renderSection({}, undefined)
