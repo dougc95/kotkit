@@ -286,7 +286,14 @@ describe('PracticeReview', () => {
 
     const second = renderReview(typedSession.id)
     await waitForLoaded()
-    await second.user.type(screen.getByLabelText('What did you finish? (optional)'), 'drafted the outline')
+    // `user.type` dispatches one real per-character timer-scheduled keystroke
+    // per letter; under load that is slow enough to push this file past its
+    // test timeout (same defect and fix as ReadinessForm.test.tsx, commit
+    // 01fb558). Nothing here asserts on keystroke-by-keystroke behaviour, so
+    // a single paste is equivalent.
+    const secondOutputNoteInput = screen.getByLabelText('What did you finish? (optional)')
+    await second.user.click(secondOutputNoteInput)
+    await second.user.paste('drafted the outline')
     await selectOutputQuality(second.user, 'Yes')
     await second.user.click(screen.getByRole('button', { name: 'Save review' }))
     await waitFor(() => expect(mockApi.sessions.finalize).toHaveBeenCalledTimes(2))
@@ -301,8 +308,14 @@ describe('PracticeReview', () => {
     const { user } = renderReview(session.id)
     await waitForLoaded()
 
-    await user.type(screen.getByLabelText('What did you finish? (optional)'), 'drafted the outline')
-    await user.type(screen.getByLabelText('Notes (optional)'), 'felt distracted by chat notifications')
+    // Same per-character-timer defect and fix as above (commit 01fb558);
+    // neither field is asserted keystroke-by-keystroke.
+    const outputNoteInput = screen.getByLabelText('What did you finish? (optional)')
+    await user.click(outputNoteInput)
+    await user.paste('drafted the outline')
+    const reviewNoteInput = screen.getByLabelText('Notes (optional)')
+    await user.click(reviewNoteInput)
+    await user.paste('felt distracted by chat notifications')
     await selectOutputQuality(user, 'Yes')
     await user.click(screen.getByRole('button', { name: 'Save review' }))
 
@@ -358,6 +371,62 @@ describe('PracticeReview', () => {
     expect(mockApi.sessions.finalize).not.toHaveBeenCalled()
   })
 
+  it('the blocked-submit error on output quality stays wired to the fieldset via aria-describedby and role=alert', async () => {
+    const session = makeSession()
+    respond('sessions.get', session)
+
+    const { user } = renderReview(session.id)
+    await waitForLoaded()
+
+    const yesRadio = screen.getByRole('radio', { name: 'Yes' })
+
+    await user.click(screen.getByRole('button', { name: 'Save review' }))
+
+    const errorMessage = await screen.findByText('Choose Yes, Partly or No')
+    expect(errorMessage).toHaveAttribute('role', 'alert')
+    const fieldset = yesRadio.closest('fieldset')
+    expect(fieldset).not.toBeNull()
+    expect(fieldset).toHaveAttribute('aria-describedby', errorMessage.id)
+  })
+
+  it('the output-quality options sit in a named radiogroup', async () => {
+    const session = makeSession()
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    expect(screen.getByRole('radiogroup', { name: 'Did you produce the planned output?' })).toBeInTheDocument()
+  })
+
+  it('pins the literal output-quality radio ids the Playwright suite tabs through', async () => {
+    const session = makeSession()
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    // e2e/practice-review.spec.ts:262 tabs until document.activeElement.id
+    // starts with 'output-quality-', then presses Space to answer it — these
+    // three ids must stay exactly these literals and nothing else focusable
+    // may take an id starting with 'output-quality-'.
+    expect(document.getElementById('output-quality-yes')).toBe(screen.getByRole('radio', { name: 'Yes' }))
+  })
+
+  it('the blocked-submit error row is attention-coloured, never red', async () => {
+    const session = makeSession()
+    respond('sessions.get', session)
+
+    const { user } = renderReview(session.id)
+    await waitForLoaded()
+
+    await user.click(screen.getByRole('button', { name: 'Save review' }))
+
+    const errorMessage = await screen.findByText('Choose Yes, Partly or No')
+    expect(errorMessage).toHaveClass('text-attention')
+    expect(errorMessage).not.toHaveClass('text-red-600')
+  })
+
   it('a 409 event_count_mismatch renders Some entries have not been saved yet with Retry and keeps the typed values', async () => {
     const session = makeSession()
     respond('sessions.get', session)
@@ -374,7 +443,11 @@ describe('PracticeReview', () => {
     const { user } = renderReview(session.id)
     await waitForLoaded()
 
-    await user.type(screen.getByLabelText('What did you finish? (optional)'), 'kept typing through the retry')
+    // Same per-character-timer defect and fix as above (commit 01fb558); this
+    // value is only ever asserted on as a whole string after Retry.
+    const retryOutputNoteInput = screen.getByLabelText('What did you finish? (optional)')
+    await user.click(retryOutputNoteInput)
+    await user.paste('kept typing through the retry')
     await selectOutputQuality(user, 'Yes')
     await user.click(screen.getByRole('button', { name: 'Save review' }))
 
