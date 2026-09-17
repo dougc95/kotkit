@@ -157,6 +157,26 @@ describe('TimerDisplay', () => {
     expect(await screen.findByText('Timer hidden')).toBeInTheDocument()
     expect(screen.queryByTestId('timer-digits')).not.toBeInTheDocument()
   })
+
+  it('digits render at the 56px instrument size in ink by default, not the old 36px size', async () => {
+    mount({ remainingSeconds: 600, hidden: false })
+
+    const digits = await screen.findByTestId('timer-digits')
+    expect(digits.className).toMatch(/text-\[56px\]/)
+    expect(digits.className).toMatch(/\btext-ink\b/)
+    expect(digits.className).not.toMatch(/text-4xl/)
+  })
+
+  it('tone="signal" renders the digits in the signal token instead of ink; ink stays the default', async () => {
+    const utils = mount({ remainingSeconds: 600, hidden: false, tone: 'signal' })
+    const signalDigits = await screen.findByTestId('timer-digits')
+    expect(signalDigits.className).toMatch(/\btext-signal\b/)
+    expect(signalDigits.className).not.toMatch(/\btext-ink\b/)
+
+    rerenderWith(utils, { remainingSeconds: 600, hidden: false })
+    const inkDigits = screen.getByTestId('timer-digits')
+    expect(inkDigits.className).toMatch(/\btext-ink\b/)
+  })
 })
 
 describe('useRemaining', () => {

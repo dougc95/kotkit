@@ -66,6 +66,7 @@ import type { SessionResponseValue, TransitionBodyValue } from '@attention-lab/s
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { Reported } from '../../ui/Reported.js'
 import { ActiveSessionCard } from '../session/ActiveSessionCard.js'
 import { AgentPanel } from './AgentPanel.js'
 import { EventButtons } from './EventButtons.js'
@@ -93,9 +94,11 @@ export function SessionHeader({ intendedOutput, targetSeconds }: SessionHeaderPr
   const targetMinutes = Math.round(targetSeconds / 60)
   return (
     <header className="space-y-1">
-      <h1 className="text-lg font-semibold text-[var(--color-text)]">Practice block</h1>
-      <p className="text-sm text-[var(--color-text)]">{intendedOutput ?? 'No intended output recorded'}</p>
-      <p className="text-sm text-[var(--color-text-muted)]">{`Target: ${targetMinutes} min`}</p>
+      <h1 className="text-lg font-semibold text-ink">Practice block</h1>
+      <p className="text-sm text-ink">
+        {intendedOutput ?? <Reported>No intended output recorded</Reported>}
+      </p>
+      <p className="text-sm text-ink-muted">{`Target: ${targetMinutes} min`}</p>
     </header>
   )
 }
@@ -257,7 +260,9 @@ export function Focus() {
 
       {deadlineReached ? (
         <div className="space-y-4">
-          <p role="status">{DEADLINE_MESSAGE}</p>
+          <p role="status" className="text-ink">
+            {DEADLINE_MESSAGE}
+          </p>
           <Button
             onClick={handleReview}
             disabled={transitionMutation.isPending}
@@ -266,15 +271,8 @@ export function Focus() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <TimerDisplay remainingSeconds={remaining ?? session.targetSeconds} />
-          <TransitionControls session={session} />
-          <AgentPanel
-            sessionId={session.id}
-            sessionVersion={session.version}
-            plan={session.agentPlan}
-            lifecycle={session.lifecycle}
-          />
           <EventButtons
             sessionId={session.id}
             variant="practice"
@@ -286,12 +284,28 @@ export function Focus() {
             }}
             canUndo={events.canUndo}
           />
-          {events.undoNotice !== null ? <p role="alert">{events.undoNotice}</p> : null}
+          {events.undoNotice !== null ? (
+            <p role="alert" className="text-sm text-ink-muted">
+              {events.undoNotice}
+            </p>
+          ) : null}
+
+          <div className="space-y-4 border-t border-rule pt-4">
+            <TransitionControls session={session} />
+            <AgentPanel
+              sessionId={session.id}
+              sessionVersion={session.version}
+              plan={session.agentPlan}
+              lifecycle={session.lifecycle}
+            />
+          </div>
         </div>
       )}
 
-      <Tallies offTask={events.tallies.offTask} external={events.tallies.external} agentChecks={events.tallies.agentChecks} />
-      <SyncStatus sessionId={session.id} />
+      <div className="space-y-3 border-t border-rule pt-4">
+        <Tallies offTask={events.tallies.offTask} external={events.tallies.external} agentChecks={events.tallies.agentChecks} />
+        <SyncStatus sessionId={session.id} />
+      </div>
     </div>
   )
 }

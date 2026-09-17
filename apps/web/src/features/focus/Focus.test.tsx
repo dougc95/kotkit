@@ -333,4 +333,24 @@ describe('Focus', () => {
     await screen.findByText('Pending')
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
+
+  it('the pause/agent-plan group and the tallies/sync group each sit below exactly one hairline, never a boxed card', async () => {
+    const session = makeSession({ id: 'session-hairline' })
+    respond('sessions.get', session)
+
+    const { container } = renderFocus(session.id)
+    await screen.findByTestId('timer-digits')
+
+    const hairlines = container.querySelectorAll('.border-t.border-rule')
+    expect(hairlines).toHaveLength(2)
+  })
+
+  it('a session with no intended output draws the placeholder in the absent tier, never as ink', async () => {
+    const session = makeSession({ id: 'session-no-output', intendedOutput: null })
+    respond('sessions.get', session)
+
+    renderFocus(session.id)
+    const placeholder = await screen.findByText('No intended output recorded')
+    expect(placeholder).toHaveAttribute('data-tier', 'absent')
+  })
 })
