@@ -77,6 +77,19 @@ describe('AmendmentDialog', () => {
     expect(mockApi.sessions.amend).not.toHaveBeenCalled()
   })
 
+  it('the reason field associates its required error via aria-describedby and aria-invalid', async () => {
+    const { user } = renderWithProviders(<AmendmentDialog sessionId="session-1" amendments={[]} />)
+    await openDialog(user)
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    const errorText = await screen.findByText('A reason is required')
+    const textarea = screen.getByLabelText('Reason')
+
+    expect(errorText).toHaveAttribute('role', 'alert')
+    expect(textarea).toHaveAttribute('aria-invalid', 'true')
+    expect(textarea.getAttribute('aria-describedby')).toContain(errorText.id)
+  })
+
   it('submitting reason only (excludeFromReport false) posts 201 and invalidates the report query', async () => {
     respond('sessions.amend', makeAmendment({ id: 'amendment-new' }))
     const { user, queryClient } = renderWithProviders(<AmendmentDialog sessionId="session-1" amendments={[]} />)
