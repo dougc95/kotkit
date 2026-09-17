@@ -86,8 +86,15 @@ async function fillMaterialRef(
 ): Promise<void> {
   const group = screen.getByRole('group', { name: title })
   const input = within(group).getByLabelText('Material reference')
+  // `clear()` focuses `input` as part of selecting-all-and-deleting (user-event's
+  // own clear.js), so `paste` (which targets `document.activeElement`) lands on
+  // the same field. A single paste avoids dispatching one real per-character
+  // timer-scheduled keystroke per letter of a ~20-character reference under
+  // `user.type` — under load that timer-driven sequence, repeated across every
+  // row, is what pushed this file's tests past their 5000 ms bound (see this
+  // file's git history for the reproduction).
   await user.clear(input)
-  await user.type(input, value)
+  await user.paste(value)
 }
 
 async function fillTime(
@@ -96,8 +103,11 @@ async function fillTime(
   value: string,
 ): Promise<void> {
   const input = screen.getByLabelText(`${title} planned time`)
+  // Same reasoning as `fillMaterialRef`: `clear()` leaves focus on `input`, so
+  // `paste` lands there without a separate click, and avoids per-character
+  // real-timer typing for a value nobody asserts on keystroke-by-keystroke.
   await user.clear(input)
-  await user.type(input, value)
+  await user.paste(value)
 }
 
 /** Fills every one of the four rows with valid, mutually-consistent data (baseline A/B two hours apart). */
@@ -176,19 +186,25 @@ describe('ReadinessForm', () => {
     const baselineATime = screen.getByLabelText('Baseline A planned time')
     const finalATime = screen.getByLabelText('Final A planned time')
 
-    await user.type(baselineATime, '09:00')
+    // This test is about the mirror-until-touched behaviour driven by each
+    // field's final committed value, not about individual keystrokes, so a
+    // single `paste` per edit (after an explicit click/clear to focus the
+    // field, since `paste` targets `document.activeElement`) is equivalent to
+    // `type` here and avoids per-character real-timer scheduling.
+    await user.click(baselineATime)
+    await user.paste('09:00')
     expect(finalATime).toHaveValue('09:00')
 
     await user.clear(baselineATime)
-    await user.type(baselineATime, '10:00')
+    await user.paste('10:00')
     expect(finalATime).toHaveValue('10:00')
 
     await user.clear(finalATime)
-    await user.type(finalATime, '11:00')
+    await user.paste('11:00')
     expect(finalATime).toHaveValue('11:00')
 
     await user.clear(baselineATime)
-    await user.type(baselineATime, '12:00')
+    await user.paste('12:00')
     expect(finalATime).toHaveValue('11:00')
   })
 
