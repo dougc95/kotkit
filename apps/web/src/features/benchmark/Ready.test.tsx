@@ -298,6 +298,31 @@ describe('Ready', () => {
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
     expectNoIdentifiers(document.body)
   })
+
+  it('shows the fixed 20:00 duration in ink before the session starts, not mono', async () => {
+    renderReady(makeSlot())
+
+    await screen.findByRole('button', { name: 'Start' })
+    const duration = screen.getByTestId('benchmark-fixed-duration')
+    expect(duration).toHaveTextContent('20:00')
+    expect(duration.className).toMatch(/\btext-ink\b/)
+    expect(duration.className).not.toMatch(/font-mono/)
+  })
+
+  it('replacement reason counter is associated with the textarea via aria-describedby', async () => {
+    const attempts: SlotAttemptValue[] = [
+      { sessionId: 'prior-1', lifecycle: 'finalized', eligible: false, excludedByAmendment: false },
+    ]
+    const { user } = renderReady(makeSlot({ attempts }))
+
+    const textarea = await screen.findByLabelText('Reason for replacement')
+    const describedById = textarea.getAttribute('aria-describedby')
+    expect(describedById).toBeTruthy()
+    expect(document.getElementById(describedById as string)).toHaveTextContent('0/500')
+
+    await user.type(textarea, 'Fire alarm')
+    expect(document.getElementById(describedById as string)).toHaveTextContent('10/500')
+  })
 })
 
 describe('token conversion', () => {

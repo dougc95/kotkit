@@ -74,14 +74,19 @@ import type {
 } from '@attention-lab/shared'
 
 import { api } from '../../lib/api/client.js'
+import { formatRemaining } from '../../lib/clock/remaining.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { useActiveSession } from '../../lib/query/hooks.js'
 import { useStartSession } from '../../lib/query/useStartSession.js'
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 import { ActiveSessionCard } from '../session/ActiveSessionCard.js'
 
 const LEAVING_NOTE = 'Leaving this page to read does not count as distraction.'
 const MAX_REASON_LENGTH = 500
+const FIXED_DURATION_SECONDS = 1200
 
 const PROTOCOL_CHECKLIST_ITEMS: readonly string[] = [
   'Set a fixed 20-minute timer before you begin.',
@@ -119,22 +124,29 @@ export interface ReplacementReasonFieldProps {
 }
 
 export function ReplacementReasonField({ value, onChange, required }: ReplacementReasonFieldProps) {
+  const field = useField({
+    name: 'replacement-reason',
+    description: `${value.length}/${MAX_REASON_LENGTH}`,
+    required,
+  })
+
   return (
     <div className="space-y-1">
-      <label htmlFor="replacement-reason" className="block text-sm font-medium text-ink">
+      <Label {...field.labelProps} className="block text-sm font-medium text-ink">
         Reason for replacement
-      </label>
-      <textarea
-        id="replacement-reason"
+      </Label>
+      <Textarea
+        {...field.controlProps}
         value={value}
         maxLength={MAX_REASON_LENGTH}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-rule bg-card px-3 py-2 text-sm text-ink"
       />
-      <p className="text-xs text-ink-muted">
-        {value.length}/{MAX_REASON_LENGTH}
-      </p>
+      {field.descriptionProps ? (
+        <p {...field.descriptionProps} className="text-xs text-ink-muted">
+          {value.length}/{MAX_REASON_LENGTH}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -316,6 +328,10 @@ export function Ready() {
           <p className="text-sm text-ink-muted">{`Planned time: ${slot.plannedLocalTime}`}</p>
         ) : null}
       </header>
+
+      <p className="text-4xl text-ink" data-testid="benchmark-fixed-duration">
+        {formatRemaining(FIXED_DURATION_SECONDS)}
+      </p>
 
       <Checklist items={PROTOCOL_CHECKLIST_ITEMS} />
 
