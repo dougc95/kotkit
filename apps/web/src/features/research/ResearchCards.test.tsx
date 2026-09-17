@@ -10,7 +10,7 @@ import {
 } from '@attention-lab/shared'
 
 import { queryKeys } from '../../lib/query/keys.js'
-import { respond } from '../../test/mockClient.js'
+import { reject, respond } from '../../test/mockClient.js'
 import { renderWithProviders } from '../../test/renderWithProviders.js'
 import { ResearchCards } from './ResearchCards.js'
 
@@ -79,6 +79,18 @@ describe('ResearchCards', () => {
     const { container } = mount()
 
     await screen.findAllByRole('article')
+    expect(container.textContent ?? '').not.toContain('·')
+  })
+
+  it('on load failure, shows Cards unavailable in attention, never destructive or red', async () => {
+    reject('research.cards', { status: 500, code: 'server_error' })
+
+    const { container } = renderWithProviders(<ResearchCards />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Cards unavailable')
+    expect(alert).toHaveClass('text-attention')
+    expect(alert.className).not.toMatch(/destructive|red-/)
     expect(container.textContent ?? '').not.toContain('·')
   })
 

@@ -9,9 +9,12 @@ import { ResearchCard } from './ResearchCard.js'
  * research-cards: "Three finite curated cards" — exactly three cards, no
  * pagination, no load-more, no refetch interval; "Content is labeled as
  * demonstration content" — the curation date plus "Automated discovery not
- * enabled" is always shown.
+ * enabled" is always shown; "Never surfaced in session mode" — this route is
+ * never linked from `SessionLayout` and the route-leave guard covers it
+ * while a session is active, so nothing here needs its own session-mode
+ * check.
  *
- * `GET /research/cards` is a static fixture, not a feed: `staleTime:
+ * `GET /research/cards` (D13) is a static fixture, not a feed: `staleTime:
  * Infinity` and `refetchInterval: false` mean it is fetched once per app
  * session and never polled, `refetchOnWindowFocus: false` keeps returning to
  * the tab from being read as a reason to refresh it, and `retry: false`
@@ -43,7 +46,9 @@ export function ResearchCards() {
       </header>
 
       {query.isError ? (
-        <p role="alert" className="text-sm">
+        // U15a: an error message takes `text-attention` — never plain
+        // neutral ink, and never the destructive/red treatment.
+        <p role="alert" className="text-sm text-attention">
           Cards unavailable
         </p>
       ) : null}
