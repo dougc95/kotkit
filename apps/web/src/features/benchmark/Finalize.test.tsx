@@ -296,6 +296,26 @@ describe('FinalizeSection / FinalizeBar / EligibilitySummary', () => {
     expect(typedBody.reviewNote).toBe('Ran a bit long')
   })
 
+  it('review note counter is linked to the textarea via aria-describedby', () => {
+    mockHook()
+    renderSection()
+
+    const note = screen.getByLabelText('Anything else to note?')
+    const describedById = note.getAttribute('aria-describedby')
+    expect(describedById).not.toBeNull()
+    expect(document.getElementById(describedById ?? '')).toHaveTextContent('0/500')
+  })
+
+  it('failed finalize renders the status row in attention color, not neutral ink (U15a)', () => {
+    mockHook({ status: 'error' })
+    renderSection()
+
+    const statusRow = screen.getByRole('status')
+    expect(statusRow).toHaveClass('text-attention')
+    expect(statusRow).not.toHaveClass('text-ink')
+    expect(within(statusRow).getByText('The review could not be saved. Retry.')).toBeInTheDocument()
+  })
+
   it('summary contains no % text', () => {
     mockHook({
       status: 'success',
