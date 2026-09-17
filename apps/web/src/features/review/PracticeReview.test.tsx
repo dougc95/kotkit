@@ -497,4 +497,67 @@ describe('PracticeReview', () => {
     const reviewNoteInput = screen.getByLabelText('Notes (optional)')
     expect(reviewNoteInput).toHaveAttribute('id', 'review-note')
   })
+
+  it('the Timing uncertain flag renders inside a Badge as the uncertain tier, not a plain chip', async () => {
+    const session = makeSession({ timerQuality: 'uncertain' })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    const badgeText = screen.getByText('Timing uncertain')
+    expect(badgeText).toHaveAttribute('data-tier', 'uncertain')
+  })
+
+  it('a session with no intended output shows Planned output: Not reported in the absent tier, never the old None recorded string', async () => {
+    const session = makeSession({ intendedOutput: null })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    expect(screen.queryByText('None recorded', { exact: false })).not.toBeInTheDocument()
+    const value = screen.getByText('Not reported')
+    expect(value).toHaveAttribute('data-tier', 'absent')
+  })
+
+  // Controller deviation from the brief: `<Reported>` wraps ONLY the
+  // placeholder ('Not reported'), never the user's own `intendedOutput`
+  // text — a user whose planned output literally reads "Unknown" must see
+  // their own words rendered plain, not amber. This guards that: if
+  // `intendedOutput` were ever wrapped in `<Reported>` again, "Unknown"
+  // would render inside a separate `data-tier="uncertain"` element instead
+  // of as part of the paragraph's own direct text.
+  it('an intended output of exactly "Unknown" renders as plain text, never the uncertain tier', async () => {
+    const session = makeSession({ intendedOutput: 'Unknown' })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    const plannedOutputParagraph = screen.getByText(/Planned output:/).closest('p')
+    expect(plannedOutputParagraph).not.toBeNull()
+
+    // `within(p)` includes `p` itself as a candidate (it matches the '*'
+    // selector) alongside any descendants. Unwrapped, "Unknown" is a bare
+    // text node directly inside `p`, so the only match is `p` itself
+    // (substring match against its own text "Planned output: Unknown").
+    // Wrapped in `<Reported>`, the match would instead be the nested
+    // `data-tier` span.
+    const match = within(plannedOutputParagraph as HTMLElement).queryByText('Unknown', { exact: false })
+    expect(match === plannedOutputParagraph || match?.hasAttribute('data-tier') === false).toBe(true)
+  })
+
+  it('the recorded tallies and the counts you attest to share one three-column grid so their values line up', async () => {
+    const session = makeSession({ tallies: { offTask: 1, external: 0, agentChecks: 0 } })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    const tallies = screen.getByTestId('recorded-tallies')
+    const attested = screen.getByTestId('attested-counts')
+    expect(tallies.className).toMatch(/grid-cols-3/)
+    expect(attested.className).toMatch(/grid-cols-3/)
+  })
 })
