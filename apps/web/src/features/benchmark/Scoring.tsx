@@ -231,7 +231,7 @@ export function Scoring({ session, review, onChange }: ScoringProps) {
     return (
       <div className="space-y-2">
         <p>Recall must be saved first</p>
-        <Link to={`/benchmark/${session.id}/recall`} className="text-sm underline text-[var(--color-primary)]">
+        <Link to={`/benchmark/${session.id}/recall`} className="text-sm underline text-signal">
           Go to recall
         </Link>
       </div>
@@ -260,12 +260,15 @@ export function Scoring({ session, review, onChange }: ScoringProps) {
         ))}
       </div>
 
-      <p className="text-sm font-medium text-[var(--color-text)]">
+      <p className="text-sm font-medium text-ink">
         Recall score (self-reported, preview): {previewScore}/5
       </p>
 
       {review.recallFlags.length > 0 ? (
-        <ul className="space-y-1 text-sm text-[var(--color-text-muted)]">
+        // recall_delayed/recall_overrun are precisely-known facts about this
+        // attempt, not uncertainty — ink-muted, never the amber attention
+        // token that the taxonomy reserves for "Unknown"/"Timing uncertain".
+        <ul className="space-y-1 text-sm text-ink-muted">
           {review.recallFlags.map((flag) => (
             <li key={flag}>
               {FLAG_COPY[flag]} (noted, not excluding)

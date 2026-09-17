@@ -345,6 +345,53 @@ describe('Scoring', () => {
     expect(byId).not.toBeNull()
     expect(byId).toBe(screen.getAllByRole('radio', { name: 'Accurate' })[0])
   })
+
+  it('the recall-first link uses the signal token, never a bare CSS variable', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: null })
+
+    renderScoring(session, review)
+
+    const link = screen.getByRole('link', { name: /recall/i })
+    expect(link.className).toContain('text-signal')
+    expect(link.className).not.toMatch(/var\(--color-/)
+  })
+
+  it('the preview score line renders in ink, not the muted tier', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: FIVE_POINTS })
+
+    renderScoring(session, review)
+
+    const scoreLine = screen.getByText('Recall score (self-reported, preview): 0/5')
+    expect(scoreLine.className).toContain('text-ink')
+    expect(scoreLine.className).not.toContain('text-ink-muted')
+  })
+
+  it('recall flags are rendered as known facts and never take the attention/amber token', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({
+      recallLockedAt: LOCKED_AT,
+      recallPoints: FIVE_POINTS,
+      recallFlags: ['recall_delayed', 'recall_overrun'],
+    })
+
+    renderScoring(session, review)
+
+    const list = screen.getByText(/Recall started more than 10 minutes/).closest('ul')
+    expect(list).not.toBeNull()
+    expect(list?.className).toContain('text-ink-muted')
+    expect(list?.className).not.toMatch(/text-attention/)
+  })
+
+  it('no leftover --color-* custom property reference remains in the rendered scoring screen', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: FIVE_POINTS, recallFlags: ['recall_delayed'] })
+
+    const { container } = renderScoring(session, review)
+
+    expect(container.innerHTML).not.toMatch(/var\(--color-/)
+  })
 })
 
 // Exercised indirectly by every case above via `Scoring`; imported directly
