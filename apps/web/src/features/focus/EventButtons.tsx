@@ -19,8 +19,11 @@
  * one event" holds for the confirm button too (a cancelled confirm never
  * calls `onRecord`).
  */
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '../../ui/Button.js'
+import { Checkbox } from '../../ui/shadcn/checkbox.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { useField } from '../../ui/field.js'
 
 export type EventButtonsVariant = 'practice' | 'benchmark'
 
@@ -35,20 +38,20 @@ export interface AgentCheckConfirmProps {
 
 /** The inline confirm `EventButtons` opens for its 'Agent check' control. */
 export function AgentCheckConfirm({ onConfirm, onCancel }: AgentCheckConfirmProps) {
-  const checkboxId = useId()
+  const { controlProps, labelProps } = useField({ name: 'agent-check-also-off-task' })
   const [alsoOffTask, setAlsoOffTask] = useState(false)
 
   return (
-    <div role="group" aria-label="Confirm agent check" className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-3">
-      <label htmlFor={checkboxId} className="flex items-center gap-2 text-sm">
-        <input
-          id={checkboxId}
-          type="checkbox"
+    <div role="group" aria-label="Confirm agent check" className="flex flex-col gap-2 rounded-md border border-rule p-3">
+      <div className="flex items-center gap-2 text-sm">
+        <Checkbox
+          id={controlProps.id}
+          aria-describedby={controlProps['aria-describedby']}
           checked={alsoOffTask}
-          onChange={(event) => setAlsoOffTask(event.target.checked)}
+          onCheckedChange={(checked) => setAlsoOffTask(checked === true)}
         />
-        This was also an off-task episode
-      </label>
+        <Label {...labelProps}>This was also an off-task episode</Label>
+      </div>
       <div className="flex gap-2">
         <Button variant="secondary" onClick={() => onConfirm(alsoOffTask)}>
           Log agent check
