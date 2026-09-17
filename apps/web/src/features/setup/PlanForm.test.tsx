@@ -213,4 +213,18 @@ describe('PlanForm', () => {
     const select = screen.getByLabelText('Timezone')
     expect(select).toHaveAttribute('aria-describedby', message.id)
   })
+
+  it('shows the blank feed estimate as Not reported, and a typed value as recorded', async () => {
+    mount()
+
+    const blank = screen.getByText('Not reported')
+    expect(blank).toHaveAttribute('data-tier', 'absent')
+
+    const feedInput = screen.getByLabelText('Current daily feed time (estimate)')
+    fireEvent.change(feedInput, { target: { value: '0' } })
+
+    const recorded = await screen.findByText('0 min/day')
+    expect(recorded).toHaveAttribute('data-tier', 'recorded')
+    expect(screen.queryByText('Not reported')).not.toBeInTheDocument()
+  })
 })

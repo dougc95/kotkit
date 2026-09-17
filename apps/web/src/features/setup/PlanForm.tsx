@@ -7,6 +7,10 @@ import { api } from '../../lib/api/client.js'
 import { newIdempotencyKey } from '../../lib/api/newIdempotencyKey.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { Reported } from '../../ui/Reported.js'
 
 /**
  * Setup's basic-plan step (task 8.1.2; program-setup: "Basic plan captures
@@ -198,6 +202,15 @@ function validate(
   return errors
 }
 
+/** "Unknown is not zero" made visible at the point of entry: a blank field
+ * previews as the same `Not reported` string `absenceTier` recognizes as
+ * the "not a value" tier; any typed number, including `0`, is a measurement
+ * and previews in the `recorded` tier. */
+function feedEstimatePreviewText(rawValue: string): string {
+  const trimmed = rawValue.trim()
+  return trimmed === '' ? 'Not reported' : `${trimmed} min/day`
+}
+
 export function PlanForm() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -224,13 +237,13 @@ export function PlanForm() {
     idempotencyKeyRef.current = newIdempotencyKey()
   }
 
-  const dateId = useId()
-  const dateErrorId = useId()
-  const leisureId = useId()
-  const leisureErrorId = useId()
-  const feedId = useId()
-  const feedHelpId = useId()
-  const feedErrorId = useId()
+  const dateField = useField({ name: 'baselineDate', error: fieldErrors.baselineDate })
+  const leisureField = useField({ name: 'leisureAllowanceMinutes', error: fieldErrors.leisureAllowanceMinutes })
+  const feedField = useField({
+    name: 'feedEstimateMinutes',
+    description: 'leave blank if you do not know',
+    error: fieldErrors.feedEstimateMinutes,
+  })
 
   const createProgram = useMutation({
     mutationFn: (body: CreateProgramBodyValue) =>
@@ -308,28 +321,23 @@ export function PlanForm() {
     <form onSubmit={handleSubmit} noValidate className="flex max-w-md flex-col gap-6">
       <div>
         <h1 className="text-xl font-semibold">Set up your plan</h1>
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <p className="text-sm text-ink-muted">
           This saves a draft — nothing starts running yet.
         </p>
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor={dateId} className="text-sm font-medium">
-          Baseline date (Day 0)
-        </label>
-        <input
-          id={dateId}
+        <Label {...dateField.labelProps}>Baseline date (Day 0)</Label>
+        <Input
           type="date"
           value={baselineDate}
           onChange={(event) => {
             setBaselineDate(event.target.value)
           }}
-          aria-invalid={fieldErrors.baselineDate !== undefined ? true : undefined}
-          aria-describedby={fieldErrors.baselineDate !== undefined ? dateErrorId : undefined}
-          className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          {...dateField.controlProps}
         />
-        {fieldErrors.baselineDate !== undefined ? (
-          <p id={dateErrorId} role="alert" className="text-sm">
+        {dateField.errorProps !== undefined ? (
+          <p {...dateField.errorProps} className="text-sm text-attention">
             {fieldErrors.baselineDate}
           </p>
         ) : null}
@@ -365,11 +373,8 @@ export function PlanForm() {
       </fieldset>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor={leisureId} className="text-sm font-medium">
-          Leisure allowance (minutes)
-        </label>
-        <input
-          id={leisureId}
+        <Label {...leisureField.labelProps}>Leisure allowance (minutes)</Label>
+        <Input
           type="number"
           min={0}
           step={1}
@@ -378,23 +383,18 @@ export function PlanForm() {
           onChange={(event) => {
             setLeisureAllowanceMinutes(event.target.value)
           }}
-          aria-invalid={fieldErrors.leisureAllowanceMinutes !== undefined ? true : undefined}
-          aria-describedby={fieldErrors.leisureAllowanceMinutes !== undefined ? leisureErrorId : undefined}
-          className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          {...leisureField.controlProps}
         />
-        {fieldErrors.leisureAllowanceMinutes !== undefined ? (
-          <p id={leisureErrorId} role="alert" className="text-sm">
+        {leisureField.errorProps !== undefined ? (
+          <p {...leisureField.errorProps} className="text-sm text-attention">
             {fieldErrors.leisureAllowanceMinutes}
           </p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor={feedId} className="text-sm font-medium">
-          Current daily feed time (estimate)
-        </label>
-        <input
-          id={feedId}
+        <Label {...feedField.labelProps}>Current daily feed time (estimate)</Label>
+        <Input
           type="number"
           min={0}
           step={1}
@@ -403,19 +403,16 @@ export function PlanForm() {
           onChange={(event) => {
             setFeedEstimateMinutes(event.target.value)
           }}
-          aria-invalid={fieldErrors.feedEstimateMinutes !== undefined ? true : undefined}
-          aria-describedby={
-            [feedHelpId, fieldErrors.feedEstimateMinutes !== undefined ? feedErrorId : undefined]
-              .filter((id): id is string => id !== undefined)
-              .join(' ') || undefined
-          }
-          className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          {...feedField.controlProps}
         />
-        <p id={feedHelpId} className="text-sm text-[var(--color-text-muted)]">
-          leave blank if you do not know
-        </p>
-        {fieldErrors.feedEstimateMinutes !== undefined ? (
-          <p id={feedErrorId} role="alert" className="text-sm">
+        {feedField.descriptionProps !== undefined ? (
+          <p {...feedField.descriptionProps} className="text-sm text-ink-muted">
+            leave blank if you do not know
+          </p>
+        ) : null}
+        <Reported className="text-sm">{feedEstimatePreviewText(feedEstimateMinutes)}</Reported>
+        {feedField.errorProps !== undefined ? (
+          <p {...feedField.errorProps} className="text-sm text-attention">
             {fieldErrors.feedEstimateMinutes}
           </p>
         ) : null}
