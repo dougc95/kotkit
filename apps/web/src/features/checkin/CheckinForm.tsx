@@ -524,14 +524,10 @@ export function CheckinForm() {
           device="phone"
           value={effectivePhone}
           disabled={disabled.phone}
+          error={fieldErrors.phone}
           onChange={(value) => dispatch({ type: 'setDevice', device: 'phone', value })}
         />
         <p className="text-sm text-[var(--color-text-muted)]">Phone: {deviceSummaryText(effectivePhone)}</p>
-        {fieldErrors.phone !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
-            {fieldErrors.phone}
-          </p>
-        ) : null}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -539,14 +535,10 @@ export function CheckinForm() {
           device="desktop"
           value={effectiveDesktop}
           disabled={disabled.desktop}
+          error={fieldErrors.desktop}
           onChange={(value) => dispatch({ type: 'setDevice', device: 'desktop', value })}
         />
         <p className="text-sm text-[var(--color-text-muted)]">Desktop: {deviceSummaryText(effectiveDesktop)}</p>
-        {fieldErrors.desktop !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
-            {fieldErrors.desktop}
-          </p>
-        ) : null}
       </div>
 
       <Collapsible.Root>

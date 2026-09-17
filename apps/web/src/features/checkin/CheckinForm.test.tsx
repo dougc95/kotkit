@@ -246,6 +246,7 @@ describe('CheckinForm', () => {
     expect(desktopInput).toBeDisabled()
     expect(desktopInput).toHaveValue(20)
     expect(screen.getByText('Desktop: 20 min')).toBeInTheDocument()
+    expect(desktopInput).toHaveClass('border-b-signal')
   })
 
   it('422 feed_platform_conflict renders on the phone headline field and blocks Save', async () => {
@@ -261,6 +262,9 @@ describe('CheckinForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await screen.findByText('Clear this total or remove the detail rows below')
+    expect(screen.getByLabelText('Phone feed minutes')).toHaveAccessibleDescription(
+      'Clear this total or remove the detail rows below',
+    )
     expect(router.state.location.pathname).toBe(`/checkin/${DATE}`)
   })
 
