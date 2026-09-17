@@ -4,7 +4,7 @@ import type { CreateRevisionBodyValue } from '@attention-lab/shared'
 
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
-import { Button } from '../../ui/Button.js'
+import { Button, type ButtonVariant } from '../../ui/Button.js'
 
 /**
  * Settings' "Change practice duration" panel (task 8.9.5; design.md D33/D38;
@@ -108,7 +108,18 @@ function fieldErrorText(value: string | ReadonlyArray<string> | undefined): stri
   return undefined
 }
 
-export function ChangePracticeDuration() {
+export interface ChangePracticeDurationProps {
+  /**
+   * Demoted to 'secondary' when Settings.tsx composes this panel below
+   * Preferences, whose own Save stays the page's one primary action.
+   * Defaults to 'primary' so this panel keeps a primary Save when tested
+   * or reached standalone (design.md: "one primary per interactive
+   * surface").
+   */
+  readonly saveVariant?: ButtonVariant
+}
+
+export function ChangePracticeDuration({ saveVariant = 'primary' }: ChangePracticeDurationProps = {}) {
   const queryClient = useQueryClient()
   const current = useQuery({ queryKey: queryKeys.programs.current, queryFn: api.programs.current })
 
@@ -235,7 +246,7 @@ export function ChangePracticeDuration() {
   return (
     <section aria-label="Change practice duration">
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-[var(--color-text)]">Change practice duration</h2>
+        <h2 className="text-sm font-semibold text-ink">Change practice duration</h2>
 
         <DurationField
           value={practiceTargetSeconds}
@@ -267,7 +278,7 @@ export function ChangePracticeDuration() {
         </div>
 
         {banner !== null ? (
-          <p role="alert" className="text-sm">
+          <p role="alert" className="text-sm text-attention">
             {banner}
           </p>
         ) : null}
@@ -278,7 +289,7 @@ export function ChangePracticeDuration() {
           </p>
         ) : null}
 
-        <Button type="submit" disabled={!dirty || createRevision.isPending}>
+        <Button type="submit" variant={saveVariant} disabled={!dirty || createRevision.isPending}>
           Save
         </Button>
       </form>

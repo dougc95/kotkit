@@ -214,4 +214,12 @@ describe('ChangePracticeDuration', () => {
     expect(buttons[0]).toHaveTextContent('Save')
     expect(buttons[0]).toHaveAttribute('data-variant', 'primary')
   })
+
+  it('renders the demoted Save button when saveVariant is set to secondary', async () => {
+    respond('programs.current', activeProgramResponse())
+    renderWithProviders(<ChangePracticeDuration saveVariant="secondary" />)
+
+    const button = await screen.findByRole('button', { name: 'Save' })
+    expect(button).toHaveAttribute('data-variant', 'secondary')
+  })
 })

@@ -25,7 +25,7 @@ export function EditMaterialsLink({ programStatus }: EditMaterialsLinkProps) {
   return (
     <Link
       to="/setup/readiness"
-      className="text-sm font-medium text-[var(--color-primary)] underline underline-offset-2"
+      className="text-sm font-medium text-signal underline underline-offset-2"
     >
       Edit benchmark materials
     </Link>
