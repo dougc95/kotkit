@@ -19,6 +19,8 @@
  * and never coerces an unfinished row into a zero-value one (CLAUDE.md
  * "Unknown != zero").
  */
+import { useId } from 'react'
+
 import {
   FEED_DEVICES,
   FEED_PLATFORM_ALL,
@@ -36,7 +38,6 @@ import { Checkbox } from '../../ui/shadcn/checkbox.js'
 import { Input } from '../../ui/shadcn/input.js'
 import { Label } from '../../ui/shadcn/label.js'
 import { RadioGroup, RadioGroupItem } from '../../ui/shadcn/radio-group.js'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/shadcn/select.js'
 import { Textarea } from '../../ui/shadcn/textarea.js'
 
 // ---------------------------------------------------------------------------
@@ -227,7 +228,7 @@ function parseOptionalNonNegativeInteger(raw: string): number | null | undefined
   return parsed
 }
 
-/** Radix `Select`'s `onValueChange` delivers a plain string; narrow it before writing to the draft (mirrors ScenarioLoader's `isDemoScenarioName`). */
+/** A native `<select>`'s `event.target.value` is a plain string; narrow it before writing to the draft (mirrors ScenarioLoader's `isDemoScenarioName`). */
 function isFeedDevice(value: string): value is FeedDevice {
   return (FEED_DEVICES as readonly string[]).includes(value)
 }
@@ -247,6 +248,7 @@ interface FeedRowProps {
 
 function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
   const idBase = `feedrow-${index}`
+  const scopeLegendId = useId()
 
   function patch(next: Partial<FeedRowDraft>): void {
     onChange({ ...row, ...next })
@@ -265,25 +267,26 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
         </p>
       ) : null}
 
+      {/* Stays a native <select>, restyled on the new tokens, rather than the
+          Radix Select the rest of this row moved onto: e2e/checkin.spec.ts
+          drives it with Playwright's selectOption, which only targets a
+          native <select> (mirrors TimezoneSelect.tsx's own rationale). */}
       <div className="flex flex-col gap-1">
         <Label {...deviceField.labelProps}>Device</Label>
-        <Select
+        <select
+          {...deviceField.controlProps}
           value={row.device}
-          onValueChange={(value) => {
-            if (isFeedDevice(value)) patch({ device: value })
+          onChange={(event) => {
+            if (isFeedDevice(event.target.value)) patch({ device: event.target.value })
           }}
+          className="min-h-11 w-full max-w-40 rounded-md border border-rule bg-card px-3 py-2 text-sm text-ink"
         >
-          <SelectTrigger {...deviceField.controlProps} className="min-h-11 w-full max-w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {FEED_DEVICES.map((device) => (
-              <SelectItem key={device} value={device}>
-                {DEVICE_LABEL[device]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {FEED_DEVICES.map((device) => (
+            <option key={device} value={device}>
+              {DEVICE_LABEL[device]}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-col gap-1">
@@ -344,8 +347,11 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
       </div>
 
       <fieldset className="flex flex-col gap-1">
-        <legend className="text-sm font-medium text-ink">Measurement scope</legend>
+        <legend id={scopeLegendId} className="text-sm font-medium text-ink">
+          Measurement scope
+        </legend>
         <RadioGroup
+          aria-labelledby={scopeLegendId}
           value={row.measurementScope}
           onValueChange={(value) => {
             if (isMeasurementScope(value)) patch({ measurementScope: value })
@@ -354,13 +360,13 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
         >
           <div className="flex items-center gap-2">
             <RadioGroupItem value="feed" id={`${idBase}-scope-feed`} />
-            <Label htmlFor={`${idBase}-scope-feed`} className="py-2 text-sm text-ink">
+            <Label htmlFor={`${idBase}-scope-feed`} className="flex min-h-11 items-center text-sm font-normal text-ink">
               Feed only
             </Label>
           </div>
           <div className="flex items-center gap-2">
             <RadioGroupItem value="app_total" id={`${idBase}-scope-app`} />
-            <Label htmlFor={`${idBase}-scope-app`} className="py-2 text-sm text-ink">
+            <Label htmlFor={`${idBase}-scope-app`} className="flex min-h-11 items-center text-sm font-normal text-ink">
               Whole app
             </Label>
           </div>
@@ -373,7 +379,7 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
           checked={row.source === 'device_report'}
           onCheckedChange={(checked) => patch({ source: checked === true ? 'device_report' : 'estimate' })}
         />
-        <Label htmlFor={`${idBase}-device-report`} className="py-2 text-sm text-ink">
+        <Label htmlFor={`${idBase}-device-report`} className="flex min-h-11 items-center text-sm font-normal text-ink">
           From device report
         </Label>
       </div>
@@ -384,7 +390,7 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
           checked={row.plannedWindow === true}
           onCheckedChange={(checked) => patch({ plannedWindow: checked === true ? true : null })}
         />
-        <Label htmlFor={`${idBase}-planned-window`} className="py-2 text-sm text-ink">
+        <Label htmlFor={`${idBase}-planned-window`} className="flex min-h-11 items-center text-sm font-normal text-ink">
           Planned window
         </Label>
       </div>

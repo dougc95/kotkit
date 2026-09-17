@@ -8,23 +8,6 @@ import { renderWithProviders } from '../../test/renderWithProviders.js'
 import { CheckinForm } from './CheckinForm.js'
 import { PLATFORM_ALL_RESERVED_MESSAGE, STRESS_RANGE_MESSAGE, SUBSET_VIOLATION_MESSAGE } from './FeedRows.js'
 
-// Radix's Select positions its portalled listbox using pointer-capture and
-// scroll APIs jsdom 29.1.1 does not implement; stub them so opening the
-// Device select below does not throw. Guarded, matching src/test/setup.ts's
-// own style, in case a future jsdom ships real implementations.
-if (typeof Element.prototype.hasPointerCapture !== 'function') {
-  Element.prototype.hasPointerCapture = () => false
-}
-if (typeof Element.prototype.setPointerCapture !== 'function') {
-  Element.prototype.setPointerCapture = () => {}
-}
-if (typeof Element.prototype.releasePointerCapture !== 'function') {
-  Element.prototype.releasePointerCapture = () => {}
-}
-if (typeof Element.prototype.scrollIntoView !== 'function') {
-  Element.prototype.scrollIntoView = () => {}
-}
-
 /**
  * task 8.7.2's verify list, all 11 named cases. FeedRows/FeedTotals/
  * OptionalFields are controlled pieces of CheckinForm's own reducer (see
@@ -259,8 +242,7 @@ describe('FeedRows', () => {
     await user.type(within(group1).getByLabelText('Minutes'), '20')
 
     const group2 = await addRow(user, 2)
-    await user.click(within(group2).getByLabelText('Device'))
-    await user.click(await screen.findByRole('option', { name: 'Desktop' }))
+    await user.selectOptions(within(group2).getByLabelText('Device'), 'desktop')
     await user.type(within(group2).getByLabelText('Platform'), 'Chrome')
     await user.type(within(group2).getByLabelText('Minutes'), '20')
 
@@ -289,8 +271,7 @@ describe('FeedRows', () => {
     await openMoreDetail(user)
 
     const group = await addRow(user, 1)
-    await user.click(within(group).getByLabelText('Device'))
-    await user.click(await screen.findByRole('option', { name: 'Desktop' }))
+    await user.selectOptions(within(group).getByLabelText('Device'), 'desktop')
     await user.type(within(group).getByLabelText('Platform'), 'Chrome')
     await user.type(within(group).getByLabelText('Minutes'), '20')
 
@@ -339,5 +320,34 @@ describe('FeedRows', () => {
 
     expect(screen.getByText(/partial/i)).toBeInTheDocument()
     expect(document.body.textContent ?? '').not.toContain('·')
+  })
+
+  // Pins the contract fix round 1 restored: e2e/checkin.spec.ts drives this
+  // control with Playwright's `selectOption`, which only works on a native
+  // `<select>` — never convert this back to a Radix Select.
+  it('the Device control stays a native select for e2e/checkin.spec.ts to drive with selectOption', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    const group = await addRow(user, 1)
+    const deviceControl = within(group).getByLabelText('Device')
+    expect(deviceControl.tagName).toBe('SELECT')
+  })
+
+  it('each row renders its own named Measurement scope radiogroup', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    const group1 = await addRow(user, 1)
+    const group2 = await addRow(user, 2)
+
+    const radiogroup1 = within(group1).getByRole('radiogroup', { name: 'Measurement scope' })
+    const radiogroup2 = within(group2).getByRole('radiogroup', { name: 'Measurement scope' })
+
+    expect(radiogroup1).toBeInTheDocument()
+    expect(radiogroup2).toBeInTheDocument()
+    expect(radiogroup1).not.toBe(radiogroup2)
   })
 })
