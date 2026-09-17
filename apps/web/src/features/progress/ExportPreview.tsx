@@ -20,6 +20,8 @@ import { localDateAt } from '@attention-lab/shared'
 
 import { api } from '../../lib/api/client.js'
 import { Button } from '../../ui/Button.js'
+import { Alert, AlertDescription } from '../../ui/shadcn/alert.js'
+import { Skeleton } from '../../ui/shadcn/skeleton.js'
 import { FormatToggle } from './FormatToggle.js'
 import type { ExportFormat } from './FormatToggle.js'
 
@@ -71,24 +73,31 @@ export function ExportPreview({ programId }: ExportPreviewProps) {
 
       <FormatToggle value={format} onChange={setFormat} />
 
-      <p className="text-sm text-[var(--color-text-muted)]">Not-reported values are exported as empty cells.</p>
+      <p className="text-sm text-ink-muted">Not-reported values are exported as empty cells.</p>
 
       {exportQuery.isPending ? (
-        <div aria-busy="true">Loading export preview</div>
-      ) : exportQuery.isError || text === undefined ? (
-        <div>
-          <p>Export unavailable. Retry.</p>
-          <Button
-            onClick={() => {
-              void exportQuery.refetch()
-            }}
-          >
-            Retry
-          </Button>
+        <div aria-busy="true" className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-32 w-full" />
         </div>
+      ) : exportQuery.isError || text === undefined ? (
+        <Alert role="alert">
+          <AlertDescription className="flex items-center justify-between gap-3">
+            {/* U15a: an error message takes `text-attention` — never red
+                (`destructive`) and never plain neutral ink. */}
+            <span className="text-attention">Export unavailable. Retry.</span>
+            <Button
+              onClick={() => {
+                void exportQuery.refetch()
+              }}
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : (
         <>
-          <p data-testid="export-label-line" className="text-sm font-medium text-[var(--color-text)]">
+          <p data-testid="export-label-line" className="text-sm font-medium text-ink">
             {firstLine}
           </p>
           {/* See ExactValuesTable.tsx's identical comment: `tabIndex={0}` for
@@ -97,9 +106,14 @@ export function ExportPreview({ programId }: ExportPreviewProps) {
               already this section's own `aria-labelledby` name, and could
               collide the same way the table wrappers' did in practice). */}
           <div
-            className="overflow-x-auto rounded border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
+            className="overflow-x-auto rounded border border-rule bg-card p-3"
             tabIndex={0}
           >
+            {/* Deliberately NOT font-mono: mono is restricted to timer
+                digits, exact-values tables and comparison figures
+                (the rework spec §4, "and no others") — a raw CSV/Markdown text
+                dump is none of those three, however monospace-friendly it
+                looks. */}
             <pre data-testid="export-preview-text" className="whitespace-pre text-xs">
               {text}
             </pre>

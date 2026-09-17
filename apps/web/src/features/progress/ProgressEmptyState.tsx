@@ -6,22 +6,25 @@
  * zero-valued card is ever rendered here — there is nothing to measure yet,
  * which is a different state from "measured and zero" (CLAUDE.md: "Unknown
  * != zero").
+ *
+ * The Setup link uses `Button asChild` (the rework spec §6) rather than a
+ * hand-rolled `LINK_CLASSES`-style anchor — `asChild` renders the Radix
+ * Slot's CHILD element (the real `<Link>` -> `<a>`), never a `<button>`
+ * wrapping an anchor, so `getByRole('link', { name: 'Go to Setup' })` keeps
+ * resolving to a real anchor with a real `href`.
  */
 import { Link } from 'react-router'
 
+import { Button } from '../../ui/Button.js'
+
 export function ProgressEmptyState() {
   return (
-    <div>
+    <div className="flex flex-col gap-3">
       <h1 className="text-lg font-semibold">Progress</h1>
-      <p className="mt-2 text-[var(--color-text)]">
-        There is nothing to report yet. Set up your program to start your baseline.
-      </p>
-      <Link
-        to="/setup"
-        className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[var(--color-primary)] px-4 text-sm font-medium text-[var(--color-primary-text)] hover:brightness-95"
-      >
-        Go to setup
-      </Link>
+      <p className="text-ink">There is nothing to report yet. Set up your program to start your baseline.</p>
+      <Button asChild className="self-start">
+        <Link to="/setup">Go to setup</Link>
+      </Button>
     </div>
   )
 }

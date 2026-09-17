@@ -221,6 +221,11 @@ describe('Progress', () => {
 
     const setupLink = await screen.findByRole('link', { name: /setup/i })
     expect(setupLink).toHaveAttribute('href', '/setup')
+    // `Button asChild` must render the Radix Slot's CHILD element (the real
+    // `<a>`), never a `<button>` wrapping an anchor — the rework spec §12
+    // ("Open questions and risks") calls this the highest-risk single change.
+    expect(setupLink.tagName).toBe('A')
+    expect(setupLink.closest('button')).toBeNull()
     expect(screen.queryByText(/of 2/)).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })

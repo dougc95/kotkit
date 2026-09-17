@@ -25,6 +25,8 @@ import { api } from '../../lib/api/client.js'
 import { NotFoundError, ValidationError } from '../../lib/api/errors.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { Alert, AlertDescription } from '../../ui/shadcn/alert.js'
+import { Skeleton } from '../../ui/shadcn/skeleton.js'
 import { AttemptTable, type AttemptTableRow } from './AttemptTable.js'
 import { ComparabilityWarnings } from './ComparabilityWarnings.js'
 import { ComparisonFigures } from './ComparisonFigures.js'
@@ -66,30 +68,44 @@ function ReportSections({ programId }: ReportSectionsProps) {
   })
 
   if (reportQuery.isPending) {
-    return <div aria-busy="true">Loading report</div>
+    return (
+      <div aria-busy="true" className="flex flex-col gap-3">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    )
   }
 
   if (reportQuery.isError || reportQuery.data === undefined) {
-    // 422 realm mixing: the fixed server message, no partial table (identity-realm:
-    // "Realms are never mixed in a result" — a mixed report is never rendered half-built).
+    // 422 realm mixing: the fixed server message, no partial table
+    // (identity-realm: "Realms are never mixed in a result" — a mixed
+    // report is never rendered half-built). Neutral surface, never
+    // `variant="destructive"`: the rework spec §3 scopes the destructive token
+    // strictly to destructive ACTIONS. The message itself takes
+    // `text-attention` (U15a: an error message is never plain neutral ink,
+    // never red) on the same default-variant `Alert` as the retry banner
+    // just below.
     if (reportQuery.error instanceof ValidationError) {
       return (
-        <div role="alert">
-          <p>{reportQuery.error.message}</p>
-        </div>
+        <Alert role="alert">
+          <AlertDescription className="text-attention">{reportQuery.error.message}</AlertDescription>
+        </Alert>
       )
     }
     return (
-      <div>
-        <p>Report unavailable. Retry.</p>
-        <Button
-          onClick={() => {
-            void reportQuery.refetch()
-          }}
-        >
-          Retry
-        </Button>
-      </div>
+      <Alert role="alert">
+        <AlertDescription className="flex items-center justify-between gap-3">
+          <span className="text-attention">Report unavailable. Retry.</span>
+          <Button
+            onClick={() => {
+              void reportQuery.refetch()
+            }}
+          >
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
     )
   }
 
@@ -97,7 +113,7 @@ function ReportSections({ programId }: ReportSectionsProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-sm text-[var(--color-text-muted)]">{formatRealm(report.realm)}</p>
+      <p className="text-sm text-ink-muted">{formatRealm(report.realm)}</p>
 
       <SamplesLine samples={report.samples} />
 
@@ -122,7 +138,12 @@ export function Progress() {
   })
 
   if (currentQuery.isPending) {
-    return <div aria-busy="true">Loading</div>
+    return (
+      <div aria-busy="true" className="flex flex-col gap-3">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    )
   }
 
   if (currentQuery.isError || currentQuery.data === undefined) {
@@ -130,16 +151,18 @@ export function Progress() {
       return <ProgressEmptyState />
     }
     return (
-      <div>
-        <p>Report unavailable. Retry.</p>
-        <Button
-          onClick={() => {
-            void currentQuery.refetch()
-          }}
-        >
-          Retry
-        </Button>
-      </div>
+      <Alert role="alert">
+        <AlertDescription className="flex items-center justify-between gap-3">
+          <span className="text-attention">Report unavailable. Retry.</span>
+          <Button
+            onClick={() => {
+              void currentQuery.refetch()
+            }}
+          >
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
     )
   }
 
