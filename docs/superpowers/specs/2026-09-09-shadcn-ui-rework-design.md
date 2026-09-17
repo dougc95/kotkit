@@ -112,7 +112,10 @@ connotation this direction is built on.
 **Mono is restricted to three contexts and no others:** timer digits, the dense data tables
 (`AttemptTable` and `ExactValuesTable` alike — digits must not shift in either), and tabular figures
 in comparisons. Never for labels, metadata, status words, or prose containing a number, including an
-inline preview line such as `First switch, preview: 6:10 (event)`.
+inline preview line such as `First switch, preview: 6:10 (event)`. Inside a dense table the rule
+still holds cell by cell: a `Not reported` or `Unknown` cell is a status word and stays sans.
+`<Reported>` enforces this rather than leaving it to each call site — `mono` takes effect only on a
+recorded value (U18).
 
 Two drafting rounds both misread this rule, in opposite directions — four screen designs applied
 mono to prose, and a plan reviewer read "the exact-values tables" as excluding `AttemptTable`
@@ -157,7 +160,7 @@ strings already in the codebase, and they are not all the same kind of thing.
 | Tier | Treatment | Strings |
 |---|---|---|
 | **Recorded** | ink, tabular figures | any number *including* an explicit `0`; and **`20+, capped`** |
-| **Not a value** | `ink-muted` on a thin ruled underline — the blank line in a paper ledger | `Not reported`, `not yet reported`, `Not finalized`, `—`, `Percentage: not applicable` |
+| **Not a value** | `ink-muted` on a thin ruled underline — the blank line in a paper ledger | `Not reported`, `not yet reported`, `Not finalized`, `—`, `Percentage: not applicable`, `No intended output recorded` (U19) |
 | **Uncertain** | an `attention` amber mark | `Unknown`, `Timing uncertain` |
 
 The critical boundary is between the first two rows. **`20+, capped` is a measurement, not an
@@ -446,8 +449,19 @@ Every wave is Sonnet-driven, as is the survey and design work that produced this
   visually broken with everything green. The Wave 2 visual pass is manual and therefore fallible.
 - **`Button asChild` is the highest-risk single change**, because it touches every call site and can
   fail by producing invalid nested-interactive markup that tests may not catch in every position.
-- **Font loading is new to this app.** Self-hosted `@fontsource` avoids a network dependency, but adds
-  bundle weight that has not been measured.
+- **Font loading is new to this app.** Self-hosted `@fontsource` avoids a network dependency, and the
+  weight it adds is now measured (Task 3): CSS +6.06 kB raw / +0.91 kB gzip, JS unchanged; 34 font
+  files, about 417.5 kB on disk across every Unicode subset, of which an English-language browser
+  downloads about 61.5 kB (three latin woff2 files), because `@fontsource` gates each subset behind
+  `unicode-range`.
+- **A Tailwind utility beats the global focus rule whatever its specificity.** Tailwind 4 declares
+  `@layer theme, base, components, utilities`, the global `:focus-visible` outline lives in
+  `@layer base`, and `outline-none` / `outline-hidden` are utilities, so one stray suppressor silently
+  removes a control's only focus indicator. Task 4 shipped eight such components before its review
+  caught it (U17). `conventions.test.ts` now guards `src/ui/shadcn/`, but nothing guards the rest of
+  `src/`: `PreferenceSwitch.tsx`, `ScenarioLoader.tsx` and `AgentPanel.tsx` still carry `outline-none`
+  from before this change and are converted in Wave 1. The guard's patterns also miss arbitrary
+  variants such as `has-[:focus-visible]:` and the `outline-0` utility.
 
 ## 13. Decision log
 
@@ -470,3 +484,7 @@ Every wave is Sonnet-driven, as is the survey and design work that produced this
 | U15 | 2026-09-09 | An error never takes the destructive treatment. Red marks a thing about to be destroyed and nothing else. Clarifies §3 after a plan draft used `variant="destructive"` on a 422 banner. |
 | U15a | 2026-09-09 | Correction to U15 as first written: errors take `attention`, not neutral ink. U15's first wording banned amber alongside red, which contradicted the token's own stated "needs-you" job. Amber marks an unsure *value* and a *message* you must act on; ink is for recorded and informational content. |
 | U16 | 2026-09-09 | Tests never assert on shadcn internals (`data-slot`, generated class names, primitive DOM shape). They assert visible text, role, accessible name, or the `data-tier` attribute `<Reported>` emits. |
+| U17 | 2026-09-16 | Stripping focus rings also strips every `outline-none` / `outline-hidden` and every other `focus*:` variant from the generated components, because a utilities-layer outline suppressor cancels the base-layer global rule. `SelectItem` keeps a highlight on `data-[highlighted]`, the listbox's active-option state. Found by the Task 4 review. |
+| U18 | 2026-09-17 | `<Reported mono>` takes effect only on a recorded value; absent and uncertain values always render sans, even under an ancestor's `font-mono`. Makes §4's "never for status words" hold inside the dense tables, which is where those cells live. Found by the Task 6 review. |
+| U19 | 2026-09-17 | `No intended output recorded` joins the not-a-value tier, an eighth string. It is the null branch of a field the user never filled in, and the Focus header drew it in full ink. `None recorded` is not added, because Wave 1 replaces it with `Not reported`. |
+| U20 | 2026-09-17 | The taxonomy predicate lives in `src/ui/valueTier.ts`. `reported.ts` beside `Reported.tsx` differs only in case, and on a case-insensitive filesystem `./Reported.js` resolves to the wrong file (TS1149, TS2305). |

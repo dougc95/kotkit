@@ -24,7 +24,11 @@ Every task's requirements implicitly include this section.
 - **No all-caps eyebrow labels, no middle-dot meta strings, no arrow appended to button or link text, no single-word accenting in a headline.**
 - **One expressive motion beat:** a value crossing pending → recorded. Skeletons do not pulse. Nothing celebratory at `0:00`.
 - **One `data-variant="primary"` per interactive surface.** A modal is its own surface.
-- **The global `:focus-visible` rule in `index.css` is the only focus indicator.** Strip `focus-visible:*` classes from every generated shadcn component. No component-level focus affordance, including hover-and-focus underlines.
+- **The global `:focus-visible` rule in `index.css` is the only focus indicator.** Strip `focus-visible:*` classes from every generated shadcn component. No component-level focus affordance, including hover-and-focus underlines. That covers every other `focus*:` variant too, and every `outline-none` / `outline-hidden`: Tailwind emits utilities in a later cascade layer than the `@layer base` rule, so an outline suppressor cancels the global ring whatever its specificity (spec U17). `src/ui/shadcn/conventions.test.ts` fails on all three inside `src/ui/shadcn/`; nothing guards the rest of `src/`, so do not add one there either.
+- **A new test file that renders more than once registers `afterEach(cleanup)`.** `apps/web/vitest.config.ts` sets no `globals`, so React Testing Library's auto-cleanup never registers, and a second `render` in the same file leaves the first in the document. Import `cleanup` from `@testing-library/react` and `afterEach` from `vitest`, as `src/ui/Button.test.tsx` does. Test code in this plan that omits it predates this line (added at the Wave 0 gate).
+- **`<Button asChild>` call sites.** Put any class override on `Button`, never on the child: Radix Slot joins the child's own `className` with a plain string join, so `cn()`'s caller-wins merge does not reach it. Never combine `asChild` with `disabled`: `disabled` is meaningless on an anchor and the `disabled:*` utilities cannot match it. Use `aria-disabled` and a guarded handler.
+- **`<Reported>` contracts.** `children` is one string, so convert a number with `String(...)`. `mono` takes effect only on a recorded value; absent and uncertain values always render in the sans face (spec U18). Tests assert `data-tier`, never a tier's classes, because a caller `className` can override those.
+- **`useField` contracts.** `name` is a whitespace-free token, because it is interpolated into a DOM id. Render the description or error row if and only if `descriptionProps` / `errorProps` is present, and pass the hook the same string you render. `required` emits `aria-required` only: keep the native `required` attribute wherever a form relies on it today (`DisruptionField.tsx`, `Ready.tsx`, `Scoring.tsx`).
 - **Node 22.9+**, npm workspaces, all commands run from the repo root.
 
 ### The preserved contract — never change these
@@ -471,7 +475,9 @@ If the CLI reports it cannot find configuration, confirm `components.json` from 
 
 - [ ] **Step 4: Strip every `focus-visible:` utility**
 
-Each generated component carries a cluster like `focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]`. Remove those utilities and leave the rest of each class string untouched. Do not replace them with anything — the global rule in `index.css` already covers every interactive element.
+Each generated component carries a cluster like `focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]`. Remove those utilities, every other `focus*:` variant, and every `outline-none` / `outline-hidden`; leave the rest of each class string untouched. Do not replace them with anything — the global rule in `index.css` already covers every interactive element. The one exception is `SelectItem`: its `focus:bg-accent focus:text-accent-foreground` becomes `data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground`, which is the listbox's active-option state rather than a focus ring, and matches the app's existing Radix listbox items.
+
+**Corrected 2026-09-17, after the Task 4 review.** As first written this step stripped only `focus-visible:*` and said to leave everything else untouched. shadcn pairs an unconditional `outline-none` with the ring it draws instead, and Tailwind 4 declares `@layer theme, base, components, utilities`, so the surviving `outline-none` (utilities layer) cancelled the global `:focus-visible` outline (base layer) on eight components, which then had no keyboard focus indicator at all. The `sed` below is also unsafe as written: on `dark:focus-visible:ring-destructive/40` it leaves an orphan `dark:`. Use a pattern that consumes the variant chain — `/(?:[a-zA-Z-]+:)*focus-visible:[a-zA-Z0-9:/[\]._-]+ ?/g` — and then check every class string for leading, trailing or doubled spaces. The convention test in Step 1 gained two per-file assertions for this, `/outline-(?:none|hidden)\b/` and `/\bfocus(?:-[a-z]+)*:/`; `apps/web/src/ui/shadcn/conventions.test.ts` is the as-built file. The shadcn CLI also wrote `import { cn } from "cn"` and added an unpinned `cn` dependency; both were removed by hand and will recur on any regeneration.
 
 ```bash
 cd apps/web/src/ui/shadcn
@@ -635,6 +641,8 @@ export function Button({ variant = 'primary', type, asChild = false, className, 
 }
 ```
 
+**As built.** The three doc comments the existing file carried — on `variant`, on `ref` (why Radix `asChild` triggers need it, with the `e2e/a11y/keyboard-review.spec.ts` evidence) and above the function — were kept; the block above omits them for brevity only, and the function comment now says `type="button"` is applied only when a real `<button>` renders. `Button.test.tsx` registers `afterEach(cleanup)` (see Global Constraints).
+
 - [ ] **Step 4: Run the full Button suite**
 
 Run: `npm run test -w @attention-lab/web -- Button`
@@ -754,7 +762,14 @@ Matching is against an explicit closed set, never a substring or a heuristic. `2
  */
 export type ValueTier = 'recorded' | 'absent' | 'uncertain'
 
-const ABSENT = new Set(['Not reported', 'not yet reported', 'Not finalized', '—', 'Percentage: not applicable'])
+const ABSENT = new Set([
+  'Not reported',
+  'not yet reported',
+  'Not finalized',
+  '—',
+  'Percentage: not applicable',
+  'No intended output recorded',
+])
 const UNCERTAIN = new Set(['Unknown', 'Timing uncertain'])
 
 export function absenceTier(text: string): ValueTier {
@@ -779,15 +794,19 @@ import { absenceTier, type ValueTier } from './valueTier.js'
 
 export interface ReportedProps {
   readonly children: string
-  /** Tabular figures. Only for the three contexts mono is permitted in. */
+  /**
+   * Tabular figures, for the three contexts mono is permitted in. Applied only
+   * to a recorded value: a status word such as 'Not reported' or 'Unknown'
+   * stays in the sans face, even inside a table that sets mono on an ancestor.
+   */
   readonly mono?: boolean
   readonly className?: string
 }
 
 const TIER_CLASS: Record<ValueTier, string> = {
   recorded: 'text-ink',
-  absent: 'text-ink-muted border-b border-dashed border-rule',
-  uncertain: 'text-attention',
+  absent: 'font-sans text-ink-muted border-b border-dashed border-rule',
+  uncertain: 'font-sans text-attention',
 }
 
 /**
@@ -800,7 +819,7 @@ export function Reported({ children, mono = false, className }: ReportedProps): 
   return (
     <span
       data-tier={tier}
-      className={cn(TIER_CLASS[tier], mono ? 'font-mono tabular-nums' : undefined, className)}
+      className={cn(TIER_CLASS[tier], mono && tier === 'recorded' ? 'font-mono tabular-nums' : undefined, className)}
     >
       {children}
     </span>
@@ -812,6 +831,8 @@ export function Reported({ children, mono = false, className }: ReportedProps): 
 
 Run: `npm run test -w @attention-lab/web -- Reported`
 Expected: PASS, all seven cases.
+
+**As built (Task 6 fix round, 2026-09-17).** The code blocks above are the as-built code, which differs from the first draft in two ways the Task 6 review found. `mono` takes effect only on a recorded value, and the absent and uncertain tiers always carry `font-sans`, so a `Not reported` cell stays sans even inside a table that sets `font-mono` on an ancestor (spec U18). `ABSENT` gained an eighth string, `No intended output recorded`, the Focus header's missing-output placeholder (spec U19; Task 34 wraps it). `Reported.test.tsx` registers `afterEach(cleanup)` and carries five further cases for those two rules, twelve in all.
 
 - [ ] **Step 6: Commit**
 
@@ -6760,7 +6781,7 @@ EOF
 - Modify: `apps/web/src/features/focus/Focus.test.tsx`
 
 **Interfaces:**
-- Consumes: nothing new from the frozen list — this task is a pure token/size change. (No `Reported`/`useField`/shadcn primitive touches any file in this task.)
+- Consumes: `Reported` (`../../ui/Reported.js`) for exactly one line, `SessionHeader`'s missing-intended-output placeholder (amended 2026-09-17, see Step 3). Otherwise this task is a pure token/size change: no `useField` and no shadcn primitive touches any file in it.
 - Produces: `TimerDisplayProps.tone?: 'ink' | 'signal'` — an optional prop later tasks (Benchmark Running, a different unit) may pass `'signal'` to render the live-benchmark petrol countdown; every existing caller (`Recall.tsx` line 351, `Focus.tsx` line 270, and `apps/web/src/features/benchmark/Running.tsx` line 176) omits `tone` entirely and so keeps the default `'ink'`, visually unchanged by this addition. `Running.tsx` is the one of the three a later benchmark-unit task will pass `tone="signal"` from — out of scope here since `src/features/benchmark/` is a different Wave-1 unit's file ownership.
 
 `SyncStatus.tsx` needs **no code change** in this task: it already contains zero `var(--color-*)` references (confirmed by inspection — its only styling is `flex flex-wrap items-center gap-2 text-sm` plus the shared `Button`). The "quiet utility strip separated only by hairlines" requirement is carried entirely by Focus.tsx's own wrapping `<div>`s, not by anything inside `SyncStatus.tsx`.
@@ -6804,7 +6825,18 @@ Add to `Focus.test.tsx`, inside `describe('Focus', ...)`, right after the existi
     const hairlines = container.querySelectorAll('.border-t.border-rule')
     expect(hairlines).toHaveLength(2)
   })
+
+  it('a session with no intended output draws the placeholder in the absent tier, never as ink', async () => {
+    const session = makeSession({ id: 'session-no-output', intendedOutput: null })
+    respond('sessions.get', session)
+
+    renderFocus(session.id)
+    const placeholder = await screen.findByText('No intended output recorded')
+    expect(placeholder).toHaveAttribute('data-tier', 'absent')
+  })
 ```
+
+The second case was added on 2026-09-17 with the Step 3 amendment below. In Step 2 it fails on `toHaveAttribute('data-tier', 'absent')`, because the `<p>` that matches the text carries no `data-tier` until the placeholder is wrapped.
 
 - [ ] **Step 2: Run it and watch it fail**
 
@@ -6887,7 +6919,11 @@ export function TimerDisplay({ remainingSeconds, hidden: hiddenProp, onToggleHid
 }
 ```
 
-In `Focus.tsx`, convert `SessionHeader`'s tokens and restructure the running-session body into two hairline-separated groups below the countdown and the one primary logging button. Before:
+In `Focus.tsx`, convert `SessionHeader`'s tokens and restructure the running-session body into two hairline-separated groups below the countdown and the one primary logging button.
+
+**Amended 2026-09-17 (Task 6 review, spec U19).** The missing-output placeholder is wrapped in `<Reported>` so it draws in the absent tier instead of full ink: it is the null branch of a field the user never filled in, and `'No intended output recorded'` is in `valueTier.ts`'s `ABSENT` set for exactly this line. Add `import { Reported } from '../../ui/Reported.js'` to `Focus.tsx`. The string itself is unchanged, so every existing text assertion still passes.
+
+Before:
 
 ```tsx
 export function SessionHeader({ intendedOutput, targetSeconds }: SessionHeaderProps) {
@@ -6910,7 +6946,9 @@ export function SessionHeader({ intendedOutput, targetSeconds }: SessionHeaderPr
   return (
     <header className="space-y-1">
       <h1 className="text-lg font-semibold text-ink">Practice block</h1>
-      <p className="text-sm text-ink">{intendedOutput ?? 'No intended output recorded'}</p>
+      <p className="text-sm text-ink">
+        {intendedOutput ?? <Reported>No intended output recorded</Reported>}
+      </p>
       <p className="text-sm text-ink-muted">{`Target: ${targetMinutes} min`}</p>
     </header>
   )
