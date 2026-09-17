@@ -91,11 +91,11 @@ export function AttemptTable({ attempts }: AttemptTableProps) {
         <TableHeader>
           <TableRow className="border-b border-rule text-ink-muted">
             {COLUMN_HEADERS.map((header) => (
-              <TableHead key={header} scope="col" className="px-2 py-2 font-medium">
+              <TableHead key={header} scope="col" className="px-2 py-2 font-medium whitespace-normal">
                 {header}
               </TableHead>
             ))}
-            <TableHead scope="col" className="px-2 py-2">
+            <TableHead scope="col" className="px-2 py-2 whitespace-normal">
               <span className="sr-only">Actions</span>
             </TableHead>
           </TableRow>
@@ -110,7 +110,7 @@ export function AttemptTable({ attempts }: AttemptTableProps) {
               <TableRow key={attempt.attemptId} className="border-b border-rule align-top">
                 <TableCell className="px-2 py-2 align-top">{formatPhase(attempt.phase)}</TableCell>
                 <TableCell className="px-2 py-2 align-top">{attempt.label}</TableCell>
-                <TableCell className="px-2 py-2 align-top">{attempt.localDate}</TableCell>
+                <TableCell className="px-2 py-2 align-top font-mono tabular-nums">{attempt.localDate}</TableCell>
                 <TableCell className="px-2 py-2 align-top">{formatTimeSource(attempt.timeSource)}</TableCell>
                 <TableCell className="px-2 py-2 align-top" data-testid={`status-${attempt.attemptId}`}>
                   {formatLifecycle(attempt.lifecycle)}

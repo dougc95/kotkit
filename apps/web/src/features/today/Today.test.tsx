@@ -356,6 +356,26 @@ describe('Today', () => {
     expect(track.querySelectorAll('[data-position="ahead"]')).toHaveLength(0)
   })
 
+  it('day position track sits after the Next action region and before Practice blocks (spec §8 reading order: next action -> day position -> block status -> the log)', async () => {
+    respond('programs.current', currentFixture({ kind: 'progress' }))
+    respond('programs.today', todayFixture({ kind: 'progress' }, { day: 9 }))
+
+    mountToday()
+
+    await screen.findByRole('heading', { name: 'Day 9 of 14' })
+
+    const track = screen.getByTestId('day-position-track')
+    const nextActionRegion = screen.getByRole('region', { name: 'Next action' })
+    const practiceBlocksRegion = screen.getByRole('region', { name: 'Practice blocks' })
+
+    expect(
+      nextActionRegion.compareDocumentPosition(track) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(
+      track.compareDocumentPosition(practiceBlocksRegion) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+  })
+
   it('nav exposes four destinations Today/Progress/Research/Settings reachable by Tab', async () => {
     respond('me.get', ME_LOCAL_DEMO)
     respond('programs.current', currentFixture({ kind: 'benchmark', slotId: 'slot-baseline-a' }))

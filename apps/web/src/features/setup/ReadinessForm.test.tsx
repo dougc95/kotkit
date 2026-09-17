@@ -301,7 +301,7 @@ describe('ReadinessForm', () => {
 
     const legend = group.querySelector('legend')
     expect(legend).not.toBeNull()
-    expect(legend?.className).toContain('group-first:pt-0')
+    expect(legend?.className).toContain('group-first/slot:pt-0')
   })
 
   it('server 409 frozen renders the same explanation and keeps the form', async () => {

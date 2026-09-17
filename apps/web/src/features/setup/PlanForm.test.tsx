@@ -230,6 +230,31 @@ describe('PlanForm', () => {
     expect(screen.queryByText('Not reported')).not.toBeInTheDocument()
   })
 
+  it('previews 007 honestly as 7 min/day, not the raw string the form would never actually send', async () => {
+    mount()
+
+    const feedInput = screen.getByLabelText('Current daily feed time (estimate)')
+    fireEvent.change(feedInput, { target: { value: '007' } })
+
+    const recorded = await screen.findByText('7 min/day')
+    expect(recorded).toHaveAttribute('data-tier', 'recorded')
+    expect(screen.queryByText('007 min/day')).not.toBeInTheDocument()
+  })
+
+  it('previews nothing for -5 (validate() rejects it, so no tier is a truthful preview of it)', async () => {
+    mount()
+
+    const feedInput = screen.getByLabelText('Current daily feed time (estimate)')
+    fireEvent.change(feedInput, { target: { value: '-5' } })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Not reported')).not.toBeInTheDocument()
+    })
+    const wrapper = feedInput.closest('div')
+    expect(wrapper).not.toBeNull()
+    expect(wrapper!.querySelector('[data-tier]')).toBeNull()
+  })
+
   // task-21-amendment.md's replacement test list (supersedes the brief's
   // Step 1/Step 2, which withdrew the Timezone Select conversion).
 

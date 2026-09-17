@@ -354,6 +354,27 @@ describe('Progress', () => {
     expect(sCell.className).toContain('align-top')
   })
 
+  it('column headers can wrap on a narrow screen, not forced onto one unbreakable line', async () => {
+    const attempt = makeAttempt({ attemptId: 'attempt-header-wrap', label: 'A' })
+    mount(makeReport({ attempts: [attempt] }))
+
+    const header = await screen.findByRole('columnheader', { name: 'Exclusion reasons' })
+    expect(header.className).toContain('whitespace-normal')
+
+    const actionsHeader = screen.getByRole('columnheader', { name: 'Actions' })
+    expect(actionsHeader.className).toContain('whitespace-normal')
+  })
+
+  it('the Date cell renders the local date in the mono face with tabular figures, matching the app\'s other dense tables', async () => {
+    const attempt = makeAttempt({ attemptId: 'attempt-date-mono', label: 'A', localDate: '2026-09-06' })
+    mount(makeReport({ attempts: [attempt] }))
+
+    const row = (await screen.findByText('2026-09-06')).closest('td')
+    expect(row).not.toBeNull()
+    expect(row!.className).toContain('font-mono')
+    expect(row!.className).toContain('tabular-nums')
+  })
+
   it('GET /programs/current failure renders through the shared ErrorState: role alert, message unchanged, exactly one Retry (guard: already an Alert)', async () => {
     mockApi.programs.current.mockRejectedValue(new Error('network exploded'))
 

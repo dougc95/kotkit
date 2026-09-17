@@ -162,8 +162,6 @@ export function Today() {
         <h1 className="text-lg font-semibold text-ink">{`Day ${today.day} of 14`}</h1>
       </header>
 
-      <DayPositionTrack day={today.day} />
-
       <section aria-label="Next action" className="flex flex-col gap-3">
         {activeQuery.data ? (
           <ActiveSessionCard session={activeQuery.data} />
@@ -176,6 +174,8 @@ export function Today() {
           />
         )}
       </section>
+
+      <DayPositionTrack day={today.day} />
 
       {current.revision !== null ? (
         <SuggestionBanner

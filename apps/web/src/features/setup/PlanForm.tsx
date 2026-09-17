@@ -225,11 +225,23 @@ function validate(
 
 /** "Unknown is not zero" made visible at the point of entry: a blank field
  * previews as the same `Not reported` string `absenceTier` recognizes as
- * the "not a value" tier; any typed number, including `0`, is a measurement
- * and previews in the `recorded` tier. */
-function feedEstimatePreviewText(rawValue: string): string {
+ * the "not a value" tier; a value matching what `validate()` accepts
+ * (`/^\d+$/`) previews as the number it will actually send — `Number(...)`,
+ * not the raw string, so `007` previews `7 min/day` rather than repeating
+ * its own leading zero — and `0` previews `0 min/day` because an explicit
+ * zero is a measurement, never coalesced away. Anything `validate()` would
+ * reject (`-5`, `1.5`, non-digits) gets no preview at all: `null` means
+ * render nothing, rather than showing a tier for a value the form will
+ * never send. */
+function feedEstimatePreviewText(rawValue: string): string | null {
   const trimmed = rawValue.trim()
-  return trimmed === '' ? 'Not reported' : `${trimmed} min/day`
+  if (trimmed === '') {
+    return 'Not reported'
+  }
+  if (/^\d+$/.test(trimmed)) {
+    return `${Number(trimmed)} min/day`
+  }
+  return null
 }
 
 export function PlanForm() {
@@ -340,6 +352,7 @@ export function PlanForm() {
   }
 
   const isPending = createProgram.isPending
+  const feedEstimatePreview = feedEstimatePreviewText(feedEstimateMinutes)
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex max-w-md flex-col gap-6">
@@ -443,7 +456,9 @@ export function PlanForm() {
             leave blank if you do not know
           </p>
         ) : null}
-        <Reported className="text-sm">{feedEstimatePreviewText(feedEstimateMinutes)}</Reported>
+        {feedEstimatePreview !== null ? (
+          <Reported className="text-sm">{feedEstimatePreview}</Reported>
+        ) : null}
         {feedField.errorProps !== undefined ? (
           <p {...feedField.errorProps} className="text-sm text-attention">
             {fieldErrors.feedEstimateMinutes}

@@ -260,8 +260,8 @@ export function SlotRow({ slot, frozen, value, onChange }: SlotRowProps) {
   const plannedLocalTimeField = useField({ name: `${idBase}-plannedLocalTime` })
 
   return (
-    <fieldset disabled={frozen} data-slot-key={slot.key} className="group pb-6">
-      <legend className="pt-6 pb-3 group-first:pt-0 text-base font-semibold">{slot.title}</legend>
+    <fieldset disabled={frozen} data-slot-key={slot.key} className="group/slot pb-6">
+      <legend className="pt-6 pb-3 group-first/slot:pt-0 text-base font-semibold">{slot.title}</legend>
 
       <div className="grid gap-3">
         <div className="flex flex-col gap-1">
