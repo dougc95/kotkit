@@ -1,5 +1,5 @@
 import { cleanup, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AgentPlanResponseValue, SessionResponseValue } from '@attention-lab/shared'
 
 // Imported first (before anything that transitively reaches the real
@@ -136,34 +136,85 @@ describe('AgentPanel', () => {
   })
 
   it('Save sends PUT with expectedVersion and remaining keeps deriving from the clock', async () => {
-    const session = makeSession({ id: 'focus-session', version: 3, targetSeconds: 900, agentPlan: null })
+    // Loads already 300 s into the session (`startedAt` stays the fixture's
+    // own default '2026-09-08T09:00:00.000Z'; `serverNow` is 5 minutes past
+    // it) so the probe's first render already proves a real derivation
+    // rather than reading the untouched `targetSeconds` back unchanged.
+    // `timing` is set to match so the fixture is not self-contradictory —
+    // `useRemaining`/`useSessionClock` derive purely from
+    // startedAt/targetSeconds/pausedSeconds/currentPauseStartedAt/serverNow
+    // (remaining.ts) and never read this field.
+    const session = makeSession({
+      id: 'focus-session',
+      version: 3,
+      targetSeconds: 900,
+      agentPlan: null,
+      serverNow: '2026-09-08T09:05:00.000Z',
+      timing: { elapsedSeconds: 300, remainingSeconds: 600, deadlineReached: false, isPaused: false },
+    })
     respond('sessions.get', session)
     respond(
       'sessions.putAgentPlan',
       makePlan({ workstream: 'Draft PR review', reviewCheckpoint: 'end_of_block', version: 1 }),
     )
 
-    const { user } = renderWithProviders(<SessionHarness sessionId={session.id} />)
+    // Drives the monotonic clock instead of racing it: `useSessionClock`
+    // anchors on `performance.now()` at load (useSessionClock.ts:98) and
+    // every re-render re-derives whole seconds from it (remaining.ts:89), so
+    // real wall-clock time passing while this test runs must never change
+    // what `remaining` reads. Only `performance.now` is controlled — real
+    // timers stay in effect for `user-event`, `waitFor` and the clock's own
+    // `setInterval` tick.
+    let monotonicMs = 1_000
+    const nowSpy = vi.spyOn(performance, 'now').mockImplementation(() => monotonicMs)
 
-    const before = await screen.findByTestId('remaining')
-    const beforeText = before.textContent
+    try {
+      const { user } = renderWithProviders(<SessionHarness sessionId={session.id} />)
 
-    await openPanel(user)
-    await user.type(screen.getByLabelText('Workstream'), 'Draft PR review')
-    await user.click(screen.getByRole('button', { name: 'Save plan' }))
+      // Frozen monotonic clock + a `serverNow` already 300 s past
+      // `startedAt`: the anchor captured at load derives 600 immediately,
+      // no wait needed.
+      const before = await screen.findByTestId('remaining')
+      expect(before).toHaveTextContent('600')
 
-    await waitFor(() =>
-      expect(mockApi.sessions.putAgentPlan).toHaveBeenCalledWith(session.id, {
-        expectedVersion: 0,
-        workstream: 'Draft PR review',
-        waitingTask: '',
-        reviewCheckpoint: 'end_of_block',
-        resumeNote: '',
-      }),
-    )
+      await openPanel(user)
+      await user.type(screen.getByLabelText('Workstream'), 'Draft PR review')
 
-    // Unaffected by the plan save: same D5 derivation, no reset, no gap.
-    expect(screen.getByTestId('remaining')).toHaveTextContent(beforeText ?? '')
+      // Advance the controlled clock by 2 more minutes right before saving.
+      // The save's `onSuccess` only invalidates `['sessions', id]`
+      // (AgentPanel.tsx:283); the refetch resolves to the SAME `serverNow`,
+      // so `useSessionClock` does not re-anchor (it only does that when
+      // `input.serverNowMs` changes, useSessionClock.ts:96-99) — nothing
+      // about the save itself forces the probe to re-render.
+      monotonicMs += 120_000
+      await user.click(screen.getByRole('button', { name: 'Save plan' }))
+
+      await waitFor(() =>
+        expect(mockApi.sessions.putAgentPlan).toHaveBeenCalledWith(session.id, {
+          expectedVersion: 0,
+          workstream: 'Draft PR review',
+          waitingTask: '',
+          reviewCheckpoint: 'end_of_block',
+          resumeNote: '',
+        }),
+      )
+
+      // After the save, the ONLY thing left that can move the probe is the
+      // hook's own real 1000 ms interval tick (useSessionClock.ts:105-109) —
+      // the invalidate/refetch above never does. Testing-library's default
+      // `waitFor` bound is also 1000 ms, which would race that tick
+      // (confirmed empirically: it loses, deterministically, even on an
+      // idle machine), so this bound is explicit and generous instead of
+      // left at the default. A save that reset the anchor would read 600
+      // again (no advance applied yet at that anchor); a save that dropped
+      // the derivation entirely would read something other than a clean
+      // 120 s step. Reading 480 (600 - 120) proves the same anchor from
+      // load kept deriving straight through the save, with no reset and no
+      // gap.
+      await waitFor(() => expect(screen.getByTestId('remaining')).toHaveTextContent('480'), { timeout: 3000 })
+    } finally {
+      nowSpy.mockRestore()
+    }
   })
 
   it('409 stale keeps the first values, shows the notice and offers reload', async () => {
@@ -268,8 +319,16 @@ describe('AgentPanel', () => {
     await openPanel(user)
 
     const workstream = screen.getByLabelText('Workstream')
-    await user.type(workstream, 'a'.repeat(201))
+    // Reaches the 200-character boundary via a single paste (confirmed
+    // against user-event 14.6.7's source: `paste` funnels through the same
+    // `input()` helper as `type` and applies the native `maxLength`
+    // attribute the same way) instead of 201 individual keystrokes, then
+    // types one real keystroke past it to prove that keystroke is blocked.
+    await user.click(workstream)
+    await user.paste('a'.repeat(200))
+    expect((workstream as HTMLInputElement).value).toHaveLength(200)
 
+    await user.type(workstream, 'a')
     expect((workstream as HTMLInputElement).value).toHaveLength(200)
   })
 })
