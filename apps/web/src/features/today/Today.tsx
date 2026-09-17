@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { useActiveSession } from '../../lib/query/hooks.js'
-import { Button } from '../../ui/Button.js'
+import { LoadingState } from '../../ui/LoadingState.js'
+import { ErrorState } from '../../ui/ErrorState.js'
 import { NextAction } from './NextAction.js'
 import { BlockCard } from './BlockCard.js'
 import { CheckinCard } from './CheckinCard.js'
@@ -39,18 +40,7 @@ function focusBlockStartForm(block: 1 | 2): void {
 }
 
 function RetryNotice({ onRetry }: { readonly onRetry: () => void }) {
-  return (
-    <div>
-      <p>Today could not be loaded</p>
-      <Button
-        onClick={() => {
-          onRetry()
-        }}
-      >
-        Retry
-      </Button>
-    </div>
-  )
+  return <ErrorState onRetry={onRetry}>Today could not be loaded</ErrorState>
 }
 
 /**
@@ -99,7 +89,7 @@ export function Today() {
   }
 
   if (currentQuery.isPending) {
-    return <div aria-busy="true">Loading</div>
+    return <LoadingState>Loading</LoadingState>
   }
 
   if (currentQuery.isError || current === undefined) {
@@ -121,7 +111,7 @@ export function Today() {
   }
 
   if (todayQuery.isPending) {
-    return <div aria-busy="true">Loading</div>
+    return <LoadingState>Loading</LoadingState>
   }
 
   if (todayQuery.isError || todayQuery.data === undefined) {
@@ -132,8 +122,8 @@ export function Today() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-lg font-semibold text-[var(--color-text)]">{`Day ${today.day} of 14`}</h1>
+      <header className="border-b border-rule pb-4">
+        <h1 className="text-lg font-semibold text-ink">{`Day ${today.day} of 14`}</h1>
       </header>
 
       <section aria-label="Next action" className="flex flex-col gap-3">

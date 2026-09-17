@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
 import type {
   CurrentProgramResponseValue,
@@ -290,5 +290,34 @@ describe('Today', () => {
 
     await screen.findByRole('link', { name: 'Start with your baseline' })
     expect(mockApi.programs.current).toHaveBeenCalledTimes(2)
+  })
+
+  it('fetch failure renders the notice as an alert region', async () => {
+    reject('programs.current', { status: 500, code: 'server_error' })
+
+    mountToday()
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Today could not be loaded')
+    expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+  })
+
+  it('programs.current pending keeps an accessible "Loading" label inside the aria-busy region', () => {
+    mockApi.programs.current.mockImplementation(() => new Promise(() => {}))
+
+    mountToday()
+
+    const region = screen.getByText('Loading').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+  })
+
+  it('programs.today pending keeps an accessible "Loading" label inside the aria-busy region', async () => {
+    respond('programs.current', currentFixture({ kind: 'progress' }))
+    mockApi.programs.today.mockImplementation(() => new Promise(() => {}))
+
+    mountToday()
+
+    const label = await screen.findByText('Loading')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
   })
 })
