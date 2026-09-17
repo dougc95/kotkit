@@ -43,12 +43,15 @@
  *    output, which `useStartSession` recognises as the same logical start
  *    and replays under the same Idempotency-Key.
  */
-import { useId, useState, type ChangeEvent } from 'react'
+import { useState, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router'
 import type { SessionResponseValue, TodayBlockValue } from '@attention-lab/shared'
 
 import { useStartSession } from '../../lib/query/useStartSession.js'
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 
 const MAX_OUTPUT_LENGTH = 200
 
@@ -114,11 +117,14 @@ export function StartPracticeForm({ programId, targetSeconds, onStarted }: Start
   const navigate = useNavigate()
   const { start, status } = useStartSession()
 
-  const textareaId = useId()
-  const errorId = useId()
-  const counterId = useId()
   const isPending = status === 'pending'
-  const hasError = textareaError !== null
+  const counterText = `${intendedOutput.length}/${MAX_OUTPUT_LENGTH}`
+  const field = useField({
+    name: 'intended-output',
+    description: counterText,
+    error: textareaError,
+    required: true,
+  })
 
   function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
     const next = event.target.value
@@ -169,31 +175,29 @@ export function StartPracticeForm({ programId, targetSeconds, onStarted }: Start
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={textareaId} className="text-sm font-medium text-[var(--color-text)]">
+      <Label {...field.labelProps} className="text-sm font-medium text-ink">
         What will you produce?
-      </label>
-      <textarea
-        id={textareaId}
+      </Label>
+      <Textarea
+        {...field.controlProps}
         value={intendedOutput}
         maxLength={MAX_OUTPUT_LENGTH}
         disabled={isPending}
-        aria-invalid={hasError ? true : undefined}
-        aria-describedby={[counterId, hasError ? errorId : undefined]
-          .filter((id): id is string => id !== undefined)
-          .join(' ')}
         onChange={handleChange}
-        className="min-h-20 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+        className="min-h-20 w-full"
       />
-      <span id={counterId} className="text-xs text-[var(--color-text-muted)]">
-        {`${intendedOutput.length}/${MAX_OUTPUT_LENGTH}`}
-      </span>
-      {hasError ? (
-        <p id={errorId} role="alert" className="text-sm">
+      {field.descriptionProps !== undefined ? (
+        <span {...field.descriptionProps} className="text-xs text-ink-muted">
+          {counterText}
+        </span>
+      ) : null}
+      {field.errorProps !== undefined && textareaError !== null ? (
+        <p {...field.errorProps} className="text-sm text-attention">
           {textareaError}
         </p>
       ) : null}
       {startFailed ? (
-        <p role="alert" className="text-sm">
+        <p role="alert" className="text-sm text-attention">
           The session could not be started
         </p>
       ) : null}
@@ -221,15 +225,12 @@ export interface BlockCardProps {
 
 export function BlockCard({ block, target, isNext, programId }: BlockCardProps) {
   return (
-    <div
-      data-status={block.status}
-      className="flex flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
-    >
+    <div data-status={block.status} className="flex flex-col gap-3 border-b border-rule py-4 last:border-b-0">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-[var(--color-text)]">{`Block ${block.index}`}</span>
-        <span className="text-sm text-[var(--color-text-muted)]">{STATUS_LABEL[block.status]}</span>
+        <span className="text-sm font-medium text-ink">{`Block ${block.index}`}</span>
+        <span className="text-sm text-ink-muted">{STATUS_LABEL[block.status]}</span>
       </div>
-      <p className="text-sm text-[var(--color-text-muted)]">{formatMinutes(target)}</p>
+      <p className="text-sm text-ink-muted">{formatMinutes(target)}</p>
       {/* `nextPracticeBlock` (apps/api/src/services/program/nextAction.ts)
           deliberately points `isNext` at an `in_progress` block (its own
           running session) before falling back to the first `not_started`

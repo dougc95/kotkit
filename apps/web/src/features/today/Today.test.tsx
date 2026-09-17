@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
 import type {
   CurrentProgramResponseValue,
@@ -239,6 +239,20 @@ describe('Today', () => {
     await screen.findByRole('heading', { name: 'Day 9 of 14' })
 
     dateNowSpy.mockRestore()
+  })
+
+  it("clicking Block 1 is next moves DOM focus into block 1's own start form (regression: BlockCard's markup must keep the textarea the first focusable descendant of [data-block-index])", async () => {
+    respond('programs.current', currentFixture({ kind: 'practice', block: 1 }))
+    respond('programs.today', todayFixture({ kind: 'practice', block: 1 }))
+
+    mountToday()
+
+    const nextButton = await screen.findByRole('button', { name: 'Block 1 is next' })
+    fireEvent.click(nextButton)
+
+    const outputField = screen.getByRole('textbox', { name: 'What will you produce?' })
+    expect(outputField).toHaveFocus()
+    expect(outputField.closest('[data-block-index="1"]')).not.toBeNull()
   })
 
   it('day position track is aria-hidden, shows 14 markers and derives past/today/ahead from today.day alone', async () => {
