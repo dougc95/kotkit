@@ -175,6 +175,15 @@ describe('ExportPreview', () => {
     expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url')
   })
 
+  it('while the export query is pending, an aria-busy region shows the visible label Loading export preview', () => {
+    mockApi.export.get.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<ExportPreview programId="program-1" />)
+
+    const region = screen.getByText('Loading export preview').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+  })
+
   it('error renders Export unavailable with Retry', async () => {
     reject('export.get', { status: 500, code: 'server_error' })
 

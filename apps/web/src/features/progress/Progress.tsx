@@ -25,8 +25,8 @@ import { api } from '../../lib/api/client.js'
 import { NotFoundError, ValidationError } from '../../lib/api/errors.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { Alert, AlertDescription } from '../../ui/shadcn/alert.js'
-import { Skeleton } from '../../ui/shadcn/skeleton.js'
 import { AttemptTable, type AttemptTableRow } from './AttemptTable.js'
 import { ComparabilityWarnings } from './ComparabilityWarnings.js'
 import { ComparisonFigures } from './ComparisonFigures.js'
@@ -68,13 +68,7 @@ function ReportSections({ programId }: ReportSectionsProps) {
   })
 
   if (reportQuery.isPending) {
-    return (
-      <div aria-busy="true" className="flex flex-col gap-3">
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
-      </div>
-    )
+    return <LoadingState rows={2}>Loading report</LoadingState>
   }
 
   if (reportQuery.isError || reportQuery.data === undefined) {
@@ -138,12 +132,7 @@ export function Progress() {
   })
 
   if (currentQuery.isPending) {
-    return (
-      <div aria-busy="true" className="flex flex-col gap-3">
-        <Skeleton className="h-6 w-32" />
-        <Skeleton className="h-24 w-full" />
-      </div>
-    )
+    return <LoadingState>Loading</LoadingState>
   }
 
   if (currentQuery.isError || currentQuery.data === undefined) {

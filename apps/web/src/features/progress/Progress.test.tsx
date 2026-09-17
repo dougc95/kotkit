@@ -353,4 +353,23 @@ describe('Progress', () => {
     expect(sCell.className).not.toContain('whitespace-normal')
     expect(sCell.className).toContain('align-top')
   })
+
+  it('while programs.current is pending, an aria-busy region shows the visible label Loading', () => {
+    mockApi.programs.current.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<Progress />)
+
+    const region = screen.getByText('Loading').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+  })
+
+  it('while the report query is pending, an aria-busy region shows the visible label Loading report', async () => {
+    respond('programs.current', PROGRAM)
+    mockApi.report.get.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<Progress />)
+
+    const label = await screen.findByText('Loading report')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
+  })
 })

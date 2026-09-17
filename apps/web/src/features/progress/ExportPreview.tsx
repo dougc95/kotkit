@@ -20,8 +20,8 @@ import { localDateAt } from '@attention-lab/shared'
 
 import { api } from '../../lib/api/client.js'
 import { Button } from '../../ui/Button.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { Alert, AlertDescription } from '../../ui/shadcn/alert.js'
-import { Skeleton } from '../../ui/shadcn/skeleton.js'
 import { FormatToggle } from './FormatToggle.js'
 import type { ExportFormat } from './FormatToggle.js'
 
@@ -76,10 +76,7 @@ export function ExportPreview({ programId }: ExportPreviewProps) {
       <p className="text-sm text-ink-muted">Not-reported values are exported as empty cells.</p>
 
       {exportQuery.isPending ? (
-        <div aria-busy="true" className="flex flex-col gap-2">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-32 w-full" />
-        </div>
+        <LoadingState rows={2}>Loading export preview</LoadingState>
       ) : exportQuery.isError || text === undefined ? (
         <Alert role="alert">
           <AlertDescription className="flex items-center justify-between gap-3">
