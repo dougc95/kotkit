@@ -478,4 +478,23 @@ describe('PracticeReview', () => {
 
     expectNoIdentifiers(document.body)
   })
+
+  it('count and note fields move onto shadcn Input/Textarea/Label while keeping their pinned DOM ids, and the count input grows to share the tallies grid column width', async () => {
+    const session = makeSession({ tallies: { offTask: 1, external: 0, agentChecks: 0 } })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    const episodeInput = screen.getByLabelText('How many times did you switch away?')
+    expect(episodeInput).toHaveAttribute('id', 'episode-count')
+    expect(episodeInput.className).toMatch(/\bw-full\b/)
+    expect(episodeInput.className).not.toMatch(/\bw-28\b/)
+
+    const outputNoteInput = screen.getByLabelText('What did you finish? (optional)')
+    expect(outputNoteInput).toHaveAttribute('id', 'output-note')
+
+    const reviewNoteInput = screen.getByLabelText('Notes (optional)')
+    expect(reviewNoteInput).toHaveAttribute('id', 'review-note')
+  })
 })
