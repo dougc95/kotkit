@@ -469,6 +469,33 @@ describe('PracticeReview', () => {
     expect(screen.getByRole('link', { name: /today/i })).toHaveAttribute('href', '/today')
   })
 
+  it('a non-404 load error renders inside an alert region, not a bare paragraph', async () => {
+    mockApi.sessions.get.mockRejectedValue(new Error('network exploded'))
+
+    renderReview('77777777-7777-4777-8777-777777777777')
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The review could not be loaded.')
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+
+    const message = within(alert).getByText('The review could not be loaded.')
+    expect(message).toHaveClass('text-attention')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
+  it('the pending session query renders multiple static ruled placeholder rows rather than a bare loading sentence', async () => {
+    mockApi.sessions.get.mockImplementation(() => new Promise(() => {}))
+
+    const { container } = renderReview('88888888-8888-4888-8888-888888888888')
+
+    const busyRegion = container.querySelector('[aria-busy="true"]')
+    expect(busyRegion).not.toBeNull()
+    expect(busyRegion?.children.length ?? 0).toBeGreaterThan(1)
+    expect(screen.getByText('Loading review')).toBeInTheDocument()
+
+    expect(within(busyRegion as HTMLElement).getByText('Loading review')).toBeVisible()
+  })
+
   it('expectNoIdentifiers passes on the rendered screen', async () => {
     const session = makeSession({ tallies: { offTask: 1, external: 1, agentChecks: 1 } })
     respond('sessions.get', session)

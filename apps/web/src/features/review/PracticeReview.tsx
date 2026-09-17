@@ -65,6 +65,8 @@ import { flush } from '../../lib/outbox/flush.js'
 import { useFinalizeSession, type FinalizeSessionStatus } from '../../lib/outbox/useFinalizeSession.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { Reported } from '../../ui/Reported.js'
 import { Badge } from '../../ui/shadcn/badge.js'
 import { Separator } from '../../ui/shadcn/separator.js'
@@ -282,45 +284,48 @@ export function PracticeReview() {
   }, [finalizeHook.status])
 
   if (sessionId === undefined) {
-    return <p>Session not found</p>
+    return <p className="text-ink">Session not found</p>
   }
 
   if (sessionQuery.isError) {
     if (sessionQuery.error instanceof NotFoundError) {
       return (
-        <div className="mx-auto max-w-xl px-4 py-6">
-          <p>Session not found</p>
-          <Link to="/today">Go to Today</Link>
+        <div className="mx-auto max-w-xl px-4 py-6 space-y-2">
+          <p className="text-ink">Session not found</p>
+          <Link to="/today" className="text-sm text-signal underline underline-offset-2">
+            Go to Today
+          </Link>
         </div>
       )
     }
     return (
       <div className="mx-auto max-w-xl px-4 py-6">
-        <p>The review could not be loaded.</p>
-        <Button
-          onClick={() => {
+        <ErrorState
+          onRetry={() => {
             void sessionQuery.refetch()
           }}
         >
-          Retry
-        </Button>
+          The review could not be loaded.
+        </ErrorState>
       </div>
     )
   }
 
   if (sessionQuery.isPending || session === undefined) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
+      <LoadingState rows={3} className="mx-auto max-w-xl px-4 py-6">
         Loading review
-      </div>
+      </LoadingState>
     )
   }
 
   if (session.lifecycle === 'finalized') {
     return (
-      <div className="mx-auto max-w-xl px-4 py-6">
-        <p>This review was already saved</p>
-        <Link to="/today">Go to Today</Link>
+      <div className="mx-auto max-w-xl px-4 py-6 space-y-2">
+        <p className="text-ink">This review was already saved</p>
+        <Link to="/today" className="text-sm text-signal underline underline-offset-2">
+          Go to Today
+        </Link>
       </div>
     )
   }
