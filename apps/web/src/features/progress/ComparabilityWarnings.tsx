@@ -23,7 +23,7 @@ export function ComparabilityWarnings({ warnings }: ComparabilityWarningsProps) 
   return (
     <ul
       aria-label="Comparability warnings"
-      className="flex flex-col gap-1 text-sm text-[var(--color-text-muted)]"
+      className="flex flex-col gap-1 text-sm text-ink-muted"
       data-testid="comparability-warnings"
     >
       {warnings.map((warning) => (

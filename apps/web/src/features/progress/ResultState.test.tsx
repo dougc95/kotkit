@@ -8,10 +8,12 @@ import {
   DEMO_SCENARIOS,
   resolveResultState,
   RESULT_STATE_COPY,
+  RESULT_STATES,
 } from '@attention-lab/shared'
 
 import { ComparabilityWarnings } from './ComparabilityWarnings.js'
 import { ComparisonFigures } from './ComparisonFigures.js'
+import { formatPercentageChange, formatRecallMean, formatSwitchChange } from './format.js'
 import { ResultState } from './ResultState.js'
 
 // This harness does not run with `test.globals: true` (see DemoBanner.test.tsx's
@@ -273,5 +275,69 @@ describe('ResultState / ComparisonFigures / ComparabilityWarnings (8.8.2)', () =
 
     render(<ComparisonFigures comparison={WITH_MEAN_COMPARISON} />)
     expect(screen.getByTestId('mean-first-switch-figure')).toHaveTextContent('Mean T 5:00')
+  })
+
+  it('card styling never varies across the eight result states — only the headline does', () => {
+    // Asserts the section's own `className` only — never a shadcn-internal
+    // `data-slot` marker, which is invisible to users and assistive tech and
+    // is not what this regression test exists to protect. `ResultState.tsx`
+    // renders a plain `<section>`, so the meaningful check is that its
+    // `className` never differs across all eight states — "only the
+    // headline is allowed to vary".
+    const rendered = RESULT_STATES.map((state) => {
+      const { unmount } = render(<ResultState resultState={state} />)
+      const section = screen.getByTestId('result-state')
+      const snapshot = { state, className: section.className }
+      unmount()
+      return snapshot
+    })
+
+    const [first, ...rest] = rendered
+    if (first === undefined) throw new Error('RESULT_STATES is empty')
+    for (const entry of rest) {
+      expect(entry.className).toBe(first.className)
+    }
+  })
+
+  it('the percentage figure is tiered: a real percentage is recorded, "Percentage: not applicable" is absent', () => {
+    const comparable = comparisonFor('comparable-change')
+    const { unmount } = render(<ComparisonFigures comparison={comparable} />)
+    expect(screen.getByTestId('percentage-figure').querySelector('[data-tier]')).toHaveAttribute('data-tier', 'recorded')
+    unmount()
+
+    const zeroBaseline = comparisonFor('zero-baseline')
+    render(<ComparisonFigures comparison={zeroBaseline} />)
+    expect(screen.getByTestId('percentage-figure').querySelector('[data-tier]')).toHaveAttribute('data-tier', 'absent')
+  })
+
+  it('s0/s14, recall means and mean first-switch render as mono tabular figures — "tabular figures in comparisons" is the one place besides timer digits and exact-values tables that mono is allowed', () => {
+    const comparison = comparisonFor('comparable-change')
+    render(<ComparisonFigures comparison={comparison} />)
+
+    const s0s14Tier = screen.getByTestId('s0-s14-figure').querySelector('[data-tier]')
+    expect(s0s14Tier).toHaveAttribute('data-tier', 'recorded')
+    expect(s0s14Tier).toHaveClass('font-mono')
+
+    const recallTier = screen.getByTestId('recall-means-figure').querySelector('[data-tier]')
+    expect(recallTier).toHaveClass('font-mono')
+  })
+
+  it('formatSwitchChange: positive is N fewer switch(es), negative is N more switch(es), zero is a plain no-change sentence', () => {
+    expect(formatSwitchChange(2)).toBe('2 fewer switches')
+    expect(formatSwitchChange(1)).toBe('1 fewer switch')
+    expect(formatSwitchChange(-2)).toBe('2 more switches')
+    expect(formatSwitchChange(-1)).toBe('1 more switch')
+    expect(formatSwitchChange(0)).toBe('No change in switches')
+  })
+
+  it('formatPercentageChange: null is "Percentage: not applicable", a non-negative value reads as a reduction, a negative value as an increase of its absolute magnitude', () => {
+    expect(formatPercentageChange(null)).toBe('Percentage: not applicable')
+    expect(formatPercentageChange(40)).toBe('40% reduction')
+    expect(formatPercentageChange(-66.7)).toBe('66.7% increase')
+  })
+
+  it('formatRecallMean: whole-number means never show a trailing .0', () => {
+    expect(formatRecallMean(4)).toBe('4')
+    expect(formatRecallMean(4.5)).toBe('4.5')
   })
 })

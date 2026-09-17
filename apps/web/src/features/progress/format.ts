@@ -79,6 +79,48 @@ export function formatDisruption(materiallyDisrupted: boolean | null): string {
   return materiallyDisrupted ? 'Yes' : 'No'
 }
 
+/**
+ * The comparison's absolute-change wording — pluralised, and phrased as a
+ * measurement outcome rather than a judgement. Moved here from
+ * `ComparisonFigures.tsx`'s own inline `switchWord`/if-chain (the rework spec §9,
+ * defect 5: "ComparisonFigures builds its change ... text inline").
+ */
+export function formatSwitchChange(absoluteChange: number): string {
+  if (absoluteChange > 0) {
+    const word = absoluteChange === 1 ? 'switch' : 'switches'
+    return `${absoluteChange} fewer ${word}`
+  }
+  if (absoluteChange < 0) {
+    const more = Math.abs(absoluteChange)
+    const word = more === 1 ? 'switch' : 'switches'
+    return `${more} more ${word}`
+  }
+  return 'No change in switches'
+}
+
+/**
+ * `null` (guaranteed exactly when `s0 === 0`) -> 'Percentage: not
+ * applicable' — one of the taxonomy's own named absent-tier strings
+ * (the rework spec §5) — never 'Infinity', 'NaN' or '100%'. Otherwise the signed
+ * reduction/increase wording; the sign only ever changes the WORD, never the
+ * server-computed number under `Math.abs`. Moved here from
+ * `ComparisonFigures.tsx` (the rework spec §9, defect 5).
+ */
+export function formatPercentageChange(percentageReduction: number | null): string {
+  if (percentageReduction === null) {
+    return 'Percentage: not applicable'
+  }
+  if (percentageReduction >= 0) {
+    return `${percentageReduction}% reduction`
+  }
+  return `${Math.abs(percentageReduction)}% increase`
+}
+
+/** `4` -> '4', `4.5` -> '4.5' — never a trailing '.0' for a whole-number mean. Moved here from `ComparisonFigures.tsx`'s file-local `formatMean` (the rework spec §9, defect 5). */
+export function formatRecallMean(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
 const TIME_SOURCE_LABEL: Record<TimeSource, string> = {
   measured: 'Measured',
   demo_clock: 'Demo clock',
@@ -121,7 +163,13 @@ export function formatRealm(realm: Realm): string {
   return REALM_LABEL[realm]
 }
 
-/** A short human summary of one attempt's observed conditions, joined with ' · '. */
+/**
+ * A short human summary of one attempt's observed conditions, joined with
+ * ', ' — never a middle dot (the rework spec §4: "meta strings joined with
+ * middle dots" is a prohibited typographic treatment). Unlike
+ * `FeedTotals.tsx`'s equivalent string, this one is not asserted by any
+ * test, so there is no fixture to keep in sync.
+ */
 export function formatConditions(conditions: ObservedConditions): string {
   const parts = [conditions.deviceFormat, conditions.language, conditions.materialLevel].filter(
     (part): part is string => part !== null,
@@ -129,7 +177,7 @@ export function formatConditions(conditions: ObservedConditions): string {
   if (conditions.accommodations.length > 0) {
     parts.push(conditions.accommodations.join(', '))
   }
-  return parts.length > 0 ? parts.join(' · ') : NOT_REPORTED
+  return parts.length > 0 ? parts.join(', ') : NOT_REPORTED
 }
 
 /** Every exclusion reason's PRD copy, joined — '—' when the attempt carries none. */
