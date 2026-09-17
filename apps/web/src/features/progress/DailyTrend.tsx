@@ -12,12 +12,19 @@
  * genuine break in the line, never bridged or read as zero; the
  * `ExactValuesTable` beneath it is the accessible equivalent.
  *
- * Every table cell (status, sleep/mindfulness/feed minutes, stress) renders
- * through `<Reported>` — including stress, which now always formats to a
- * string via `trendFormat.ts`'s `formatStress` instead of the previous
- * inline `day.stress === null ? 'Not reported' : day.stress` (the rework spec §9,
- * defect 5), so it can carry the same tier mark as every other cell instead
- * of rendering as a bare, untiered number.
+ * Every table cell (day, date, status, sleep/mindfulness/feed minutes,
+ * stress) renders through `<Reported>` — including stress, which now always
+ * formats to a string via `trendFormat.ts`'s `formatStress` instead of the
+ * previous inline `day.stress === null ? 'Not reported' : day.stress` (the
+ * rework spec §9, defect 5), so it can carry the same tier mark as every
+ * other cell instead of rendering as a bare, untiered number.
+ *
+ * `mono` is passed only to figure cells — day, date, sleep/mindfulness/feed
+ * minutes, stress — never to a status WORD. Status renders through plain
+ * `<Reported>`: 'Complete' is a recorded word, not a figure, and mono is
+ * never for status words (fix round 1, finding 2). A `Not reported` figure
+ * cell passed `mono` still renders sans regardless — that tier decision is
+ * `Reported`'s own job (`ui/Reported.tsx`), not this file's.
  *
  * `report.days`'s `DayRowValue` exposes only `feedByDevice`, the per-device
  * MINUTE TOTAL summed across every scope-`feed` row for that day
@@ -109,17 +116,37 @@ export function DailyTrend({ days }: DailyTrendProps) {
   const tableRows: ExactValuesTableRow[] = days.map((day) => ({
     key: day.localDate,
     cells: [
-      day.day,
-      day.localDate,
+      <Reported key="day" mono>
+        {String(day.day)}
+      </Reported>,
+      <Reported key="date" mono>
+        {day.localDate}
+      </Reported>,
       <Reported key="status">{formatCheckinStatus(day.status)}</Reported>,
-      <Reported key="sleep">{formatMinutes(day.sleepMinutes)}</Reported>,
-      <Reported key="mindfulness">{formatMinutes(day.mindfulnessMinutes)}</Reported>,
-      <Reported key="stress">{formatStress(day.stress)}</Reported>,
-      <Reported key="phone">{formatMinutes(day.feedByDevice.phone)}</Reported>,
-      <Reported key="desktop">{formatMinutes(day.feedByDevice.desktop)}</Reported>,
-      <Reported key="tablet">{formatMinutes(day.feedByDevice.tablet)}</Reported>,
-      <Reported key="unspecified">{formatMinutes(day.feedByDevice.unspecified)}</Reported>,
-      <Reported key="total">{formatMinutes(day.feedDeviceMinutes)}</Reported>,
+      <Reported key="sleep" mono>
+        {formatMinutes(day.sleepMinutes)}
+      </Reported>,
+      <Reported key="mindfulness" mono>
+        {formatMinutes(day.mindfulnessMinutes)}
+      </Reported>,
+      <Reported key="stress" mono>
+        {formatStress(day.stress)}
+      </Reported>,
+      <Reported key="phone" mono>
+        {formatMinutes(day.feedByDevice.phone)}
+      </Reported>,
+      <Reported key="desktop" mono>
+        {formatMinutes(day.feedByDevice.desktop)}
+      </Reported>,
+      <Reported key="tablet" mono>
+        {formatMinutes(day.feedByDevice.tablet)}
+      </Reported>,
+      <Reported key="unspecified" mono>
+        {formatMinutes(day.feedByDevice.unspecified)}
+      </Reported>,
+      <Reported key="total" mono>
+        {formatMinutes(day.feedDeviceMinutes)}
+      </Reported>,
     ],
   }))
 

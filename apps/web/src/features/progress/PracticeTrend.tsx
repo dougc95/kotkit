@@ -18,6 +18,9 @@
  * uncertain' is the one uncertain-tier amber mark worth drawing the eye to,
  * 'Not reported' is absent — `Trends.test.tsx` exercises all three at this
  * exact column rather than assuming `<Reported>` gets it right by default.
+ * `mono` is passed only to figure cells (day, date, block, planned/completed
+ * minutes, S/E/agent-check counts) — never to output quality, timer flag or
+ * time source, which are recorded WORDS, not figures (fix round 1, finding 2).
  *
  * The chart re-encodes planned-vs-completed as an unfilled ruled FRAME
  * (planned, stroke only, the `rule` hairline colour) filled with `ink`
@@ -29,6 +32,18 @@
  * `0`) for a block that has not ended yet, so an unfinished block draws an
  * empty frame, never a zero-height bar.
  *
+ * Recharts 3.10.1 builds a Bar's legend swatch from `fill` alone
+ * (`cartesian/Bar.js`'s `computeLegendPayloadFromBarData`), so the planned
+ * bar's `fill="none"` legend entry would otherwise render a blank swatch next
+ * to its label — a key for only half of the frame-versus-fill encoding (fix
+ * round 1, finding 1). `renderPracticeLegend` below replaces `<Legend>`'s
+ * default content with two fixed entries that draw each key as what it
+ * actually is: an unfilled frame for planned, a filled square for completed,
+ * reusing this file's own `FRAME_COLOR`/`FILL_COLOR` so the legend can never
+ * drift from what the bars themselves draw. The chart wrapper stays
+ * `aria-hidden="true"`, so this legend (like the rest of the chart) is
+ * decorative; `ExactValuesTable` remains the accessible source of the data.
+ *
  * Recharts is deliberately used only in this feature directory (`no file
  * outside apps/web/src/features/progress imports recharts`, this file's own
  * grep test in `Trends.test.tsx`) — `ResponsiveContainer` is NOT used: it
@@ -36,6 +51,7 @@
  * not implement, so this chart renders at a fixed pixel size inside an
  * `overflow-x-auto` wrapper instead.
  */
+import type { ReactNode } from 'react'
 import { Bar, BarChart, CartesianGrid, Legend, Tooltip, XAxis, YAxis } from 'recharts'
 import type { PracticeRowValue } from '@attention-lab/shared'
 
@@ -90,6 +106,41 @@ interface PracticeChartDatum {
   readonly completedMinutes: number | null
 }
 
+/**
+ * `<Legend>`'s `content` renderer (fix round 1, finding 1) — see this file's
+ * header comment. Fixed to these two known series rather than derived from
+ * Recharts' own payload: `payload[].color` is `fill`, which is `'none'` for
+ * the planned bar, so a plain coloured-swatch default would draw a solid
+ * grey square that misdescribes an unfilled frame. Ignores its `props`
+ * argument entirely — assignable to Recharts' `LegendProps['content']`
+ * (`ReactElement | ((props: Props) => ReactNode)`) because a function with
+ * fewer parameters is always assignable to one that takes more.
+ */
+function renderPracticeLegend(): ReactNode {
+  return (
+    <ul className="m-0 flex list-none items-center justify-center gap-4 p-0 text-xs text-ink-muted">
+      <li className="flex items-center gap-1.5">
+        <span
+          aria-hidden="true"
+          data-testid="legend-swatch-plannedMinutes"
+          className="inline-block h-3 w-3"
+          style={{ border: `1.5px solid ${FRAME_COLOR}`, backgroundColor: 'transparent' }}
+        />
+        Planned minutes
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span
+          aria-hidden="true"
+          data-testid="legend-swatch-completedMinutes"
+          className="inline-block h-3 w-3"
+          style={{ backgroundColor: FILL_COLOR }}
+        />
+        Completed minutes
+      </li>
+    </ul>
+  )
+}
+
 export function PracticeTrend({ practice }: PracticeTrendProps) {
   const reducedMotion = usePrefersReducedMotion()
   const blocks = blockOrdinals(practice)
@@ -107,15 +158,31 @@ export function PracticeTrend({ practice }: PracticeTrendProps) {
   const tableRows: ExactValuesTableRow[] = practice.map((row) => ({
     key: row.sessionId,
     cells: [
-      row.day,
-      row.localDate,
-      blocks.get(row.sessionId) ?? 1,
-      secondsToWholeMinutes(row.targetSeconds),
-      <Reported key="completed">{formatMinutes(row.completedSeconds)}</Reported>,
+      <Reported key="day" mono>
+        {String(row.day)}
+      </Reported>,
+      <Reported key="date" mono>
+        {row.localDate}
+      </Reported>,
+      <Reported key="block" mono>
+        {String(blocks.get(row.sessionId) ?? 1)}
+      </Reported>,
+      <Reported key="planned" mono>
+        {String(secondsToWholeMinutes(row.targetSeconds))}
+      </Reported>,
+      <Reported key="completed" mono>
+        {formatMinutes(row.completedSeconds)}
+      </Reported>,
       <Reported key="quality">{formatOutputQuality(row.outputQuality)}</Reported>,
-      <Reported key="s">{formatReportedCount(row.episodeCount)}</Reported>,
-      <Reported key="e">{formatReportedCount(row.externalCount)}</Reported>,
-      <Reported key="agent">{formatReportedCount(row.unplannedAgentChecks)}</Reported>,
+      <Reported key="s" mono>
+        {formatReportedCount(row.episodeCount)}
+      </Reported>,
+      <Reported key="e" mono>
+        {formatReportedCount(row.externalCount)}
+      </Reported>,
+      <Reported key="agent" mono>
+        {formatReportedCount(row.unplannedAgentChecks)}
+      </Reported>,
       <Reported key="timer">{formatTimerFlag(row.timerQuality)}</Reported>,
       <Reported key="method">{formatCountMethod(row.countMethod)}</Reported>,
     ],
@@ -144,7 +211,7 @@ export function PracticeTrend({ practice }: PracticeTrendProps) {
               label={{ value: 'Minutes', angle: -90, position: 'insideLeft', fill: AXIS_INK }}
             />
             <Tooltip />
-            <Legend />
+            <Legend content={renderPracticeLegend} />
             <Bar
               dataKey="plannedMinutes"
               name="Planned minutes"

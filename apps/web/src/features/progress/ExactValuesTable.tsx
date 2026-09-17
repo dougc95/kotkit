@@ -5,10 +5,14 @@
  * numbers and their source labels in an ordinary, non-`aria-hidden` table,
  * so the chart is never the only place a value lives.
  *
- * Body cells render `font-mono` at the table level: this IS "the
- * exact-values tables" named in the rework spec §4's mono rule. Headers are
- * pulled back to `font-sans` — mono is never for labels or metadata, only
- * for the figures themselves.
+ * Mono is applied per FIGURE CELL by the caller, through `<Reported mono>`
+ * (`PracticeTrend`/`DailyTrend`) — never at the table level. An earlier
+ * version set `font-mono` on the whole `<table>`, but a RECORDED status word
+ * such as 'Complete' or 'OK' has no font class of its own and inherited it,
+ * visibly mixing typefaces inside one column against a 'Not reported' cell
+ * next to it in sans (fix round 1, finding 2). `AttemptTable` (Task 47)
+ * already applies mono per cell for the same reason; this file now matches
+ * it exactly.
  *
  * See `AttemptTable.tsx`'s identical comment for why this composes shadcn's
  * table PARTS (`TableHeader`/`TableBody`/`TableRow`/`TableHead`/
@@ -49,12 +53,17 @@ export function ExactValuesTable({ caption, columns, rows, emptyMessage }: Exact
     // 'Practice'})` started matching two elements once this wrapper's
     // 'Practice blocks' label was added).
     <div className="overflow-x-auto" tabIndex={0}>
-      <table className="w-full min-w-[720px] border-collapse text-left font-mono text-sm">
+      <table className="w-full min-w-[720px] border-collapse text-left text-sm">
         <TableCaption className="sr-only">{caption}</TableCaption>
         <TableHeader>
           <TableRow className="border-b border-rule text-ink-muted">
             {columns.map((column) => (
-              <TableHead key={column} scope="col" className="px-2 py-2 font-sans font-medium">
+              // `whitespace-normal`: shadcn's `TableHead` base class carries
+              // `whitespace-nowrap`, which stopped a long header label like
+              // 'Unspecified device (device-minutes)' from wrapping, widening
+              // the table on narrow viewports (fix round 1, finding 3).
+              // `cn()` merges this caller class last, so it wins.
+              <TableHead key={column} scope="col" className="px-2 py-2 font-medium whitespace-normal">
                 {column}
               </TableHead>
             ))}
@@ -67,7 +76,13 @@ export function ExactValuesTable({ caption, columns, rows, emptyMessage }: Exact
                 // `index` is a stable key here: a row's cell list is fixed
                 // (one entry per `columns`) and never reordered independently
                 // of its own row.
-                <TableCell key={index} className="px-2 py-2">
+                //
+                // `align-top`: shadcn's `TableCell` base class carries
+                // `align-middle`, which made this row's own `align-top`
+                // inert (fix round 1, finding 3). Body cells stay
+                // `whitespace-nowrap` (shadcn's default) — their content is
+                // short and digits must not wrap.
+                <TableCell key={index} className="px-2 py-2 align-top">
                   {cell}
                 </TableCell>
               ))}
