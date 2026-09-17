@@ -170,4 +170,26 @@ describe('RailLayout', () => {
 
     expect(container.innerHTML).not.toMatch(/--color-/)
   })
+
+  it('the active link is marked by weight, not colour alone: font-semibold on active, font-medium on inactive', async () => {
+    mount('/progress')
+
+    const activeLink = await screen.findByRole('link', { name: 'Progress' })
+    expect(activeLink.className).toMatch(/font-semibold/)
+    expect(activeLink.className).not.toMatch(/font-medium/)
+
+    const inactiveLink = screen.getByRole('link', { name: 'Today' })
+    expect(inactiveLink.className).toMatch(/font-medium/)
+    expect(inactiveLink.className).not.toMatch(/font-semibold/)
+  })
+
+  it('the active link carries text-signal and an inactive link carries text-ink-muted', async () => {
+    mount('/progress')
+
+    const activeLink = await screen.findByRole('link', { name: 'Progress' })
+    expect(activeLink.className).toMatch(/text-signal/)
+
+    const inactiveLink = screen.getByRole('link', { name: 'Today' })
+    expect(inactiveLink.className).toMatch(/text-ink-muted/)
+  })
 })

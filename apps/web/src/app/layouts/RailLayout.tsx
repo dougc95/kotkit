@@ -30,7 +30,11 @@ export interface NavItemProps {
  * active link itself (react-router's default), so no extra bookkeeping is
  * needed here. `min-h-11 min-w-11` (44px) meets the 44px touch-target size
  * this task calls for, a stricter number than the WCAG 2.2 AA 24px minimum
- * D40 records for touch targets elsewhere in the app.
+ * D40 records for touch targets elsewhere in the app. The active link is
+ * also marked by weight, not colour alone: `text-signal` and `text-ink-muted`
+ * are only about 1.02:1 apart in luminance, so colour alone fails WCAG 1.4.1
+ * (use of colour) here, even though `aria-current` still covers assistive
+ * technology.
  */
 export function NavItem({ to, label }: NavItemProps) {
   return (
@@ -39,9 +43,9 @@ export function NavItem({ to, label }: NavItemProps) {
       className={({ isActive }) =>
         [
           'flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1',
-          'rounded-md px-2 py-1 text-sm font-medium',
+          'rounded-md px-2 py-1 text-sm',
           'md:flex-none md:flex-row md:justify-start md:gap-2 md:px-3',
-          isActive ? 'text-signal' : 'text-ink-muted hover:text-ink',
+          isActive ? 'font-semibold text-signal' : 'font-medium text-ink-muted hover:text-ink',
         ].join(' ')
       }
     >
