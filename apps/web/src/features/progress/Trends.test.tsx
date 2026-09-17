@@ -10,7 +10,7 @@ import { setPrefersReducedMotion } from '../../test/setup.js'
 import { renderWithProviders } from '../../test/renderWithProviders.js'
 import { DailyTrend } from './DailyTrend.js'
 import { PracticeTrend } from './PracticeTrend.js'
-import { FEED_SOURCE_LABEL } from './trendFormat.js'
+import { FEED_SOURCE_LABEL, NOT_REPORTED, formatWholeMinutes } from './trendFormat.js'
 
 // See DemoBanner.test.tsx's header comment: this harness does not run with
 // `test.globals: true`, so Testing Library's auto-cleanup never activates
@@ -204,6 +204,77 @@ describe('PracticeTrend / DailyTrend / ExactValuesTable', () => {
     expect(day9Datum).toBeDefined()
     expect(day9Datum?.sleepMinutes).toBeNull()
     expect(day9Datum?.sleepMinutes).not.toBe(0)
+  })
+
+  // Column order is DailyTrend's own COLUMNS (Day, Date, Status, Sleep,
+  // Mindfulness, Stress, Phone, Desktop, Tablet, Unspecified, Feed total) —
+  // reused by the three tests below (task V1: the daily check-ins table was
+  // dividing already-whole minutes by sixty via `formatMinutes`, a
+  // seconds-to-minutes formatter never meant for these fields).
+  function dailyCellForDay(day: number, columnIndex: number): HTMLElement {
+    const row = screen
+      .getAllByRole('row')
+      .find((candidate) => within(candidate).queryAllByRole('cell')[0]?.textContent === String(day))
+    if (row === undefined) throw new Error(`no row rendered for day ${day}`)
+    const cell = within(row).getAllByRole('cell')[columnIndex]
+    if (cell === undefined) throw new Error(`column ${columnIndex} missing`)
+    return cell
+  }
+
+  it('daily minutes render as minutes, not divided by sixty (task V1)', () => {
+    const days = [
+      makeDayRow({
+        localDate: '2026-09-01',
+        day: 1,
+        sleepMinutes: 420,
+        mindfulnessMinutes: 10,
+        feedDeviceMinutes: 45,
+        feedByDevice: { phone: 30, desktop: 15, tablet: null, unspecified: null },
+      }),
+    ]
+    renderWithProviders(<DailyTrend days={days} />)
+
+    expect(dailyCellForDay(1, 3)).toHaveTextContent('420') // Sleep
+    expect(dailyCellForDay(1, 4)).toHaveTextContent('10') // Mindfulness
+    expect(dailyCellForDay(1, 6)).toHaveTextContent('30') // Phone
+    expect(dailyCellForDay(1, 7)).toHaveTextContent('15') // Desktop
+  })
+
+  it('an explicit 0 minutes value renders as the recorded 0, never folded into Not reported (task V1)', () => {
+    const days = [
+      makeDayRow({
+        localDate: '2026-09-01',
+        day: 1,
+        mindfulnessMinutes: 0,
+      }),
+    ]
+    renderWithProviders(<DailyTrend days={days} />)
+
+    const cell = dailyCellForDay(1, 4) // Mindfulness
+    const value = cell.querySelector('[data-tier="recorded"]')
+    expect(value).not.toBeNull()
+    expect(value).toHaveTextContent('0')
+  })
+
+  it('a null minutes value renders Not reported in the absent tier, never 0 (task V1)', () => {
+    const days = [
+      makeDayRow({
+        localDate: '2026-09-01',
+        day: 1,
+        sleepMinutes: null,
+        mindfulnessMinutes: null,
+        feedDeviceMinutes: null,
+        feedByDevice: { phone: null, desktop: null, tablet: null, unspecified: null },
+      }),
+    ]
+    renderWithProviders(<DailyTrend days={days} />)
+
+    for (const columnIndex of [3, 4, 6, 7]) {
+      const cell = dailyCellForDay(1, columnIndex)
+      expect(cell).toHaveTextContent(NOT_REPORTED)
+      const value = cell.querySelector('[data-tier]')
+      expect(value).toHaveAttribute('data-tier', 'absent')
+    }
   })
 
   it('blank practice counts render Not reported', () => {
@@ -477,5 +548,23 @@ describe('PracticeTrend / DailyTrend / ExactValuesTable', () => {
     walk(srcRoot)
 
     expect(offenders).toEqual([])
+  })
+})
+
+describe('formatWholeMinutes (task V1)', () => {
+  it('formats a whole minute value as-is, no rounding or dividing by sixty', () => {
+    expect(formatWholeMinutes(420)).toBe('420')
+  })
+
+  it('renders an explicit 0 as the string "0", never coalesced away', () => {
+    expect(formatWholeMinutes(0)).toBe('0')
+  })
+
+  it('renders null as Not reported', () => {
+    expect(formatWholeMinutes(null)).toBe(NOT_REPORTED)
+  })
+
+  it('renders undefined as Not reported', () => {
+    expect(formatWholeMinutes(undefined)).toBe(NOT_REPORTED)
   })
 })

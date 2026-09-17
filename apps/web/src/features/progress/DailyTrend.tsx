@@ -55,7 +55,7 @@ import {
   FEED_SOURCE_LABEL,
   formatCheckinStatus,
   formatFeedDevice,
-  formatMinutes,
+  formatWholeMinutes,
   formatStress,
 } from './trendFormat.js'
 
@@ -124,28 +124,28 @@ export function DailyTrend({ days }: DailyTrendProps) {
       </Reported>,
       <Reported key="status">{formatCheckinStatus(day.status)}</Reported>,
       <Reported key="sleep" mono>
-        {formatMinutes(day.sleepMinutes)}
+        {formatWholeMinutes(day.sleepMinutes)}
       </Reported>,
       <Reported key="mindfulness" mono>
-        {formatMinutes(day.mindfulnessMinutes)}
+        {formatWholeMinutes(day.mindfulnessMinutes)}
       </Reported>,
       <Reported key="stress" mono>
         {formatStress(day.stress)}
       </Reported>,
       <Reported key="phone" mono>
-        {formatMinutes(day.feedByDevice.phone)}
+        {formatWholeMinutes(day.feedByDevice.phone)}
       </Reported>,
       <Reported key="desktop" mono>
-        {formatMinutes(day.feedByDevice.desktop)}
+        {formatWholeMinutes(day.feedByDevice.desktop)}
       </Reported>,
       <Reported key="tablet" mono>
-        {formatMinutes(day.feedByDevice.tablet)}
+        {formatWholeMinutes(day.feedByDevice.tablet)}
       </Reported>,
       <Reported key="unspecified" mono>
-        {formatMinutes(day.feedByDevice.unspecified)}
+        {formatWholeMinutes(day.feedByDevice.unspecified)}
       </Reported>,
       <Reported key="total" mono>
-        {formatMinutes(day.feedDeviceMinutes)}
+        {formatWholeMinutes(day.feedDeviceMinutes)}
       </Reported>,
     ],
   }))
