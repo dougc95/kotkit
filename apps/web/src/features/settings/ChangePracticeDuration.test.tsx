@@ -200,7 +200,7 @@ describe('ChangePracticeDuration', () => {
     ).toBeInTheDocument()
   })
 
-  it('409 program_terminal replaces the panel with This program has ended, colored for attention (U15a)', async () => {
+  it('409 program_terminal replaces the panel with This program has ended, left in ink (U15a: a terminal state offers no corrective action)', async () => {
     reject('programs.createRevision', {
       status: 409,
       code: 'program_terminal',
@@ -209,12 +209,13 @@ describe('ChangePracticeDuration', () => {
 
     await screen.findByRole('radio', { name: '15 minutes' })
     await user.click(screen.getByRole('radio', { name: '20 minutes' }))
-    await user.type(screen.getByLabelText('Reason for change'), 'a typed reason')
+    await user.click(screen.getByLabelText('Reason for change'))
+    await user.paste('a typed reason')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('This program has ended.')
-    expect(alert).toHaveClass('text-attention')
+    expect(alert).not.toHaveClass('text-attention')
   })
 
   it('not rendered when no non-terminal program exists', async () => {
