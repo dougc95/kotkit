@@ -71,8 +71,15 @@ describe('ResearchCards', () => {
     mount()
 
     await screen.findAllByRole('article')
-    expect(screen.getByText(`Curated demonstration content · curated ${RESEARCH_CURATED_ON}`)).toBeInTheDocument()
+    expect(screen.getByText(`Curated demonstration content, curated ${RESEARCH_CURATED_ON}`)).toBeInTheDocument()
     expect(screen.getByText('Automated discovery not enabled')).toBeInTheDocument()
+  })
+
+  it('never renders a middle-dot meta string anywhere on the screen', async () => {
+    const { container } = mount()
+
+    await screen.findAllByRole('article')
+    expect(container.textContent ?? '').not.toContain('·')
   })
 
   it('shows the Up to three reviewed updates note', async () => {
