@@ -24,7 +24,7 @@ export function CheckinStatus({ status, missing }: CheckinStatusProps) {
       : `Incomplete — missing: ${missing.map((field) => FIELD_LABEL[field]).join(', ')}`
 
   return (
-    <p role="status" className="text-sm font-medium text-[var(--color-text)]">
+    <p role="status" className="text-sm font-medium text-ink">
       {text}
     </p>
   )

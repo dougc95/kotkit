@@ -29,7 +29,12 @@
 import { useEffect, useReducer, useRef, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router'
-import { Collapsible } from 'radix-ui'
+import { useField } from '../../ui/field.js'
+import { Alert, AlertDescription } from '../../ui/shadcn/alert.js'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../ui/shadcn/collapsible.js'
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { Reported } from '../../ui/Reported.js'
 import {
   FEED_PLATFORM_ALL,
   feedAggregates,
@@ -304,6 +309,7 @@ export function CheckinForm() {
   const [detailRowErrors, setDetailRowErrors] = useState<FeedRowsErrors>({})
   const [saveError, setSaveError] = useState<string | null>(null)
   const [staleNotice, setStaleNotice] = useState<{ readonly draft: CheckinFormState } | null>(null)
+  const sleepField = useField({ name: 'checkin-sleep', error: fieldErrors.sleep })
 
   // --- Which devices are disabled (D36) and their effective values --------
   const detailAggregates = feedAggregates(completedDetailFeedInputs(state.detailRows))
@@ -479,21 +485,18 @@ export function CheckinForm() {
       <CheckinStatus status={state.status} missing={state.missing} />
 
       {staleNotice !== null ? (
-        <div role="alert" className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm">
-          <p>This check-in was updated elsewhere; showing the current values</p>
+        <Alert className="flex flex-col gap-2">
+          <AlertDescription>This check-in was updated elsewhere; showing the current values</AlertDescription>
           <Button type="button" variant="secondary" onClick={handleReapplyMyValues}>
             Re-apply my values
           </Button>
-        </div>
+        </Alert>
       ) : null}
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="checkin-sleep" className="text-sm font-medium text-[var(--color-text)]">
-          Sleep minutes
-        </label>
-        <input
-          id="checkin-sleep"
-          name="checkin-sleep"
+        <Label {...sleepField.labelProps}>Sleep minutes</Label>
+        <Input
+          {...sleepField.controlProps}
           type="number"
           inputMode="numeric"
           min={0}
@@ -510,10 +513,10 @@ export function CheckinForm() {
             if (!Number.isInteger(parsed) || parsed < 0 || parsed > 1440) return
             dispatch({ type: 'setSleep', value: parsed })
           }}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-40"
         />
-        {fieldErrors.sleep !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
+        {sleepField.errorProps !== undefined ? (
+          <p {...sleepField.errorProps} className="text-sm text-attention">
             {fieldErrors.sleep}
           </p>
         ) : null}
@@ -527,7 +530,9 @@ export function CheckinForm() {
           error={fieldErrors.phone}
           onChange={(value) => dispatch({ type: 'setDevice', device: 'phone', value })}
         />
-        <p className="text-sm text-[var(--color-text-muted)]">Phone: {deviceSummaryText(effectivePhone)}</p>
+        <p className="text-sm text-ink-muted" data-testid="phone-feed-summary">
+          Phone: <Reported>{deviceSummaryText(effectivePhone)}</Reported>
+        </p>
       </div>
 
       <div className="flex flex-col gap-1">
@@ -538,17 +543,18 @@ export function CheckinForm() {
           error={fieldErrors.desktop}
           onChange={(value) => dispatch({ type: 'setDevice', device: 'desktop', value })}
         />
-        <p className="text-sm text-[var(--color-text-muted)]">Desktop: {deviceSummaryText(effectiveDesktop)}</p>
+        <p className="text-sm text-ink-muted" data-testid="desktop-feed-summary">
+          Desktop: <Reported>{deviceSummaryText(effectiveDesktop)}</Reported>
+        </p>
       </div>
 
-      <Collapsible.Root>
-        <Collapsible.Trigger
-          type="button"
-          className="inline-flex min-h-11 items-center gap-2 rounded-md bg-transparent px-4 text-sm font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface)]"
-        >
-          More detail
-        </Collapsible.Trigger>
-        <Collapsible.Content className="flex flex-col gap-6 pt-2">
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button type="button" variant="quiet">
+            More detail
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="flex flex-col gap-6 pt-2">
           <FeedRows
             rows={state.detailRows}
             errors={detailRowErrors}
@@ -561,11 +567,11 @@ export function CheckinForm() {
             note={state.note}
             onChange={(patch) => dispatch({ type: 'setOptionalFields', patch })}
           />
-        </Collapsible.Content>
-      </Collapsible.Root>
+        </CollapsibleContent>
+      </Collapsible>
 
       {saveError !== null ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-attention">
           {saveError}
         </p>
       ) : null}

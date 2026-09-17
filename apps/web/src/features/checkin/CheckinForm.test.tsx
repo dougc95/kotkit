@@ -153,7 +153,7 @@ describe('CheckinForm', () => {
     const { user } = mount(OPEN_PROGRAM, EMPTY_DAY)
     await screen.findByLabelText('Sleep minutes')
 
-    expect(screen.getByText('Phone: Not reported')).toBeInTheDocument()
+    expect(screen.getByTestId('phone-feed-summary')).toHaveTextContent('Phone: Not reported')
 
     await user.type(screen.getByLabelText('Sleep minutes'), '420')
     respond('days.put', dayFixture({ sleepMinutes: 420, status: 'incomplete', missing: ['feed'], version: 1 }))
@@ -169,8 +169,8 @@ describe('CheckinForm', () => {
     await screen.findByLabelText('Sleep minutes')
 
     await user.type(screen.getByLabelText('Phone feed minutes'), '0')
-    expect(screen.getByText('Phone: 0 min')).toBeInTheDocument()
-    expect(screen.queryByText('Phone: Not reported')).not.toBeInTheDocument()
+    expect(screen.getByTestId('phone-feed-summary')).toHaveTextContent('Phone: 0 min')
+    expect(screen.getByTestId('phone-feed-summary')).not.toHaveTextContent('Not reported')
 
     respond('days.put', dayFixture({ feed: [{ device: 'phone', platform: 'all', minutes: 0, measurementScope: 'feed', source: 'estimate' }], version: 1 }))
     await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -245,7 +245,7 @@ describe('CheckinForm', () => {
     const desktopInput = screen.getByLabelText('Desktop feed minutes')
     expect(desktopInput).toBeDisabled()
     expect(desktopInput).toHaveValue(20)
-    expect(screen.getByText('Desktop: 20 min')).toBeInTheDocument()
+    expect(screen.getByTestId('desktop-feed-summary')).toHaveTextContent('Desktop: 20 min')
     expect(desktopInput).toHaveClass('border-b-signal')
   })
 
@@ -279,6 +279,7 @@ describe('CheckinForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await screen.findByText('This check-in was updated elsewhere; showing the current values')
+    expect(screen.getByRole('alert')).toHaveTextContent('This check-in was updated elsewhere; showing the current values')
     expect(screen.getByLabelText('Sleep minutes')).toHaveValue(300)
 
     await user.click(screen.getByRole('button', { name: 'Re-apply my values' }))
