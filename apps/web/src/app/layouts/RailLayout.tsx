@@ -72,7 +72,7 @@ export function RailLayout() {
   const placement = isDesktop ? 'rail' : 'bottom'
 
   return (
-    <div className="min-h-dvh md:flex">
+    <div className="min-h-dvh">
       <DemoBanner />
 
       <a
@@ -82,26 +82,28 @@ export function RailLayout() {
         Skip to content
       </a>
 
-      <nav
-        aria-label="Main"
-        data-placement={placement}
-        className={
-          placement === 'rail'
-            ? 'sticky top-0 flex h-dvh w-56 shrink-0 flex-col gap-1 border-r border-rule bg-paper p-3'
-            : 'fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-rule bg-paper px-1 py-1'
-        }
-      >
-        {DESTINATIONS.map((destination) => (
-          <NavItem key={destination.to} to={destination.to} label={destination.label} />
-        ))}
-      </nav>
+      <div className="md:flex">
+        <nav
+          aria-label="Main"
+          data-placement={placement}
+          className={
+            placement === 'rail'
+              ? 'sticky top-10 flex h-[calc(100dvh-2.5rem)] w-56 shrink-0 flex-col gap-1 border-r border-rule bg-paper p-3'
+              : 'fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-rule bg-paper px-1 py-1'
+          }
+        >
+          {DESTINATIONS.map((destination) => (
+            <NavItem key={destination.to} to={destination.to} label={destination.label} />
+          ))}
+        </nav>
 
-      <main
-        id="main"
-        className={`mx-auto w-full max-w-3xl flex-1 px-4 py-6 ${placement === 'bottom' ? 'pb-24' : ''}`}
-      >
-        <Outlet />
-      </main>
+        <main
+          id="main"
+          className={`mx-auto w-full max-w-3xl flex-1 px-4 py-6 ${placement === 'bottom' ? 'pb-24' : ''}`}
+        >
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

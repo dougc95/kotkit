@@ -98,4 +98,14 @@ describe('DemoBanner', () => {
     const banner = await screen.findByLabelText('Demonstration data notice')
     expect(banner.className).not.toMatch(/--color-/)
   })
+
+  it('banner is a sticky top bar with a fixed height from md up (Task W2a defect 1)', async () => {
+    mountBanner(ME_LOCAL_DEMO)
+
+    const banner = await screen.findByLabelText('Demonstration data notice')
+    expect(banner.className).toMatch(/sticky/)
+    expect(banner.className).toMatch(/top-0/)
+    expect(banner.className).toMatch(/z-50/)
+    expect(banner.className).toMatch(/md:h-10/)
+  })
 })

@@ -192,4 +192,32 @@ describe('RailLayout', () => {
     const inactiveLink = screen.getByRole('link', { name: 'Today' })
     expect(inactiveLink.className).toMatch(/text-ink-muted/)
   })
+
+  it('at desktop width the banner is a full-width top bar, not a flex sibling of the rail (Task W2a defect 1)', async () => {
+    stubMatchMedia(true)
+    mount()
+
+    const banner = await screen.findByLabelText('Demonstration data notice')
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    const main = screen.getByRole('main')
+
+    // (a) the banner is not a flex sibling of the nav.
+    expect(banner.parentElement).not.toBe(nav.parentElement)
+
+    // (b) nav and main share a parent that is the md:flex row.
+    expect(nav.parentElement).toBe(main.parentElement)
+    expect(nav.parentElement?.className).toMatch(/md:flex/)
+
+    // (c) the banner's own parent is not the md:flex row.
+    expect(banner.parentElement?.className ?? '').not.toMatch(/md:flex/)
+
+    // (d) document order is banner, skip link, nav, main.
+    const skipLink = screen.getByRole('link', { name: 'Skip to content' })
+    // eslint-disable-next-line no-bitwise -- Node.compareDocumentPosition's bitmask is the standard DOM-order check.
+    expect(banner.compareDocumentPosition(skipLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // eslint-disable-next-line no-bitwise -- Node.compareDocumentPosition's bitmask is the standard DOM-order check.
+    expect(skipLink.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // eslint-disable-next-line no-bitwise -- Node.compareDocumentPosition's bitmask is the standard DOM-order check.
+    expect(nav.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })
