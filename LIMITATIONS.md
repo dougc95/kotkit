@@ -249,9 +249,9 @@ change but was deliberately kept a one-decision reversal rather than a redesign:
 
 ## Task-group coverage
 
-One row per task group in `openspec/changes/build-initial-mvp/tasks.md`. "Verified by" names the
-suite(s) whose numbers are recorded under "What was tested" above, not a re-run performed only for
-this table.
+One row per task group in `openspec/changes/archive/2026-09-09-build-initial-mvp/tasks.md`.
+"Verified by" names the suite(s) whose numbers are recorded under "What was tested" above, not a
+re-run performed only for this table.
 
 | group | delivered | verified by |
 |---|---|---|

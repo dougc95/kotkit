@@ -11,8 +11,8 @@ already used the `-w` workspace flag and pnpm would add churn without benefit at
 holds the TypeBox contracts and pure domain functions shared by both ends; `apps/api` is a Fastify +
 Drizzle + PostgreSQL backend that runs from TypeScript source under `tsx` rather than a compiled
 artifact; `apps/web` is a React + Vite + TanStack Query frontend. `e2e/` holds the Playwright
-acceptance and invariant suites, and `openspec/changes/build-initial-mvp/` holds the proposal, design
-decisions (D1–D40) and task list this implementation was built against.
+acceptance and invariant suites, and `openspec/changes/archive/2026-09-09-build-initial-mvp/` holds
+the proposal, design decisions (D1–D40) and task list this implementation was built against.
 
 Attention Lab is a desktop-first, mobile-responsive web app for running a 14-day personal attention
 experiment: establish a baseline with fixed 20-minute reading benchmarks, protect two daily practice
@@ -155,8 +155,8 @@ coaching are deferred.
 ## Specification defects — settled (D7)
 
 Audited across all four documents in September 2026, then settled by decision D7 in
-`openspec/changes/build-initial-mvp/design.md` before implementation began. Each resolution below is
-one line; see D7 for the full column and threshold detail.
+`openspec/changes/archive/2026-09-09-build-initial-mvp/design.md` before implementation began. Each
+resolution below is one line; see D7 for the full column and threshold detail.
 
 1. **Nullable counts** — `episode_count`, `external_count`, `unplanned_agent_checks`,
    `mind_wandering_count` and `recall_score` are nullable columns end to end (`ReportedCount`), a blank
