@@ -303,7 +303,22 @@ describe('Scoring', () => {
     }
   })
 
-  it('each scored point\'s radios sit inside a radiogroup named for that point', () => {
+  // e2e/acceptance/baseline-day.spec.ts:241 asserts
+  // page.getByLabel('Point 1') has count 0 on this locked scoring screen.
+  // Playwright's getByLabel is a case-insensitive substring match that also
+  // follows aria-labelledby, so a radiogroup named "Point 1 score" used to
+  // match it; Testing Library's byLabelText follows aria-labelledby the same
+  // way, so this mirrors that contract at the unit level.
+  it('no element on the locked scoring screen is found by label text containing "Point 1"', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: FIVE_POINTS })
+
+    renderScoring(session, review)
+
+    expect(screen.queryAllByLabelText(/Point 1/)).toHaveLength(0)
+  })
+
+  it('each scored point\'s radiogroup carries no accessible name of its own; the fieldset still names the group', () => {
     const session = makeSession({ completeInterval: true })
     const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: FIVE_POINTS })
 
@@ -312,8 +327,13 @@ describe('Scoring', () => {
     const shells = Array.from(container.querySelectorAll('[data-point-shell="true"]'))
     expect(shells).toHaveLength(5)
     shells.forEach((shell, index) => {
+      const radiogroups = within(shell as HTMLElement).getAllByRole('radiogroup')
+      expect(radiogroups).toHaveLength(1)
+      const radiogroup = radiogroups[0] as HTMLElement
+      expect(radiogroup).not.toHaveAttribute('aria-labelledby')
+      expect(radiogroup).not.toHaveAttribute('aria-label')
       expect(
-        within(shell as HTMLElement).getByRole('radiogroup', { name: `Point ${index + 1} score` }),
+        within(shell as HTMLElement).getByRole('group', { name: `Point ${index + 1} score` }),
       ).toBeInTheDocument()
     })
   })
