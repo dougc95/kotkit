@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
 import type { CurrentProgramResponseValue, MeResponseValue } from '@attention-lab/shared'
 
 import { respond } from '../../test/mockClient.js'
@@ -91,6 +91,17 @@ function mount(me: MeResponseValue, program: CurrentProgramResponseValue = NO_PR
 describe('Settings', () => {
   it('renders exactly one primary action across the composed Preferences and Change practice duration sections', async () => {
     const { container } = mount(ME_REAL, activeProgramResponse())
+
+    await screen.findByLabelText('Timezone')
+    await screen.findByRole('radio', { name: '15 minutes' })
+
+    const primaries = container.querySelectorAll('[data-variant="primary"]')
+    expect(primaries).toHaveLength(1)
+    expect(primaries[0]).toHaveTextContent('Save preferences')
+  })
+
+  it('renders exactly one primary action for a local-demo principal, the only mode this repository runs', async () => {
+    const { container } = mount(ME_LOCAL_DEMO, activeProgramResponse())
 
     await screen.findByLabelText('Timezone')
     await screen.findByRole('radio', { name: '15 minutes' })

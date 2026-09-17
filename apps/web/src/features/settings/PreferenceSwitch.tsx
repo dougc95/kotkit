@@ -37,7 +37,15 @@ export function PreferenceSwitch({ label, description, checked, onCheckedChange,
         onCheckedChange={onCheckedChange}
         aria-describedby={descriptionId}
         disabled={disabled}
-        className="mt-0.5 shrink-0"
+        // The generated Switch track is ~18.4 x 32px, under D40's 24px touch-
+        // target floor and short of the app's 44px convention. Its size is
+        // never overridden here — the thumb's `size-4` and its
+        // `translate-x-[calc(100%-2px)]` travel are tuned to the 32px track,
+        // so widening the track would strand the thumb mid-travel. Instead a
+        // pseudo-element on the switch's own `<button>` extends the
+        // clickable/tappable area to ~44 x 44px while the track, thumb and
+        // focus outline stay exactly where the primitive draws them.
+        className="relative mt-0.5 shrink-0 after:absolute after:-inset-x-1.5 after:-inset-y-[13px] after:content-['']"
       />
     </div>
   )

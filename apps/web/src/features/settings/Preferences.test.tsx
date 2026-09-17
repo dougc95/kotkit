@@ -181,6 +181,14 @@ describe('Preferences', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Not a valid timezone.')
   })
 
+  it('a preference switch keeps a 44px hit area via its pseudo-element without resizing the track', async () => {
+    mount()
+
+    const toggle = await screen.findByRole('switch', { name: 'Hide timer by default' })
+    expect(toggle.className).toContain('after:absolute')
+    expect(toggle.className).toContain('after:-inset-y-[13px]')
+  })
+
   it('Save is the only primary action', async () => {
     mount()
 
