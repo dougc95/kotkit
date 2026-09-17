@@ -213,7 +213,7 @@ describe('AmendmentDialog', () => {
     expect(mockApi.sessions.amend).toHaveBeenCalledTimes(1)
   })
 
-  it('network error keeps the typed reason and checkbox and shows Retry', async () => {
+  it('network error keeps the typed reason and checkbox and shows Retry, colored for attention (U15a)', async () => {
     reject('sessions.amend', { status: 0, code: 'network_error' })
     const { user } = renderWithProviders(<AmendmentDialog sessionId="session-1" amendments={[]} />)
 
@@ -222,7 +222,9 @@ describe('AmendmentDialog', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Exclude from the comparison' }))
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    await screen.findByText('Could not save. Retry.')
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Could not save. Retry.')
+    expect(alert).toHaveClass('text-attention')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByLabelText('Reason')).toHaveValue('keep this draft')
     expect(screen.getByRole('checkbox', { name: 'Exclude from the comparison' })).toBeChecked()

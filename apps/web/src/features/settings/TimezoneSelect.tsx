@@ -59,7 +59,7 @@ export function TimezoneSelect({ value, zones, onChange, error }: TimezoneSelect
         </p>
       ) : null}
       {field.errorProps !== undefined ? (
-        <p {...field.errorProps} className="text-sm">
+        <p {...field.errorProps} className="text-sm text-attention">
           {error}
         </p>
       ) : null}

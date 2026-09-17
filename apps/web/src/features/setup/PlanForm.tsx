@@ -452,7 +452,7 @@ export function PlanForm() {
       </div>
 
       {saveFailed ? (
-        <p role="alert" className="text-sm">
+        <p role="alert" className="text-sm text-attention">
           Could not save the plan
         </p>
       ) : null}

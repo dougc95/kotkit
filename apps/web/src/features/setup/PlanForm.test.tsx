@@ -159,14 +159,16 @@ describe('PlanForm', () => {
     expect(active.router.state.location.pathname).toBe('/today')
   })
 
-  it('network failure shows could-not-save and does not navigate', async () => {
+  it('network failure shows could-not-save, colored for attention (U15a), and does not navigate', async () => {
     reject('programs.create', { status: 0, code: 'network_error' })
     const { user, router } = mount()
 
     await fillBaseline(user)
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    await screen.findByText('Could not save the plan')
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Could not save the plan')
+    expect(alert).toHaveClass('text-attention')
     expect(router.state.location.pathname).toBe('/setup')
   })
 

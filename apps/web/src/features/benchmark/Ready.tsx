@@ -365,7 +365,11 @@ export function Ready() {
           >
             Start
           </Button>
-          {startFailed !== null ? <p role="alert">{startFailed}</p> : null}
+          {startFailed !== null ? (
+            <p role="alert" className="text-sm text-attention">
+              {startFailed}
+            </p>
+          ) : null}
         </div>
       )}
     </div>

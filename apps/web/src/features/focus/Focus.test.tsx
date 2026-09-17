@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, Outlet, RouterProvider, useLocation, type RouteObject } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -342,6 +342,31 @@ describe('Focus', () => {
 
     await screen.findByText('Pending')
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+  })
+
+  it('a failed Undo of a sent event renders inside an alert, colored for attention (U15a) rather than the muted ink an earlier review judged it, message unchanged', async () => {
+    const { listUnsent } = await import('../../lib/outbox/store.js')
+    const session = makeSession({ id: 'session-undo-fail' })
+    respond('sessions.get', session)
+    mockApi.sessions.postEvents.mockImplementation(
+      async (_id: string, body: { events: Array<{ clientEventId: string }> }) => ({
+        accepted: body.events.map((event) => event.clientEventId),
+        duplicates: [],
+      }),
+    )
+    reject('sessions.void', { status: 500, code: 'server_error' })
+
+    renderFocus(session.id)
+    await screen.findByTestId('timer-digits')
+
+    fireEvent.click(screen.getByText('Record off-task episode'))
+    await waitFor(async () => expect(await listUnsent(session.id)).toHaveLength(0))
+
+    fireEvent.click(screen.getByText('Undo'))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('This entry could not be removed. Try again.')
+    expect(alert).toHaveClass('text-attention')
   })
 
   it('the pause/agent-plan group and the tallies/sync group each sit below exactly one hairline, never a boxed card', async () => {

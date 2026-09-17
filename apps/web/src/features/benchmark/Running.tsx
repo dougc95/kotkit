@@ -196,7 +196,11 @@ export function Running({ session }: RunningProps) {
             }}
             canUndo={canUndo}
           />
-          {undoNotice !== null ? <p role="alert">{undoNotice}</p> : null}
+          {undoNotice !== null ? (
+            <p role="alert" className="text-sm text-attention">
+              {undoNotice}
+            </p>
+          ) : null}
 
           {confirmStopEarly ? (
             <div role="group" aria-label="Confirm stop early" className="flex flex-col gap-2 rounded-md border border-rule p-3">
@@ -225,7 +229,11 @@ export function Running({ session }: RunningProps) {
         </div>
       )}
 
-      {endFailed ? <p role="alert">{END_FAILED_NOTICE}</p> : null}
+      {endFailed ? (
+        <p role="alert" className="text-sm text-attention">
+          {END_FAILED_NOTICE}
+        </p>
+      ) : null}
 
       <SyncStatus sessionId={session.id} />
     </div>

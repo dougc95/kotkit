@@ -188,7 +188,12 @@ export function ChangePracticeDuration({ saveVariant = 'primary' }: ChangePracti
   if (raceEnded) {
     return (
       <section aria-label="Change practice duration">
-        <p role="alert" className="text-sm">
+        {/* U15a: the same submit catch block that colors `banner` below for
+            attention also sets this state (the 409 `program_terminal`
+            branch) — a failed save because the program ended out from
+            under the edit, not merely informational content, even though
+            nothing here can be retried once the program is genuinely over. */}
+        <p role="alert" className="text-sm text-attention">
           This program has ended.
         </p>
       </section>

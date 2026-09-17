@@ -167,7 +167,7 @@ describe('Preferences', () => {
     expect(lastPatchBody()).toEqual({ milestoneAnnouncements: true })
   })
 
-  it('invalid timezone 400 shows a field error', async () => {
+  it('invalid timezone 400 shows a field error, colored for attention (U15a)', async () => {
     reject('me.patchPreferences', {
       status: 400,
       code: 'malformed_request',
@@ -178,7 +178,9 @@ describe('Preferences', () => {
     await user.selectOptions(screen.getByLabelText('Timezone'), 'Europe/Berlin')
     await user.click(screen.getByRole('button', { name: 'Save preferences' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Not a valid timezone.')
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Not a valid timezone.')
+    expect(alert).toHaveClass('text-attention')
   })
 
   it('a preference switch keeps a 44px hit area via its pseudo-element without resizing the track', async () => {

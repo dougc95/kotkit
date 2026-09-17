@@ -285,7 +285,13 @@ export function Focus() {
             canUndo={events.canUndo}
           />
           {events.undoNotice !== null ? (
-            <p role="alert" className="text-sm text-ink-muted">
+            // U15a: this is `useSessionEvents`' own undo-failure message
+            // ("This entry could not be removed...") — the same failed-
+            // action content Running.tsx's identical `undoNotice` row
+            // renders (both consume the same hook), not the "stale/updated
+            // elsewhere" kind of notice AgentPanel's STALE_MESSAGE is. A
+            // failed action takes `text-attention`, never neutral ink.
+            <p role="alert" className="text-sm text-attention">
               {events.undoNotice}
             </p>
           ) : null}

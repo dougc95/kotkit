@@ -279,7 +279,7 @@ export function AmendmentDialog({ sessionId, amendments }: AmendmentDialogProps)
             </div>
 
             {saveError !== null ? (
-              <p role="alert" className="text-sm text-ink">
+              <p role="alert" className="text-sm text-attention">
                 {saveError}
               </p>
             ) : null}

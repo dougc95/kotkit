@@ -259,13 +259,15 @@ describe('Ready', () => {
     expect(await screen.findByText('This attempt cannot start before the assigned date.')).toBeInTheDocument()
   })
 
-  it('network failure -> could not be started and no countdown rendered', async () => {
+  it('network failure -> could not be started and no countdown rendered, colored for attention (U15a)', async () => {
     reject('sessions.create', { status: 0, code: 'network_error', message: 'The request could not be completed.' })
     const { user } = renderReady(makeSlot())
 
     await user.click(await screen.findByRole('button', { name: 'Start' }))
 
-    expect(await screen.findByText('The benchmark could not be started. Retry.')).toBeInTheDocument()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The benchmark could not be started. Retry.')
+    expect(alert).toHaveClass('text-attention')
     expect(screen.queryByTestId('timer-digits')).not.toBeInTheDocument()
   })
 

@@ -200,6 +200,23 @@ describe('ChangePracticeDuration', () => {
     ).toBeInTheDocument()
   })
 
+  it('409 program_terminal replaces the panel with This program has ended, colored for attention (U15a)', async () => {
+    reject('programs.createRevision', {
+      status: 409,
+      code: 'program_terminal',
+    })
+    const { user } = mount(activeProgramResponse({ day: 8 }))
+
+    await screen.findByRole('radio', { name: '15 minutes' })
+    await user.click(screen.getByRole('radio', { name: '20 minutes' }))
+    await user.type(screen.getByLabelText('Reason for change'), 'a typed reason')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('This program has ended.')
+    expect(alert).toHaveClass('text-attention')
+  })
+
   it('not rendered when no non-terminal program exists', async () => {
     const { queryClient, container } = mount(NO_PROGRAM)
     await waitFor(() => expect(queryClient.getQueryState(queryKeys.programs.current)?.status).toBe('success'))
