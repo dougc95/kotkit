@@ -43,6 +43,42 @@ function RetryNotice({ onRetry }: { readonly onRetry: () => void }) {
   return <ErrorState onRetry={onRetry}>Today could not be loaded</ErrorState>
 }
 
+type DayPosition = 'past' | 'today' | 'ahead'
+
+function dayPosition(trackDay: number, currentDay: number): DayPosition {
+  if (trackDay < currentDay) {
+    return 'past'
+  }
+  if (trackDay === currentDay) {
+    return 'today'
+  }
+  return 'ahead'
+}
+
+/**
+ * Position-only progress track: past, today or ahead, derived from
+ * `today.day` alone. `GET /programs/{id}/today` returns no per-day history,
+ * so this never reads `checkin` or `blocks` and must not imply a day was
+ * recorded or missed — it is not a streak. `aria-hidden` because it carries
+ * no information the "Day N of 14" heading does not already state
+ * accessibly.
+ */
+function DayPositionTrack({ day }: { readonly day: number }) {
+  const days = Array.from({ length: 14 }, (_, index) => index + 1)
+
+  return (
+    <ol aria-hidden="true" data-testid="day-position-track" className="flex gap-1">
+      {days.map((trackDay) => (
+        <li
+          key={trackDay}
+          data-position={dayPosition(trackDay, day)}
+          className="h-1.5 flex-1 rounded-full bg-rule data-[position=past]:bg-ink-muted data-[position=today]:bg-signal"
+        />
+      ))}
+    </ol>
+  )
+}
+
 /**
  * The Today frame (task 8.2.1; practice-sessions: "Today shows one next
  * action and two blocks"), mounted at `/today` under `RailLayout`.
@@ -125,6 +161,8 @@ export function Today() {
       <header className="border-b border-rule pb-4">
         <h1 className="text-lg font-semibold text-ink">{`Day ${today.day} of 14`}</h1>
       </header>
+
+      <DayPositionTrack day={today.day} />
 
       <section aria-label="Next action" className="flex flex-col gap-3">
         {activeQuery.data ? (

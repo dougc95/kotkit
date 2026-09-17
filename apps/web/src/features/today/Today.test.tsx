@@ -241,6 +241,59 @@ describe('Today', () => {
     dateNowSpy.mockRestore()
   })
 
+  it('day position track is aria-hidden, shows 14 markers and derives past/today/ahead from today.day alone', async () => {
+    respond('programs.current', currentFixture({ kind: 'progress' }))
+    respond('programs.today', todayFixture({ kind: 'progress' }, { day: 9 }))
+
+    mountToday()
+
+    await screen.findByRole('heading', { name: 'Day 9 of 14' })
+
+    const track = screen.getByTestId('day-position-track')
+    expect(track).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+
+    const markers = track.querySelectorAll('[data-position]')
+    expect(markers).toHaveLength(14)
+    expect(markers[0]).toHaveAttribute('data-position', 'past')
+    expect(markers[7]).toHaveAttribute('data-position', 'past')
+    expect(markers[8]).toHaveAttribute('data-position', 'today')
+    expect(markers[9]).toHaveAttribute('data-position', 'ahead')
+    expect(markers[13]).toHaveAttribute('data-position', 'ahead')
+  })
+
+  it('day position track at day 0 (baseline, before Day 1) shows 14 markers, all ahead, none today', async () => {
+    respond('programs.current', currentFixture({ kind: 'benchmark', slotId: 'slot-baseline-a' }))
+    respond('programs.today', todayFixture({ kind: 'benchmark', slotId: 'slot-baseline-a' }, { day: 0 }))
+
+    mountToday()
+
+    await screen.findByRole('heading', { name: 'Day 0 of 14' })
+
+    const track = screen.getByTestId('day-position-track')
+    const markers = track.querySelectorAll('[data-position]')
+    expect(markers).toHaveLength(14)
+    expect(track.querySelectorAll('[data-position="ahead"]')).toHaveLength(14)
+    expect(track.querySelectorAll('[data-position="today"]')).toHaveLength(0)
+    expect(track.querySelectorAll('[data-position="past"]')).toHaveLength(0)
+  })
+
+  it('day position track at day 23 (demo clock past the programme) shows exactly 14 markers, all past, none today', async () => {
+    respond('programs.current', currentFixture({ kind: 'progress' }))
+    respond('programs.today', todayFixture({ kind: 'progress' }, { day: 23 }))
+
+    mountToday()
+
+    await screen.findByRole('heading', { name: 'Day 23 of 14' })
+
+    const track = screen.getByTestId('day-position-track')
+    const markers = track.querySelectorAll('[data-position]')
+    expect(markers).toHaveLength(14)
+    expect(track.querySelectorAll('[data-position="past"]')).toHaveLength(14)
+    expect(track.querySelectorAll('[data-position="today"]')).toHaveLength(0)
+    expect(track.querySelectorAll('[data-position="ahead"]')).toHaveLength(0)
+  })
+
   it('nav exposes four destinations Today/Progress/Research/Settings reachable by Tab', async () => {
     respond('me.get', ME_LOCAL_DEMO)
     respond('programs.current', currentFixture({ kind: 'benchmark', slotId: 'slot-baseline-a' }))
