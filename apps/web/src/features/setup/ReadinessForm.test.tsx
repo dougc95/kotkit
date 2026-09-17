@@ -247,6 +247,26 @@ describe('ReadinessForm', () => {
     expect(within(group).getByLabelText('Baseline A planned time')).toBeDisabled()
   })
 
+  it('frozen slot associates the frozen explanation with material reference via aria-describedby', async () => {
+    const current = makeCurrent(makeProgram({ status: 'active' }), [
+      makeSlot('baseline', 'A', {
+        materialRef: 'Ref A',
+        plannedLocalTime: '09:00',
+        frozenAt: '2026-09-06T09:00:00.000Z',
+      }),
+      makeSlot('baseline', 'B'),
+      makeSlot('final', 'A'),
+      makeSlot('final', 'B'),
+    ])
+    mount(current)
+
+    const group = await screen.findByRole('group', { name: 'Baseline A' })
+    const input = within(group).getByLabelText('Material reference')
+    const explanation = within(group).getByText('This slot is frozen because it already has an attempt.')
+
+    expect(input).toHaveAttribute('aria-describedby', explanation.id)
+  })
+
   it('server 409 frozen renders the same explanation and keeps the form', async () => {
     const current = makeCurrent(makeProgram(), fourBlankSlots())
     const { user, router } = mount(current)
