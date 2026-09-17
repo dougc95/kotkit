@@ -225,7 +225,7 @@ export interface BlockCardProps {
 
 export function BlockCard({ block, target, isNext, programId }: BlockCardProps) {
   return (
-    <div data-status={block.status} className="flex flex-col gap-3 border-b border-rule py-4 last:border-b-0">
+    <div data-status={block.status} className="flex flex-col gap-3 py-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-ink">{`Block ${block.index}`}</span>
         <span className="text-sm text-ink-muted">{STATUS_LABEL[block.status]}</span>

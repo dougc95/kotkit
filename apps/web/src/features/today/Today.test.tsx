@@ -257,6 +257,25 @@ describe('Today', () => {
     expect(screen.getAllByTestId('block-card-slot')).toHaveLength(2)
   })
 
+  it('draws the hairline between practice blocks on each block-card-slot wrapper, not on BlockCard\'s own root, so last: actually reaches the last block (jsdom applies no CSS, so this is a class-name assertion)', async () => {
+    respond('programs.current', currentFixture({ kind: 'practice', block: 1 }))
+    respond('programs.today', todayFixture({ kind: 'practice', block: 1 }))
+
+    mountToday()
+
+    const slots = await screen.findAllByTestId('block-card-slot')
+    expect(slots).toHaveLength(2)
+    for (const slot of slots) {
+      expect(slot).toHaveClass('border-b')
+      expect(slot).toHaveClass('border-rule')
+
+      const status = slot.querySelector('[data-status]')
+      expect(status).not.toBeNull()
+      expect(status).not.toHaveClass('border-b')
+      expect(status).not.toHaveClass('last:border-b-0')
+    }
+  })
+
   it('Day N of 14 uses the server day field even when the browser date differs', async () => {
     const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2099-01-01T00:00:00.000Z'))
 
