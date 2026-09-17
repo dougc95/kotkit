@@ -340,10 +340,13 @@ describe('Ready', () => {
 
 describe('token conversion', () => {
   it('Ready.tsx and Running.tsx use no legacy --color-* token and no decorative amber class', () => {
-    // A bare string base is silently ignored by this jsdom environment's URL
-    // constructor, which falls back to window.location.href instead of the
-    // given file:// path — wrapping it in `new URL(...)` first resolves
-    // correctly. Verified by direct reproduction on 2026-09-17.
+    // The literal two-argument `new URL('<literal>', import.meta.url)` is not
+    // safe here: Vite's asset transform statically rewrites exactly that
+    // pattern, which would resolve to a bundled asset URL rather than this
+    // file's own real path on disk. Wrapping `import.meta.url` in its own
+    // `new URL(...)` first breaks that literal match, so the outer call
+    // resolves the actual file:// path instead. Verified by direct
+    // reproduction on 2026-09-17.
     const readyPath = fileURLToPath(new URL('./Ready.tsx', new URL(import.meta.url)))
     const runningPath = fileURLToPath(new URL('./Running.tsx', new URL(import.meta.url)))
     const readySource = readFileSync(readyPath, 'utf8')

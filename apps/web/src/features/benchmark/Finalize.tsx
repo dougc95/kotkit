@@ -216,7 +216,7 @@ export function FinalizeSection({
   nextAction,
 }: FinalizeSectionProps) {
   const [reviewNote, setReviewNote] = useState('')
-  const reviewNoteField = useField({ name: 'review-note', description: 'Character count' })
+  const reviewNoteField = useField({ name: 'review-note', description: `${reviewNote.length}/${MAX_REVIEW_NOTE_LENGTH}` })
   const finalizeHook = useFinalizeSession(session.id)
 
   const missing = computeMissing({ materiallyDisrupted, scoringComplete, conditionsConfirmed })

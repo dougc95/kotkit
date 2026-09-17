@@ -68,9 +68,11 @@
  * 'Record off-task episode' (`EventButtons`, 8.5.1) remains the single
  * primary control on this screen; every control here is `variant="secondary"`
  * in its steady (un-opened) state — the in-dialog 'Finish now' confirm is
- * primary-styled the same way `AbandonSession`'s own in-dialog confirm is,
- * since a transient confirmation dialog is not "the screen" the one-primary
- * rule is about.
+ * `variant="primary"`, since a transient confirmation dialog is not "the
+ * screen" the one-primary rule is about. This differs from `AbandonSession`'s
+ * own in-dialog confirm, which stays `variant="secondary"` with a destructive
+ * border/text override: a destructive confirm is never primary-styled, and
+ * finishing a session (unlike abandoning one) is not destructive.
  */
 import { useCallback, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'

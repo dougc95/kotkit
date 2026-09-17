@@ -348,7 +348,7 @@ describe('Running', () => {
     await screen.findByText(/Pending|Saved/)
   })
 
-  it('the live countdown renders inside a petrol (text-signal) wrapper', async () => {
+  it('the live countdown renders its digits in petrol (text-signal)', async () => {
     await mountReady({ session: benchmarkSession({ id: 'session-petrol' }) })
 
     const digits = screen.getByTestId('timer-digits')

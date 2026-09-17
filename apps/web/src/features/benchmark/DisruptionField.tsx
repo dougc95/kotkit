@@ -70,7 +70,7 @@ export interface DisruptionFieldProps {
 }
 
 export function DisruptionField({ value, note, onChange }: DisruptionFieldProps) {
-  const noteField = useField({ name: 'disruption-note', description: 'Character count' })
+  const noteField = useField({ name: 'disruption-note', description: `${note.length}/${MAX_NOTE_LENGTH}` })
 
   return (
     <div className="space-y-4">

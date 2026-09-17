@@ -16,14 +16,15 @@
  * there is no feed-scope row for either device yet, `feedDeviceMinutes` is
  * `null` and neither line renders, so opening "More detail" on a
  * not-yet-started day does not lead with a "Partial" complaint about a total
- * that does not exist yet. It used to read " · Partial — a report is
- * missing for phone or desktop" on the same line as the total — a banned
- * middle-dot meta string (shadcn-ui-rework the rework spec §4) — and is now its
- * own plain-clause line; the design doc is explicit that the exact
- * replacement wording is not asserted by any test. Nothing here frames feed
- * minutes as a score to minimise or a number to be ashamed of: the flexible
- * cross-device feed policy supersedes the original zero-feed rule and
- * planned leisure scrolling is compatible with the program (CLAUDE.md).
+ * that does not exist yet. It used to append a "Partial — a report is
+ * missing for phone or desktop" notice on the same line as the total, joined
+ * to it by a middle dot — a banned middle-dot meta string (the rework spec,
+ * section 4) — and is now its own plain-clause line; the design doc is
+ * explicit that the exact replacement wording is not asserted by any test.
+ * Nothing here frames feed minutes as a score to minimise or a number to be
+ * ashamed of: the flexible cross-device feed policy supersedes the original
+ * zero-feed rule and planned leisure scrolling is compatible with the
+ * program (CLAUDE.md).
  */
 import { feedAggregates, type FeedRowValue } from '@attention-lab/shared'
 

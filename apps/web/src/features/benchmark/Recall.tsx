@@ -119,11 +119,13 @@ interface RecallPointFieldProps {
 }
 
 function RecallPointField({ index, value, disabled, onChange }: RecallPointFieldProps) {
-  // `description` only needs to be present (any truthy string) to make
-  // `useField` allocate a `descriptionProps` id — the actual counter text is
-  // still ours to render. This is what wires the counter's `aria-describedby`
-  // that defect #2 in the rework spec §9 flags as missing today.
-  const field = useField({ name: `recall-point-${index + 1}`, description: 'character count' })
+  // Pass `useField` the same string the counter below actually renders (the
+  // `Ready.tsx` `ReplacementReasonField` precedent), rather than a fixed
+  // placeholder — the hook only tests it for truthiness, so the DOM is
+  // byte-identical either way, but a future reader should not have to check
+  // that. This is what wires the counter's `aria-describedby` that defect #2
+  // in the rework spec §9 flags as missing today.
+  const field = useField({ name: `recall-point-${index + 1}`, description: `${value.length}/${MAX_POINT_LENGTH}` })
   return (
     <div className={POINT_SHELL_CLASSNAME} data-point-shell="true">
       <Label {...field.labelProps} className="text-sm font-medium text-ink">
@@ -137,9 +139,11 @@ function RecallPointField({ index, value, disabled, onChange }: RecallPointField
         disabled={disabled}
         onChange={(event) => onChange(index, event.target.value)}
       />
-      <p {...field.descriptionProps} className="text-xs text-ink-muted">
-        {value.length}/{MAX_POINT_LENGTH}
-      </p>
+      {field.descriptionProps !== undefined ? (
+        <p {...field.descriptionProps} className="text-xs text-ink-muted">
+          {value.length}/{MAX_POINT_LENGTH}
+        </p>
+      ) : null}
     </div>
   )
 }
