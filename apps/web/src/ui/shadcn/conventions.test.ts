@@ -59,9 +59,11 @@ describe('generated shadcn primitives', () => {
     // regeneration reverting to the default h-9 (36px) input height.
     const source = readFileSync(join(dir, 'input.tsx'), 'utf8')
     expect(source).toContain('min-h-11')
-    // Matches a standalone `h-9` token (start/end of string or surrounded by whitespace),
-    // so it does not flag `min-h-9` or a variant-prefixed class like `file:h-9`.
-    expect(source).not.toMatch(/(^|\s)h-9(?=\s|$)/)
+    // Matches a standalone `h-9` token wherever it sits in the string — including as the
+    // first or last token, where it is bounded by a quote rather than whitespace, which a
+    // `(^|\s)`/`(?=\s|$)` check would miss — via token-boundary lookaround instead. Still
+    // does not flag `min-h-9`, `file:h-9` or `data-[size=default]:h-9`.
+    expect(source).not.toMatch(/(?<![\w:./-])h-9(?![\w./-])/)
   })
 
   it('select.tsx floors the trigger at 44px and keeps SelectItem a 44px touch target', () => {
@@ -69,7 +71,11 @@ describe('generated shadcn primitives', () => {
     // default trigger height to h-9 (36px) or leaving SelectItem at its ~32px generated height.
     const source = readFileSync(join(dir, 'select.tsx'), 'utf8')
     expect(source).toContain('data-[size=default]:min-h-11')
-    expect(source).not.toContain('data-[size=default]:h-9')
+    // Built from two parts so this literal — naming a class that must NOT exist — never
+    // appears whole in this file: Tailwind 4 scans test files too, and the intact string
+    // would be picked up as a candidate class and emitted as a dead rule in the built CSS.
+    const generatedSelectTriggerHeight = 'data-[size=default]:' + 'h-9'
+    expect(source).not.toContain(generatedSelectTriggerHeight)
     const selectItemBlock = source.slice(
       source.indexOf('function SelectItem('),
       source.indexOf('function SelectSeparator(')
