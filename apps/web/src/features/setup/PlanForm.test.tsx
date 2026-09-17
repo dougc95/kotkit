@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
 import type { CreateProgramBodyValue } from '@attention-lab/shared'
 
@@ -226,5 +226,62 @@ describe('PlanForm', () => {
     const recorded = await screen.findByText('0 min/day')
     expect(recorded).toHaveAttribute('data-tier', 'recorded')
     expect(screen.queryByText('Not reported')).not.toBeInTheDocument()
+  })
+
+  // task-21-amendment.md's replacement test list (supersedes the brief's
+  // Step 1/Step 2, which withdrew the Timezone Select conversion).
+
+  it('the duration radios sit inside a radiogroup named by the legend', () => {
+    mount()
+
+    const group = screen.getByRole('radiogroup', { name: 'Practice block duration' })
+    expect(within(group).getByRole('radio', { name: '5 minutes' })).toBeInTheDocument()
+    expect(within(group).getByRole('radio', { name: '10 minutes' })).toBeInTheDocument()
+    expect(within(group).getByRole('radio', { name: '15 minutes' })).toBeInTheDocument()
+  })
+
+  it('accepts 15-minute duration as practiceTargetSeconds 900', async () => {
+    respond('programs.create', { program: { id: 'p1' }, revision: { id: 'r1' } })
+    const { user } = mount()
+
+    await fillBaseline(user)
+    await user.click(screen.getByRole('radio', { name: '15 minutes' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(mockApi.programs.create).toHaveBeenCalledTimes(1))
+    const [body] = lastCreateCall()
+    expect(body.practiceTargetSeconds).toBe(900)
+  })
+
+  it('the timezone error is attention-coloured and associated with the select', async () => {
+    respond('programs.create', { program: { id: 'p1' }, revision: { id: 'r1' } })
+    const { user } = mount()
+
+    await fillBaseline(user, { confirm: false })
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    const message = screen.getByText('Confirm your timezone before saving.')
+    expect(message).toHaveClass('text-attention')
+    const select = screen.getByLabelText('Timezone')
+    expect(select).toHaveAttribute('aria-describedby', message.id)
+  })
+
+  // Pin, not a red case: e2e/acceptance/new-user.spec.ts reads this control
+  // with page.getByLabel('Timezone', { exact: true }).inputValue(), which
+  // only works on a native <input>/<textarea>/<select> — never convert this
+  // to a Radix Select.
+  it('the Timezone control stays a native select', () => {
+    mount()
+
+    expect(screen.getByLabelText('Timezone', { exact: true }).tagName).toBe('SELECT')
+  })
+
+  it('Confirm timezone is still operable by its label', async () => {
+    const { user } = mount()
+
+    const checkbox = screen.getByLabelText('Confirm timezone')
+    await user.click(checkbox)
+
+    expect(checkbox).toHaveAttribute('aria-checked', 'true')
   })
 })

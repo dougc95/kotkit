@@ -8,8 +8,10 @@ import { newIdempotencyKey } from '../../lib/api/newIdempotencyKey.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
 import { useField } from '../../ui/field.js'
+import { Checkbox } from '../../ui/shadcn/checkbox.js'
 import { Input } from '../../ui/shadcn/input.js'
 import { Label } from '../../ui/shadcn/label.js'
+import { RadioGroup, RadioGroupItem } from '../../ui/shadcn/radio-group.js'
 import { Reported } from '../../ui/Reported.js'
 
 /**
@@ -60,6 +62,17 @@ const DURATION_OPTIONS: ReadonlyArray<{ minutes: 5 | 10 | 15; seconds: 300 | 600
 ]
 
 const DEFAULT_LEISURE_ALLOWANCE_MINUTES = 20
+
+/**
+ * Radix `RadioGroup`'s `onValueChange` delivers a plain string; only a value
+ * matching one of `DURATION_OPTIONS`' minutes is accepted, mirroring
+ * `parseDurationSeconds` in `features/settings/ChangePracticeDuration.tsx` —
+ * no `as` cast on an untyped string.
+ */
+function parseDurationMinutes(value: string): 5 | 10 | 15 | undefined {
+  const minutes = Number(value)
+  return DURATION_OPTIONS.find((option) => option.minutes === minutes)?.minutes
+}
 
 /** `Intl.DateTimeFormat().resolvedOptions().timeZone`, guarded for an environment where it throws. */
 function detectTimezone(): string {
@@ -123,26 +136,33 @@ interface TimezoneConfirmProps {
   readonly error: string | undefined
 }
 
-/** Timezone select + its explicit confirm checkbox (program-setup: "Timezone is confirmed, not assumed"). */
+/**
+ * Timezone select + its explicit confirm checkbox (program-setup: "Timezone
+ * is confirmed, not assumed").
+ *
+ * The select stays a native `<select>` restyled on the new tokens and wired
+ * through `useField` — following `features/settings/TimezoneSelect.tsx` as
+ * built — rather than converting to the generated Radix `Select`:
+ * `e2e/acceptance/new-user.spec.ts` reads this control with
+ * `page.getByLabel('Timezone', { exact: true }).inputValue()`, which only
+ * works on a native `<input>`/`<textarea>`/`<select>` and throws on a Radix
+ * `SelectTrigger` (a `button role="combobox"`). The confirm checkbox does
+ * convert to the generated `Checkbox`.
+ */
 function TimezoneConfirm({ value, confirmed, onChange, onConfirm, zones, error }: TimezoneConfirmProps) {
-  const selectId = useId()
-  const checkboxId = useId()
-  const errorId = useId()
+  const timezoneField = useField({ name: 'timezone', error })
+  const confirmField = useField({ name: 'confirmTimezone' })
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={selectId} className="text-sm font-medium">
-        Timezone
-      </label>
+      <Label {...timezoneField.labelProps}>Timezone</Label>
       <select
-        id={selectId}
+        {...timezoneField.controlProps}
         value={value}
         onChange={(event) => {
           onChange(event.target.value)
         }}
-        aria-invalid={error !== undefined ? true : undefined}
-        aria-describedby={error !== undefined ? errorId : undefined}
-        className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+        className="min-h-11 rounded-md border border-rule bg-card px-3 py-2 text-sm text-ink"
       >
         {zones.map((zone) => (
           <option key={zone} value={zone}>
@@ -151,20 +171,21 @@ function TimezoneConfirm({ value, confirmed, onChange, onConfirm, zones, error }
         ))}
       </select>
 
-      <label htmlFor={checkboxId} className="flex items-center gap-2 text-sm">
-        <input
-          id={checkboxId}
-          type="checkbox"
+      <div className="flex items-center gap-2">
+        <Checkbox
           checked={confirmed}
-          onChange={(event) => {
-            onConfirm(event.target.checked)
+          onCheckedChange={(checked) => {
+            onConfirm(checked === true)
           }}
+          {...confirmField.controlProps}
         />
-        Confirm timezone
-      </label>
+        <Label {...confirmField.labelProps} className="flex min-h-11 items-center text-sm font-normal text-ink">
+          Confirm timezone
+        </Label>
+      </div>
 
-      {error !== undefined ? (
-        <p id={errorId} role="alert" className="text-sm">
+      {timezoneField.errorProps !== undefined ? (
+        <p {...timezoneField.errorProps} className="text-sm text-attention">
           {error}
         </p>
       ) : null}
@@ -214,6 +235,9 @@ function feedEstimatePreviewText(rawValue: string): string {
 export function PlanForm() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+
+  const durationLegendId = useId()
+  const durationIdBase = useId()
 
   const [baselineDate, setBaselineDate] = useState('')
   const [timezone, setTimezone] = useState(() => detectTimezone())
@@ -353,23 +377,32 @@ export function PlanForm() {
       />
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium">Practice block duration</legend>
-        <div className="flex gap-4">
-          {DURATION_OPTIONS.map((option) => (
-            <label key={option.minutes} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="duration"
-                value={option.minutes}
-                checked={durationMinutes === option.minutes}
-                onChange={() => {
-                  setDurationMinutes(option.minutes)
-                }}
-              />
-              {option.minutes} minutes
-            </label>
-          ))}
-        </div>
+        <legend id={durationLegendId} className="text-sm font-medium text-ink">
+          Practice block duration
+        </legend>
+        <RadioGroup
+          aria-labelledby={durationLegendId}
+          className="flex gap-4"
+          value={String(durationMinutes)}
+          onValueChange={(next) => {
+            const minutes = parseDurationMinutes(next)
+            if (minutes !== undefined) {
+              setDurationMinutes(minutes)
+            }
+          }}
+        >
+          {DURATION_OPTIONS.map((option) => {
+            const itemId = `${durationIdBase}-${option.minutes}`
+            return (
+              <div key={option.minutes} className="flex items-center gap-2">
+                <RadioGroupItem id={itemId} value={String(option.minutes)} />
+                <Label htmlFor={itemId} className="flex min-h-11 items-center text-sm font-normal text-ink">
+                  {option.minutes} minutes
+                </Label>
+              </div>
+            )
+          })}
+        </RadioGroup>
       </fieldset>
 
       <div className="flex flex-col gap-2">
