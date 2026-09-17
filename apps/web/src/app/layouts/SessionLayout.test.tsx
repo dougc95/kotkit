@@ -143,6 +143,14 @@ describe('SessionLayout', () => {
     }
   })
 
+  it('main has pb-20 so a session screen can scroll clear of the floating Abandon control (Task W2a defect 2)', async () => {
+    const { container } = renderSessionLayoutAt('/focus/s1')
+
+    await screen.findByRole('heading', { name: 'Focus' })
+    const main = container.querySelector('main#main')
+    expect(main).toHaveClass('pb-20')
+  })
+
   it('all five session paths render inside SessionLayout', async () => {
     for (const [path, name] of SESSION_PATH_TO_NAME) {
       const { container } = renderSessionLayoutAt(path)

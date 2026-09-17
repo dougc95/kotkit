@@ -122,7 +122,7 @@ export function AbandonSession({ session }: AbandonSessionProps) {
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>
-        <Button variant="quiet" className="fixed bottom-4 right-4 z-40">
+        <Button variant="quiet" className="fixed bottom-4 right-4 z-40 border border-rule bg-paper">
           Abandon session
         </Button>
       </AlertDialogTrigger>

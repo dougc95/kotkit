@@ -127,7 +127,13 @@ describe('AbandonSession', () => {
     const session = makeSession()
     const { user } = renderWithProviders(<AbandonSession session={session} />)
 
-    expect(screen.getByRole('button', { name: 'Abandon session' })).toHaveAttribute('data-variant', 'quiet')
+    const trigger = screen.getByRole('button', { name: 'Abandon session' })
+    expect(trigger).toHaveAttribute('data-variant', 'quiet')
+    // Task W2a defect 2: an opaque ground and hairline so the fixed trigger
+    // does not float transparently over scrolled content.
+    expect(trigger.className).toMatch(/\bfixed\b/)
+    expect(trigger.className).toMatch(/\bbg-paper\b/)
+    expect(trigger.className).toMatch(/\bborder-rule\b/)
 
     await openDialog(user)
     const reason = screen.getByLabelText('Reason (optional)')
