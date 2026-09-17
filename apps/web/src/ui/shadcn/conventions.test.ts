@@ -83,6 +83,15 @@ describe('generated shadcn primitives', () => {
     expect(selectItemBlock).toContain('min-h-11')
   })
 
+  it('label.tsx sets no leading-none, so an unstyled label (no caller text-* size) keeps normal line-height and its wrapped lines do not touch', () => {
+    // Guards against a shadcn regeneration reintroducing `leading-none`: tailwind-merge only
+    // drops it when a caller passes its own `text-*` size, so a Label given none keeps
+    // line-height 1, and a field label that wraps (phone width, narrow grid columns) gets
+    // touching lines. Token-boundary regex, not a bare substring, per the `h-9` guard above.
+    const source = readFileSync(join(dir, 'label.tsx'), 'utf8')
+    expect(source).not.toMatch(/(?<![\w:./-])leading-none(?![\w./-])/)
+  })
+
   it.each(['checkbox.tsx', 'radio-group.tsx'])(
     '%s extends its 16px control to a 24px hit area (after:-inset-1) per D40',
     (file) => {

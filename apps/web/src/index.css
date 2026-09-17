@@ -15,10 +15,13 @@
  * `ui/shadcn/conventions.test.ts` merely MENTIONS `min-h-9`, `file:h-9` and `data-[size=default]:h-9`
  * to explain what a guard must NOT match, and all three used to ship as dead CSS). Excluding test
  * files from the scan fixes this once, at the source, instead of contorting every guard test that
- * names a forbidden class.
+ * names a forbidden class. The same reasoning excludes the `test/` support directory (harnesses and
+ * fixtures that are never shipped, e.g. `mockClient.ts`) and `.test-d.ts` type-test files.
  */
 @source not "./**/*.test.ts";
 @source not "./**/*.test.tsx";
+@source not "./test/**";
+@source not "./**/*.test-d.ts";
 
 @theme {
   --color-paper: #F3F5F5;

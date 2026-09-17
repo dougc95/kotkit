@@ -167,11 +167,28 @@ describe('index.css dark-variant scoping (this app is light-only)', () => {
 
     expect(offenders).toEqual([])
   })
+
+  it('index.html sets no class attribute value containing the dark token (the likeliest place for class="dark" on <html>)', () => {
+    // Resolved the same way srcDir above is (fileURLToPath + node:path join), never a literal
+    // two-argument `new URL('<literal>', import.meta.url)`.
+    const indexHtml = readFileSync(join(srcDir, '..', 'index.html'), 'utf8')
+
+    // Built from concatenated parts, matching the style of classNameDark/classListAddDark above.
+    const classAttr = 'class' + '="'
+    const classValues = [...indexHtml.matchAll(new RegExp(classAttr + '([^"]*)"', 'g'))].map(
+      (match) => match[1]!
+    )
+    const hasDarkToken = classValues.some((value) => value.split(/\s+/).includes('dark'))
+
+    expect(hasDarkToken).toBe(false)
+  })
 })
 
 describe('index.css Tailwind source scanning', () => {
-  it('excludes test files from the source scan, so a guard test naming a forbidden class does not ship it as dead CSS', () => {
+  it('excludes test files, the test-support directory and type-test files from the source scan, so a guard test naming a forbidden class does not ship it as dead CSS', () => {
     expect(css).toMatch(/@source not ["']\.\/\*\*\/\*\.test\.ts["'];/)
     expect(css).toMatch(/@source not ["']\.\/\*\*\/\*\.test\.tsx["'];/)
+    expect(css).toMatch(/@source not ["']\.\/test\/\*\*["'];/)
+    expect(css).toMatch(/@source not ["']\.\/\*\*\/\*\.test-d\.ts["'];/)
   })
 })
