@@ -113,6 +113,11 @@ export function formatCheckinStatus(status: CheckinStatus): string {
   return CHECKIN_STATUS_LABEL[status]
 }
 
+/** Self-reported stress 1–10, or 'Not reported' for `null` — never coerced to '0' (CLAUDE.md: unknown != zero). Always a string, so it can pass through <Reported> like every other cell in this table. Moved here from `DailyTrend.tsx`'s own inline ternary (the rework spec §9, defect 5). */
+export function formatStress(stress: number | null): string {
+  return stress === null ? NOT_REPORTED : String(stress)
+}
+
 /**
  * 1-based position of each row within its own program day, in array order,
  * keyed by `sessionId` (a `Map`, not a parallel array, so callers never hit

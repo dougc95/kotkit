@@ -77,6 +77,38 @@ describe('AmendmentDialog', () => {
     expect(mockApi.sessions.amend).not.toHaveBeenCalled()
   })
 
+  it('the reason field associates its required error via aria-describedby and aria-invalid', async () => {
+    const { user } = renderWithProviders(<AmendmentDialog sessionId="session-1" amendments={[]} />)
+    await openDialog(user)
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    const errorText = await screen.findByText('A reason is required')
+    const textarea = screen.getByLabelText('Reason')
+
+    expect(errorText).toHaveAttribute('role', 'alert')
+    expect(textarea).toHaveAttribute('aria-invalid', 'true')
+    expect(textarea.getAttribute('aria-describedby')).toContain(errorText.id)
+  })
+
+  it('the required-reason error renders in attention, never red or the destructive utility (spec U15a)', async () => {
+    const { user } = renderWithProviders(<AmendmentDialog sessionId="session-1" amendments={[]} />)
+    await openDialog(user)
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    const errorText = await screen.findByText('A reason is required')
+
+    expect(errorText).toHaveClass('text-attention')
+    expect(errorText.className).not.toMatch(/destructive|red-/)
+  })
+
+  it('the dialog has no icon-only Close button; Cancel remains the way out', async () => {
+    const { user } = renderWithProviders(<AmendmentDialog sessionId="session-1" amendments={[]} />)
+    await openDialog(user)
+
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+  })
+
   it('submitting reason only (excludeFromReport false) posts 201 and invalidates the report query', async () => {
     respond('sessions.amend', makeAmendment({ id: 'amendment-new' }))
     const { user, queryClient } = renderWithProviders(<AmendmentDialog sessionId="session-1" amendments={[]} />)

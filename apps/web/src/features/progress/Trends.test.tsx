@@ -70,6 +70,23 @@ vi.mock('recharts', () => {
   }
   const Noop = () => null
 
+  // Real Recharts computes a Bar's legend entry from `fill` alone, so a
+  // frame-only ("fill=none") planned bar gets a blank swatch (fix round 1,
+  // finding 1) — PracticeTrend works around that with a custom `content`
+  // renderer. This mock renders that `content` exactly as Recharts' own
+  // `Legend` component would: call it if it's a function, render it as-is if
+  // it's already an element. `DailyTrend` never passes `content`, so it still
+  // renders nothing, same as before this mock grew this branch.
+  function Legend({ content }: { content?: ReactNode | ((props: Record<string, never>) => ReactNode) }) {
+    if (typeof content === 'function') {
+      return <>{content({})}</>
+    }
+    if (content !== undefined && content !== null) {
+      return <>{content}</>
+    }
+    return null
+  }
+
   return {
     __captured: captured,
     BarChart,
@@ -80,7 +97,7 @@ vi.mock('recharts', () => {
     XAxis: Noop,
     YAxis: Noop,
     Tooltip: Noop,
-    Legend: Noop,
+    Legend,
   }
 })
 
@@ -210,6 +227,132 @@ describe('PracticeTrend / DailyTrend / ExactValuesTable', () => {
     for (const cell of notReported) {
       expect(cell.textContent).not.toBe('0')
     }
+  })
+
+  it('Timer flag column renders all three tiers: OK recorded, Timing uncertain amber, Not reported absent', () => {
+    // `timerQuality` is `Type.Optional` on `PracticeRowValue`, and apps/web
+    // runs with `exactOptionalPropertyTypes: true` (tsconfig.base.json), so
+    // `makePracticeRow({ ..., timerQuality: undefined })` does not typecheck
+    // (TS2379 — an explicit `undefined` is not the same thing as omitting an
+    // optional property under that flag). The "not reported" row is built by
+    // destructuring the key back OFF a normal row instead: the result
+    // genuinely lacks `timerQuality`, which is exactly what "not reported"
+    // means, and is still a valid `PracticeRowValue` since the field is
+    // optional.
+    const { timerQuality: _omittedTimerQuality, ...unsetRow } = makePracticeRow({
+      sessionId: 's-unset',
+      day: 3,
+      localDate: '2026-09-03',
+      targetSeconds: 600,
+    })
+    const rows = [
+      makePracticeRow({ sessionId: 's-ok', day: 1, localDate: '2026-09-01', targetSeconds: 600, timerQuality: 'ok' }),
+      makePracticeRow({
+        sessionId: 's-uncertain',
+        day: 2,
+        localDate: '2026-09-02',
+        targetSeconds: 600,
+        timerQuality: 'uncertain',
+      }),
+      unsetRow,
+    ]
+    renderWithProviders(<PracticeTrend practice={rows} />)
+
+    // Column order is COLUMNS' own fixed order (Day, Date, Block, Planned,
+    // Completed, Output quality, S, E, Agent checks, Timer flag, Time
+    // source) — index 9 is Timer flag.
+    function timerCellForDay(day: number): HTMLElement {
+      const row = screen
+        .getAllByRole('row')
+        .find((candidate) => within(candidate).queryAllByRole('cell')[0]?.textContent === String(day))
+      if (row === undefined) throw new Error(`no row rendered for day ${day}`)
+      const cell = within(row).getAllByRole('cell')[9]
+      if (cell === undefined) throw new Error('Timer flag column missing')
+      return cell
+    }
+
+    const okCell = timerCellForDay(1)
+    expect(okCell).toHaveTextContent('OK')
+    expect(okCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'recorded')
+
+    const uncertainCell = timerCellForDay(2)
+    expect(uncertainCell).toHaveTextContent('Timing uncertain')
+    expect(uncertainCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'uncertain')
+
+    const unsetCell = timerCellForDay(3)
+    expect(unsetCell).toHaveTextContent('Not reported')
+    expect(unsetCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'absent')
+  })
+
+  it('mono is scoped to figure cells: stress renders mono, a recorded status word does not', () => {
+    // Column order is DailyTrend's own COLUMNS (Day, Date, Status, Sleep,
+    // Mindfulness, Stress, Phone, Desktop, Tablet, Unspecified, Feed total) —
+    // index 2 is Status, index 5 is Stress. Scoped by row + column index, not
+    // a bare `getByText`, so another cell with the same text can't retarget
+    // this assertion (fix round 1, finding 2's own instruction).
+    const days = [makeDayRow({ localDate: '2026-09-01', day: 1, stress: 4, status: 'complete' })]
+    renderWithProviders(<DailyTrend days={days} />)
+
+    function dailyCellForDay(day: number, columnIndex: number): HTMLElement {
+      const row = screen
+        .getAllByRole('row')
+        .find((candidate) => within(candidate).queryAllByRole('cell')[0]?.textContent === String(day))
+      if (row === undefined) throw new Error(`no row rendered for day ${day}`)
+      const cell = within(row).getAllByRole('cell')[columnIndex]
+      if (cell === undefined) throw new Error(`column ${columnIndex} missing`)
+      return cell
+    }
+
+    const stressCell = dailyCellForDay(1, 5)
+    const stressValue = stressCell.querySelector('[data-tier="recorded"]')
+    expect(stressValue).not.toBeNull()
+    expect(stressValue).toHaveTextContent('4')
+    expect(stressValue).toHaveClass('font-mono')
+
+    const statusCell = dailyCellForDay(1, 2)
+    const statusValue = statusCell.querySelector('[data-tier="recorded"]')
+    expect(statusValue).not.toBeNull()
+    expect(statusValue).toHaveTextContent('Complete')
+    expect(statusValue).not.toHaveClass('font-mono')
+  })
+
+  it('ExactValuesTable carries no table-wide font-mono; mono is applied per figure cell only', () => {
+    const days = [makeDayRow({ localDate: '2026-09-01', day: 1 })]
+    renderWithProviders(<DailyTrend days={days} />)
+
+    const table = screen.getByRole('table')
+    expect(table.className).not.toContain('font-mono')
+  })
+
+  it('ExactValuesTable header cells wrap and body cells stay top-aligned', () => {
+    const days = [makeDayRow({ localDate: '2026-09-01', day: 1 })]
+    renderWithProviders(<DailyTrend days={days} />)
+
+    const headerCell = screen.getAllByRole('columnheader')[0]
+    expect(headerCell).toBeDefined()
+    expect(headerCell?.className).toContain('whitespace-normal')
+
+    const bodyCell = screen.getAllByRole('cell')[0]
+    expect(bodyCell).toBeDefined()
+    expect(bodyCell?.className).toContain('align-top')
+  })
+
+  it('the practice legend keys the frame and the fill, not a blank swatch, for the planned bar', () => {
+    const rows = [
+      makePracticeRow({ sessionId: 's1', day: 1, localDate: '2026-09-01', targetSeconds: 600, completedSeconds: 600 }),
+    ]
+    renderWithProviders(<PracticeTrend practice={rows} />)
+
+    expect(screen.getByText('Planned minutes')).toBeInTheDocument()
+    expect(screen.getByText('Completed minutes')).toBeInTheDocument()
+
+    const plannedSwatch = screen.getByTestId('legend-swatch-plannedMinutes')
+    expect(plannedSwatch.style.borderStyle).toBe('solid')
+    expect(plannedSwatch.style.backgroundColor).toBe('transparent')
+
+    const completedSwatch = screen.getByTestId('legend-swatch-completedMinutes')
+    expect(completedSwatch.style.backgroundColor).not.toBe('transparent')
+    expect(completedSwatch.style.backgroundColor).not.toBe('')
   })
 
   it('feed totals are labelled device-minutes', () => {
