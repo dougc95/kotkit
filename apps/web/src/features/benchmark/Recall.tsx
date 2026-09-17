@@ -79,6 +79,9 @@ import { newIdempotencyKey } from '../../lib/api/newIdempotencyKey.js'
 import { serverNowMs, type ClockAnchor } from '../../lib/clock/remaining.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 import { TimerDisplay } from '../focus/TimerDisplay.js'
 
 const RECALL_TARGET_SECONDS = 180
@@ -97,32 +100,56 @@ export interface RecallPointsProps {
   readonly disabled: boolean
 }
 
+/**
+ * Shared with Scoring.tsx's `PointRow`: the blank textarea here, the locked
+ * sentence there, and the scored-blank row there must all sit inside this
+ * exact shape, so the eye tracks continuity across the recall -> scoring
+ * transition instead of a page reset (the rework spec §8, "Benchmark: recall and
+ * scoring"). `data-point-shell="true"` is a new, non-preserved-contract
+ * marker used only so tests can confirm the shape actually matches.
+ */
+export const POINT_SHELL_CLASSNAME = 'space-y-2 rounded-md border border-rule px-4 py-3'
+
+interface RecallPointFieldProps {
+  readonly index: number
+  readonly value: string
+  readonly disabled: boolean
+  readonly onChange: (index: number, value: string) => void
+}
+
+function RecallPointField({ index, value, disabled, onChange }: RecallPointFieldProps) {
+  // `description` only needs to be present (any truthy string) to make
+  // `useField` allocate a `descriptionProps` id — the actual counter text is
+  // still ours to render. This is what wires the counter's `aria-describedby`
+  // that defect #2 in the rework spec §9 flags as missing today.
+  const field = useField({ name: `recall-point-${index + 1}`, description: 'character count' })
+  return (
+    <div className={POINT_SHELL_CLASSNAME} data-point-shell="true">
+      <Label {...field.labelProps} className="text-sm font-medium text-ink">
+        Point {index + 1}
+      </Label>
+      <Textarea
+        {...field.controlProps}
+        value={value}
+        maxLength={MAX_POINT_LENGTH}
+        rows={2}
+        disabled={disabled}
+        onChange={(event) => onChange(index, event.target.value)}
+      />
+      <p {...field.descriptionProps} className="text-xs text-ink-muted">
+        {value.length}/{MAX_POINT_LENGTH}
+      </p>
+    </div>
+  )
+}
+
 /** Five blank-allowed textareas, "Point 1".."Point 5" — blank is a valid, sent value, never coerced to anything else. */
 export function RecallPoints({ values, onChange, disabled }: RecallPointsProps) {
   return (
     <div className="space-y-4">
-      {values.map((value, index) => {
-        const id = `recall-point-${index + 1}`
-        return (
-          <div key={id} className="space-y-1">
-            <label htmlFor={id} className="block text-sm font-medium text-[var(--color-text)]">
-              Point {index + 1}
-            </label>
-            <textarea
-              id={id}
-              value={value}
-              maxLength={MAX_POINT_LENGTH}
-              rows={2}
-              disabled={disabled}
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] disabled:opacity-70"
-              onChange={(event) => onChange(index, event.target.value)}
-            />
-            <p className="text-xs text-[var(--color-text-muted)]">
-              {value.length}/{MAX_POINT_LENGTH}
-            </p>
-          </div>
-        )
-      })}
+      {values.map((value, index) => (
+        <RecallPointField key={index} index={index} value={value} disabled={disabled} onChange={onChange} />
+      ))}
     </div>
   )
 }
