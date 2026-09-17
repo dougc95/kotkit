@@ -39,4 +39,18 @@ describe('generated shadcn primitives', () => {
     // no `:` after `focus` and use a capital F.
     expect(source).not.toMatch(/\bfocus(?:-[a-z]+)*:/)
   })
+
+  it.each(files)('%s never gives an invalid field the destructive (red) treatment', (file) => {
+    const source = readFileSync(join(dir, file), 'utf8')
+    // Spec U15/U15a: an error is never red. `useField` sets `aria-invalid="true"`
+    // on any control with a validation error, so an `aria-invalid:` utility that
+    // references `destructive` — bare (`aria-invalid:border-destructive`) or
+    // variant-prefixed (`dark:aria-invalid:ring-destructive/40`) — would turn
+    // every invalid field red. A required field left blank is not a destructive
+    // action; it takes the `attention` treatment instead. This does not match the
+    // legitimate `destructive` variant classes (`variant: "destructive"`,
+    // `bg-destructive`, `text-destructive`, `hover:bg-destructive/90`), because
+    // none of those contain the literal `aria-invalid:` prefix this checks for.
+    expect(source).not.toMatch(/aria-invalid:[\w/-]*destructive/)
+  })
 })
