@@ -8,11 +8,11 @@ import { Button } from '../ui/Button.js'
  */
 export function NotFound() {
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
+    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
       <h1 className="text-lg font-medium text-ink">This page is not available</h1>
       <Button asChild>
         <Link to="/today">Go to Today</Link>
       </Button>
-    </main>
+    </div>
   )
 }
