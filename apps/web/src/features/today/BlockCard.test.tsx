@@ -137,6 +137,16 @@ describe('BlockCard', () => {
     expect(mockApi.sessions.create).not.toHaveBeenCalled()
   })
 
+  it('the output field is marked aria-required and stays associated with its live counter for screen readers', () => {
+    mount(defaultProps())
+
+    const textbox = outputTextbox()
+    expect(textbox).toHaveAttribute('aria-required', 'true')
+
+    const counter = screen.getByText('0/200')
+    expect(textbox.getAttribute('aria-describedby')).toContain(counter.id)
+  })
+
   it('201 characters is blocked', () => {
     mount(defaultProps())
 

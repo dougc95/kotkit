@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
 import type {
   CurrentProgramResponseValue,
@@ -195,6 +195,35 @@ describe('NextAction', () => {
       cleanup()
     }
   })
+
+  it('practice next action renders as the quiet variant so BlockCard\'s own Start stays the only primary control', () => {
+    renderWithProviders(
+      <NextAction
+        nextAction={{ kind: 'practice', block: 1 }}
+        programId="program-1"
+        slots={ALL_SLOTS}
+        onFocusBlock={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Block 1 is next' })).toHaveAttribute('data-variant', 'quiet')
+  })
+
+  it('benchmark next action link still carries data-variant primary via Button asChild', () => {
+    renderWithProviders(
+      <NextAction
+        nextAction={{ kind: 'benchmark', slotId: 'slot-baseline-a' }}
+        programId="program-1"
+        slots={ALL_SLOTS}
+        onFocusBlock={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Start with your baseline' })).toHaveAttribute(
+      'data-variant',
+      'primary',
+    )
+  })
 })
 
 describe('Today', () => {
@@ -228,6 +257,25 @@ describe('Today', () => {
     expect(screen.getAllByTestId('block-card-slot')).toHaveLength(2)
   })
 
+  it('draws the hairline between practice blocks on each block-card-slot wrapper, not on BlockCard\'s own root, so last: actually reaches the last block (jsdom applies no CSS, so this is a class-name assertion)', async () => {
+    respond('programs.current', currentFixture({ kind: 'practice', block: 1 }))
+    respond('programs.today', todayFixture({ kind: 'practice', block: 1 }))
+
+    mountToday()
+
+    const slots = await screen.findAllByTestId('block-card-slot')
+    expect(slots).toHaveLength(2)
+    for (const slot of slots) {
+      expect(slot).toHaveClass('border-b')
+      expect(slot).toHaveClass('border-rule')
+
+      const status = slot.querySelector('[data-status]')
+      expect(status).not.toBeNull()
+      expect(status).not.toHaveClass('border-b')
+      expect(status).not.toHaveClass('last:border-b-0')
+    }
+  })
+
   it('Day N of 14 uses the server day field even when the browser date differs', async () => {
     const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2099-01-01T00:00:00.000Z'))
 
@@ -239,6 +287,20 @@ describe('Today', () => {
     await screen.findByRole('heading', { name: 'Day 9 of 14' })
 
     dateNowSpy.mockRestore()
+  })
+
+  it("clicking Block 1 is next moves DOM focus into block 1's own start form (regression: BlockCard's markup must keep the textarea the first focusable descendant of [data-block-index])", async () => {
+    respond('programs.current', currentFixture({ kind: 'practice', block: 1 }))
+    respond('programs.today', todayFixture({ kind: 'practice', block: 1 }))
+
+    mountToday()
+
+    const nextButton = await screen.findByRole('button', { name: 'Block 1 is next' })
+    fireEvent.click(nextButton)
+
+    const outputField = screen.getByRole('textbox', { name: 'What will you produce?' })
+    expect(outputField).toHaveFocus()
+    expect(outputField.closest('[data-block-index="1"]')).not.toBeNull()
   })
 
   it('day position track is aria-hidden, shows 14 markers and derives past/today/ahead from today.day alone', async () => {

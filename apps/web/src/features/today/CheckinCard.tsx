@@ -12,6 +12,9 @@
 import { Link } from 'react-router'
 import type { CheckinField, TodayResponseValue } from '@attention-lab/shared'
 
+import { Button } from '../../ui/Button.js'
+import { Reported } from '../../ui/Reported.js'
+
 export interface CheckinCardProps {
   /**
    * Accepted for parity with the other Today slots (BlockCard,
@@ -34,36 +37,39 @@ function renderMinutes(value: number | null): string {
   return value === null ? 'not yet reported' : `${value} min`
 }
 
-const LINK_CLASSES =
-  'inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text)] hover:brightness-95 self-start'
-
 export function CheckinCard({ localDate, checkin }: CheckinCardProps) {
   const { status, missing, values } = checkin
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-[var(--color-border)] p-4">
-      <h2 className="text-sm font-semibold text-[var(--color-text)]">Check-in</h2>
+    <div className="flex flex-col gap-3 border-b border-rule py-4">
+      <h2 className="text-sm font-semibold text-ink">Check-in</h2>
 
       {status !== 'complete' && missing.length > 0 && (
-        <p role="status" className="text-sm text-[var(--color-text-muted)]">
+        <p role="status" className="text-sm text-attention">
           {`Still needed: ${missing.map((field) => FIELD_LABEL[field]).join(', ')}`}
         </p>
       )}
 
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm text-[var(--color-text)]">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm text-ink">
         <dt className="font-medium">Sleep</dt>
-        <dd>{renderMinutes(values.sleepMinutes)}</dd>
+        <dd>
+          <Reported>{renderMinutes(values.sleepMinutes)}</Reported>
+        </dd>
 
         <dt className="font-medium">Phone feed</dt>
-        <dd>{renderMinutes(values.phoneFeedMinutes)}</dd>
+        <dd>
+          <Reported>{renderMinutes(values.phoneFeedMinutes)}</Reported>
+        </dd>
 
         <dt className="font-medium">Desktop feed</dt>
-        <dd>{renderMinutes(values.desktopFeedMinutes)}</dd>
+        <dd>
+          <Reported>{renderMinutes(values.desktopFeedMinutes)}</Reported>
+        </dd>
       </dl>
 
-      <Link className={LINK_CLASSES} to={`/checkin/${localDate}`}>
-        Open check-in
-      </Link>
+      <Button asChild variant="secondary" className="self-start">
+        <Link to={`/checkin/${localDate}`}>Open check-in</Link>
+      </Button>
     </div>
   )
 }

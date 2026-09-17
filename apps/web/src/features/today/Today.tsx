@@ -186,9 +186,14 @@ export function Today() {
         />
       ) : null}
 
-      <section aria-label="Practice blocks" className="flex flex-col gap-3">
+      <section aria-label="Practice blocks">
         {today.blocks.map((block) => (
-          <div key={block.index} data-testid="block-card-slot" data-block-index={block.index}>
+          <div
+            key={block.index}
+            data-testid="block-card-slot"
+            data-block-index={block.index}
+            className="border-b border-rule last:border-b-0"
+          >
             <BlockCard
               block={block}
               target={block.targetSeconds}
