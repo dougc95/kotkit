@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import type { MeResponseValue } from '@attention-lab/shared'
 
 import { mockApi, reject, respond } from '../test/mockClient.js'
@@ -80,5 +80,45 @@ describe('AppBootstrap', () => {
 
     await waitFor(() => expect(screen.getByText('Protected content')).toBeInTheDocument())
     expect(mockApi.me.get).toHaveBeenCalledTimes(2)
+  })
+
+  it('pending state renders inside an aria-busy region with a static placeholder row (no pulse)', async () => {
+    respond('sessions.active', null)
+    let resolveMe: (value: MeResponseValue) => void = () => {}
+    mockApi.me.get.mockImplementation(
+      () =>
+        new Promise<MeResponseValue>((resolve) => {
+          resolveMe = resolve
+        }),
+    )
+
+    const { container } = renderWithProviders(
+      <AppBootstrap>
+        <div>Protected content</div>
+      </AppBootstrap>,
+    )
+
+    const region = screen.getByText('Loading').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+    expect(region?.querySelector('[data-testid="loading-state-row"]')).not.toBeNull()
+    expect(container).toHaveTextContent('Loading')
+
+    resolveMe(ME_LOCAL_DEMO)
+    await waitFor(() => expect(screen.getByText('Protected content')).toBeInTheDocument())
+  })
+
+  it('error state renders inside a shadcn alert region containing the message and Retry action', async () => {
+    respond('sessions.active', null)
+    reject('me.get', { status: 500, code: 'server_error' })
+
+    renderWithProviders(
+      <AppBootstrap>
+        <div>Protected content</div>
+      </AppBootstrap>,
+    )
+
+    const alert = await screen.findByRole('alert')
+    expect(within(alert).getByText('Could not reach the server')).toBeInTheDocument()
+    expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
 })
