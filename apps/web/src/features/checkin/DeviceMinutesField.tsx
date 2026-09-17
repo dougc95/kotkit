@@ -20,6 +20,11 @@
  * this field is not one of that defect's five named fields (see this file's
  * header comment above and the CheckinForm.tsx task header for the
  * distinction).
+ *
+ * `disabled:opacity-100` overrides the generated `Input`'s `disabled:opacity-50`:
+ * the computed total is a live recorded value and the petrol rule is its only
+ * visual mark, so neither the number nor the rule may fade when the field is
+ * disabled.
  */
 import type { ChangeEvent } from 'react'
 
@@ -74,7 +79,7 @@ export function DeviceMinutesField({ device, value, onChange, disabled, error }:
         aria-readonly={disabled}
         value={value === null ? '' : value}
         onChange={handleChange}
-        className={cn('min-h-11 w-full max-w-40', disabled && 'border-b-2 border-b-signal')}
+        className={cn('min-h-11 w-full max-w-40 disabled:opacity-100', disabled && 'border-b-2 border-b-signal')}
       />
       {field.errorProps !== undefined ? (
         <p {...field.errorProps} className="text-sm text-attention">

@@ -247,6 +247,8 @@ describe('CheckinForm', () => {
     expect(desktopInput).toHaveValue(20)
     expect(screen.getByTestId('desktop-feed-summary')).toHaveTextContent('Desktop: 20 min')
     expect(desktopInput).toHaveClass('border-b-signal')
+    expect(desktopInput).toHaveClass('disabled:opacity-100')
+    expect(desktopInput).not.toHaveClass('disabled:opacity-50')
   })
 
   it('422 feed_platform_conflict renders on the phone headline field and blocks Save', async () => {
