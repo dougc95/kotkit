@@ -171,6 +171,23 @@ describe('FeedRows', () => {
     expect(mockApi.days.put).not.toHaveBeenCalled()
   })
 
+  it('Add row does not stretch across the column: self-start keeps it a small utility action (task V5)', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    expect(screen.getByRole('button', { name: 'Add row' })).toHaveClass('self-start')
+  })
+
+  it('Remove row does not stretch across the column: self-start keeps it a small utility action (task V5)', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    const group = await addRow(user, 1)
+    expect(within(group).getByRole('button', { name: 'Remove row' })).toHaveClass('self-start')
+  })
+
   it('adding a phone detail row disables the phone headline input; removing it re-enables the field', async () => {
     const { user } = mount(EMPTY_DAY)
     await screen.findByLabelText('Sleep minutes')

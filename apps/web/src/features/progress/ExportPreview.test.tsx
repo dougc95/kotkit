@@ -175,6 +175,15 @@ describe('ExportPreview', () => {
     expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url')
   })
 
+  it('Download button does not stretch across the column: self-start keeps it a small utility action (task V5)', async () => {
+    mockApi.export.get.mockResolvedValue(csvFixture())
+
+    renderWithProviders(<ExportPreview programId="program-1" />)
+
+    await screen.findByTestId('export-preview-text')
+    expect(screen.getByRole('button', { name: 'Download' })).toHaveClass('self-start')
+  })
+
   it('while the export query is pending, an aria-busy region shows the visible label Loading export preview', () => {
     mockApi.export.get.mockReturnValue(new Promise(() => {}))
 

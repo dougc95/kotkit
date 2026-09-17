@@ -110,6 +110,7 @@ export function ExportPreview({ programId }: ExportPreviewProps) {
           </div>
           <Button
             variant="secondary"
+            className="self-start"
             onClick={() => {
               downloadText(text, format)
             }}

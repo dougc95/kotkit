@@ -209,6 +209,19 @@ describe('NextAction', () => {
     expect(screen.getByRole('button', { name: 'Block 1 is next' })).toHaveAttribute('data-variant', 'quiet')
   })
 
+  it('practice next action button does not stretch across the column: self-start keeps it a control, not a label (task V4a)', () => {
+    renderWithProviders(
+      <NextAction
+        nextAction={{ kind: 'practice', block: 1 }}
+        programId="program-1"
+        slots={ALL_SLOTS}
+        onFocusBlock={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Block 1 is next' })).toHaveClass('self-start')
+  })
+
   it('benchmark next action link still carries data-variant primary via Button asChild', () => {
     renderWithProviders(
       <NextAction
@@ -322,6 +335,23 @@ describe('Today', () => {
     expect(markers[8]).toHaveAttribute('data-position', 'today')
     expect(markers[9]).toHaveAttribute('data-position', 'ahead')
     expect(markers[13]).toHaveAttribute('data-position', 'ahead')
+  })
+
+  it('the today marker differs from past/ahead by shape, not only colour, so greyscale still shows three states (task V4c)', async () => {
+    respond('programs.current', currentFixture({ kind: 'progress' }))
+    respond('programs.today', todayFixture({ kind: 'progress' }, { day: 9 }))
+
+    mountToday()
+
+    await screen.findByRole('heading', { name: 'Day 9 of 14' })
+
+    const track = screen.getByTestId('day-position-track')
+    expect(track.className).toContain('items-center')
+
+    const markers = track.querySelectorAll('[data-position]')
+    const todayMarker = markers[8]
+    expect(todayMarker).toHaveAttribute('data-position', 'today')
+    expect(todayMarker?.className).toContain('data-[position=today]:h-2.5')
   })
 
   it('day position track at day 0 (baseline, before Day 1) shows 14 markers, all ahead, none today', async () => {

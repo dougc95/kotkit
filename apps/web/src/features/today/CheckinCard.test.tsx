@@ -134,4 +134,13 @@ describe('CheckinCard', () => {
     const link = screen.getByRole('link', { name: 'Open check-in' })
     expect(link).toHaveAttribute('href', '/checkin/2026-09-09')
   })
+
+  it('root draws a top rule, not a bottom one: the column should not end on a hairline under nothing (task V4b)', () => {
+    mountCard(checkinFixture())
+
+    const heading = screen.getByRole('heading', { name: 'Check-in' })
+    const root = heading.parentElement
+    expect(root).toHaveClass('border-t')
+    expect(root).not.toHaveClass('border-b')
+  })
 })

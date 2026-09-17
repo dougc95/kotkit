@@ -70,6 +70,7 @@ export function NextAction({ nextAction, slots, onFocusBlock }: NextActionProps)
       return (
         <Button
           variant="quiet"
+          className="self-start"
           onClick={() => {
             onFocusBlock(nextAction.block)
           }}

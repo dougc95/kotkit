@@ -395,7 +395,7 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
         </Label>
       </div>
 
-      <Button type="button" variant="secondary" onClick={onRemove}>
+      <Button type="button" variant="secondary" className="self-start" onClick={onRemove}>
         Remove row
       </Button>
     </div>
@@ -417,7 +417,7 @@ export function FeedRows({ rows, onChange, errors }: FeedRowsProps) {
           onRemove={() => onChange(rows.filter((_, i) => i !== index))}
         />
       ))}
-      <Button type="button" variant="secondary" onClick={() => onChange([...rows, emptyDraftRow()])}>
+      <Button type="button" variant="secondary" className="self-start" onClick={() => onChange([...rows, emptyDraftRow()])}>
         Add row
       </Button>
     </div>

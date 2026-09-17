@@ -41,7 +41,7 @@ export function CheckinCard({ localDate, checkin }: CheckinCardProps) {
   const { status, missing, values } = checkin
 
   return (
-    <div className="flex flex-col gap-3 border-b border-rule py-4">
+    <div className="flex flex-col gap-3 border-t border-rule pt-4">
       <h2 className="text-sm font-semibold text-ink">Check-in</h2>
 
       {status !== 'complete' && missing.length > 0 && (

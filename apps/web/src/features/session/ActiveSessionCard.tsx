@@ -116,7 +116,7 @@ export function ActiveSessionCard({ session, staleNotice = false }: ActiveSessio
   const destination = destinationFor(session)
 
   return (
-    <Card data-testid="active-session-card" className="flex flex-col gap-2 p-4">
+    <Card data-testid="active-session-card" className="flex flex-col gap-2 rounded-lg p-4">
       {staleNotice ? (
         <p role="status" className="text-sm text-ink-muted">
           This session was updated in another tab

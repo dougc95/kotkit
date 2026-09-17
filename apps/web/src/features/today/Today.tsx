@@ -67,12 +67,12 @@ function DayPositionTrack({ day }: { readonly day: number }) {
   const days = Array.from({ length: 14 }, (_, index) => index + 1)
 
   return (
-    <ol aria-hidden="true" data-testid="day-position-track" className="flex gap-1">
+    <ol aria-hidden="true" data-testid="day-position-track" className="flex items-center gap-1">
       {days.map((trackDay) => (
         <li
           key={trackDay}
           data-position={dayPosition(trackDay, day)}
-          className="h-1.5 flex-1 rounded-full bg-rule data-[position=past]:bg-ink-muted data-[position=today]:bg-signal"
+          className="h-1.5 flex-1 rounded-full bg-rule data-[position=past]:bg-ink-muted data-[position=today]:h-2.5 data-[position=today]:bg-signal"
         />
       ))}
     </ol>

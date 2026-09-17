@@ -102,4 +102,16 @@ describe('generated shadcn primitives', () => {
       expect(source).toMatch(/\bafter:-inset-1\b/)
     }
   )
+
+  it.each(['dialog.tsx', 'alert-dialog.tsx'])(
+    '%s content is a raised surface: bg-card, never the page\'s bg-background (task V2)',
+    (file) => {
+      // The design spec reserves `card` for genuinely raised things — the
+      // active-session panel and dialogs. Token-boundary regex (as the `h-9`
+      // guard above), so this does not flag `bg-card/50` or similar variants.
+      const source = readFileSync(join(dir, file), 'utf8')
+      expect(source).toMatch(/(?<![\w:./-])bg-card(?![\w./-])/)
+      expect(source).not.toMatch(/(?<![\w:./-])bg-background(?![\w./-])/)
+    }
+  )
 })

@@ -182,6 +182,16 @@ describe('ActiveSessionCard', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
+  it('the card root uses rounded-lg, not the Card primitive\'s rounded-xl, so a measurement record does not look pillowy (task V3)', () => {
+    const session = makeSession({ id: 'session-a', kind: 'practice', lifecycle: 'running' })
+
+    renderWithProviders(<ActiveSessionCard session={session} />)
+
+    const card = screen.getByTestId('active-session-card')
+    expect(card).toHaveClass('rounded-lg')
+    expect(card).not.toHaveClass('rounded-xl')
+  })
+
   it('a stale awaiting_review current renders the Finish-review link, not the stale running one', () => {
     // The caller's own transition attempted `end` on a `running` session and
     // received 409 stale_version; `details.current` (D18) is already
