@@ -37,6 +37,7 @@ import { Input } from '../../ui/shadcn/input.js'
 import { Label } from '../../ui/shadcn/label.js'
 import { RadioGroup, RadioGroupItem } from '../../ui/shadcn/radio-group.js'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/shadcn/select.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -441,15 +442,16 @@ function parseBlankableInteger(raw: string): number | null | undefined {
 export function OptionalFields({ stress, mindfulnessMinutes, note, onChange }: OptionalFieldsProps) {
   const stressMessage = validateStress(stress)
   const mindfulnessMessage = validateMindfulnessMinutes(mindfulnessMinutes)
+  const stressField = useField({ name: 'checkin-stress', error: stressMessage })
+  const mindfulnessField = useField({ name: 'checkin-mindfulness', error: mindfulnessMessage })
+  const noteField = useField({ name: 'checkin-note' })
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <label htmlFor="checkin-stress" className="text-sm font-medium text-[var(--color-text)]">
-          Stress (0-10)
-        </label>
-        <input
-          id="checkin-stress"
+        <Label {...stressField.labelProps}>Stress (0-10)</Label>
+        <Input
+          {...stressField.controlProps}
           type="number"
           inputMode="numeric"
           step={1}
@@ -459,21 +461,19 @@ export function OptionalFields({ stress, mindfulnessMinutes, note, onChange }: O
             if (next === undefined) return
             onChange({ stress: next })
           }}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-40"
         />
-        {stressMessage !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
+        {stressField.errorProps !== undefined ? (
+          <p {...stressField.errorProps} className="text-sm text-attention">
             {stressMessage}
           </p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="checkin-mindfulness" className="text-sm font-medium text-[var(--color-text)]">
-          Mindfulness minutes
-        </label>
-        <input
-          id="checkin-mindfulness"
+        <Label {...mindfulnessField.labelProps}>Mindfulness minutes</Label>
+        <Input
+          {...mindfulnessField.controlProps}
           type="number"
           inputMode="numeric"
           step={1}
@@ -483,24 +483,22 @@ export function OptionalFields({ stress, mindfulnessMinutes, note, onChange }: O
             if (next === undefined) return
             onChange({ mindfulnessMinutes: next })
           }}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-40"
         />
-        {mindfulnessMessage !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
+        {mindfulnessField.errorProps !== undefined ? (
+          <p {...mindfulnessField.errorProps} className="text-sm text-attention">
             {mindfulnessMessage}
           </p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="checkin-note" className="text-sm font-medium text-[var(--color-text)]">
-          Note
-        </label>
-        <textarea
-          id="checkin-note"
+        <Label {...noteField.labelProps}>Note</Label>
+        <Textarea
+          {...noteField.controlProps}
           value={note}
           onChange={(event) => onChange({ note: event.target.value })}
-          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="w-full"
         />
       </div>
     </div>

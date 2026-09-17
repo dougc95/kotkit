@@ -309,6 +309,7 @@ describe('FeedRows', () => {
 
     await user.type(screen.getByLabelText('Stress (0-10)'), '11')
     expect(screen.getByText(STRESS_RANGE_MESSAGE)).toBeInTheDocument()
+    expect(screen.getByLabelText('Stress (0-10)')).toHaveAccessibleDescription(STRESS_RANGE_MESSAGE)
 
     await user.type(screen.getByLabelText('Sleep minutes'), '420')
     await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -325,5 +326,18 @@ describe('FeedRows', () => {
     expect('stress' in body).toBe(false)
     expect('mindfulnessMinutes' in body).toBe(false)
     expect('note' in body).toBe(false)
+  })
+
+  it('the partial notice reads as a plain clause, not a middle-dot fragment', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    const group = await addRow(user, 1)
+    await user.type(within(group).getByLabelText('Platform'), 'Instagram')
+    await user.type(within(group).getByLabelText('Minutes'), '25')
+
+    expect(screen.getByText(/partial/i)).toBeInTheDocument()
+    expect(document.body.textContent ?? '').not.toContain('·')
   })
 })
