@@ -111,7 +111,7 @@ export function FinalizeBar({ canFinalize, missing, onFinalize, status }: Finali
   return (
     <div className="space-y-3">
       {missing.length > 0 ? (
-        <ul className="space-y-1 text-sm text-ink-muted" aria-label="What is missing before you can finalize">
+        <ul className="space-y-1 text-sm text-attention" aria-label="What is missing before you can finalize">
           {missing.map((item) => (
             <li key={item}>{item}</li>
           ))}

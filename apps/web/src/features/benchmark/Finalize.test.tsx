@@ -174,6 +174,15 @@ describe('FinalizeSection / FinalizeBar / EligibilitySummary', () => {
     expect(screen.getByRole('button', { name: 'Finalize' })).toBeDisabled()
   })
 
+  it('the still-needed list is a needs-you message, not neutral status text', () => {
+    mockHook()
+    renderSection({ conditionsConfirmed: false })
+
+    const list = screen.getByRole('list', { name: 'What is missing before you can finalize' })
+    expect(list).toHaveClass('text-attention')
+    expect(list).not.toHaveClass('text-ink-muted')
+  })
+
   it('Finalize enabled on an incomplete attempt with recall missing once disruption and conditions are set, sending no recallScores', async () => {
     const { finalize } = mockHook()
     const { user } = renderSection({
