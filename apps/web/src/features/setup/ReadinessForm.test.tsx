@@ -267,6 +267,43 @@ describe('ReadinessForm', () => {
     expect(input).toHaveAttribute('aria-describedby', explanation.id)
   })
 
+  it('frozen slot inputs stay at full opacity, never the disabled default fade', async () => {
+    const current = makeCurrent(makeProgram({ status: 'active' }), [
+      makeSlot('baseline', 'A', {
+        materialRef: 'Ref A',
+        plannedLocalTime: '09:00',
+        frozenAt: '2026-09-06T09:00:00.000Z',
+      }),
+      makeSlot('baseline', 'B'),
+      makeSlot('final', 'A'),
+      makeSlot('final', 'B'),
+    ])
+    mount(current)
+
+    const group = await screen.findByRole('group', { name: 'Baseline A' })
+    const inputs = within(group).getAllByRole('textbox')
+    expect(inputs).toHaveLength(5)
+    for (const input of inputs) {
+      expect(input.className).toContain('disabled:opacity-100')
+      expect(input.className).not.toContain('disabled:opacity-50')
+    }
+  })
+
+  // A class assertion is all jsdom can offer for a layout rule — the actual spacing is verified
+  // visually, not here.
+  it('first slot row spaces its legend with legend padding, not the fieldset', async () => {
+    const current = makeCurrent(makeProgram(), fourBlankSlots())
+    mount(current)
+
+    const group = await screen.findByRole('group', { name: 'Baseline A' })
+    expect(group.className).toContain('group')
+    expect(group.className).not.toContain('first:pt-0')
+
+    const legend = group.querySelector('legend')
+    expect(legend).not.toBeNull()
+    expect(legend?.className).toContain('group-first:pt-0')
+  })
+
   it('server 409 frozen renders the same explanation and keeps the form', async () => {
     const current = makeCurrent(makeProgram(), fourBlankSlots())
     const { user, router } = mount(current)

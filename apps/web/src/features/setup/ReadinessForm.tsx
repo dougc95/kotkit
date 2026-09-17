@@ -241,6 +241,12 @@ export interface SlotRowProps {
   readonly onChange: (field: keyof RowFields, value: string) => void
 }
 
+/**
+ * `disabled:opacity-100` on every field below overrides the generated `Input`'s own
+ * `disabled:opacity-50`: a frozen row's material reference and planned time are values the user
+ * RECORDED, not inapplicable ones, so they may not fade just because the row is disabled (same
+ * ruling as `features/checkin/DeviceMinutesField.tsx`).
+ */
 export function SlotRow({ slot, frozen, value, onChange }: SlotRowProps) {
   const idBase = `readiness-${slot.key.replace(':', '-')}`
   const materialRefField = useField({
@@ -253,8 +259,8 @@ export function SlotRow({ slot, frozen, value, onChange }: SlotRowProps) {
   const plannedLocalTimeField = useField({ name: `${idBase}-plannedLocalTime` })
 
   return (
-    <fieldset disabled={frozen} data-slot-key={slot.key} className="flex flex-col gap-3 py-6 first:pt-0">
-      <legend className="text-base font-semibold">{slot.title}</legend>
+    <fieldset disabled={frozen} data-slot-key={slot.key} className="group pb-6">
+      <legend className="pt-6 pb-3 group-first:pt-0 text-base font-semibold">{slot.title}</legend>
 
       <div className="grid gap-3">
         <div className="flex flex-col gap-1">
@@ -263,6 +269,7 @@ export function SlotRow({ slot, frozen, value, onChange }: SlotRowProps) {
             type="text"
             value={value.materialRef}
             onChange={(event) => onChange('materialRef', event.target.value)}
+            className="disabled:opacity-100"
             {...materialRefField.controlProps}
           />
           {materialRefField.descriptionProps !== undefined ? (
@@ -278,6 +285,7 @@ export function SlotRow({ slot, frozen, value, onChange }: SlotRowProps) {
             type="text"
             value={value.language}
             onChange={(event) => onChange('language', event.target.value)}
+            className="disabled:opacity-100"
             {...languageField.controlProps}
           />
         </div>
@@ -288,6 +296,7 @@ export function SlotRow({ slot, frozen, value, onChange }: SlotRowProps) {
             type="text"
             value={value.deviceFormat}
             onChange={(event) => onChange('deviceFormat', event.target.value)}
+            className="disabled:opacity-100"
             {...deviceFormatField.controlProps}
           />
         </div>
@@ -298,6 +307,7 @@ export function SlotRow({ slot, frozen, value, onChange }: SlotRowProps) {
             type="text"
             value={value.materialLevel}
             onChange={(event) => onChange('materialLevel', event.target.value)}
+            className="disabled:opacity-100"
             {...materialLevelField.controlProps}
           />
         </div>
@@ -310,7 +320,7 @@ export function SlotRow({ slot, frozen, value, onChange }: SlotRowProps) {
             placeholder="HH:MM"
             value={value.plannedLocalTime}
             onChange={(event) => onChange('plannedLocalTime', event.target.value)}
-            className="w-32"
+            className="w-32 disabled:opacity-100"
             {...plannedLocalTimeField.controlProps}
           />
         </div>
