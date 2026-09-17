@@ -24,7 +24,7 @@ import type { ReportResponseValue } from '@attention-lab/shared'
 import { api } from '../../lib/api/client.js'
 import { NotFoundError, ValidationError } from '../../lib/api/errors.js'
 import { queryKeys } from '../../lib/query/keys.js'
-import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
 import { LoadingState } from '../../ui/LoadingState.js'
 import { Alert, AlertDescription } from '../../ui/shadcn/alert.js'
 import { AttemptTable, type AttemptTableRow } from './AttemptTable.js'
@@ -78,8 +78,8 @@ function ReportSections({ programId }: ReportSectionsProps) {
     // `variant="destructive"`: the rework spec §3 scopes the destructive token
     // strictly to destructive ACTIONS. The message itself takes
     // `text-attention` (U15a: an error message is never plain neutral ink,
-    // never red) on the same default-variant `Alert` as the retry banner
-    // just below.
+    // never red), the same default-variant `Alert` the shared `ErrorState`
+    // (the retry banner just below) itself renders through.
     if (reportQuery.error instanceof ValidationError) {
       return (
         <Alert role="alert">
@@ -88,18 +88,13 @@ function ReportSections({ programId }: ReportSectionsProps) {
       )
     }
     return (
-      <Alert role="alert">
-        <AlertDescription className="flex items-center justify-between gap-3">
-          <span className="text-attention">Report unavailable. Retry.</span>
-          <Button
-            onClick={() => {
-              void reportQuery.refetch()
-            }}
-          >
-            Retry
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <ErrorState
+        onRetry={() => {
+          void reportQuery.refetch()
+        }}
+      >
+        Report unavailable. Retry.
+      </ErrorState>
     )
   }
 
@@ -140,18 +135,13 @@ export function Progress() {
       return <ProgressEmptyState />
     }
     return (
-      <Alert role="alert">
-        <AlertDescription className="flex items-center justify-between gap-3">
-          <span className="text-attention">Report unavailable. Retry.</span>
-          <Button
-            onClick={() => {
-              void currentQuery.refetch()
-            }}
-          >
-            Retry
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <ErrorState
+        onRetry={() => {
+          void currentQuery.refetch()
+        }}
+      >
+        Report unavailable. Retry.
+      </ErrorState>
     )
   }
 

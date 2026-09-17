@@ -2,24 +2,14 @@ import { useQuery } from '@tanstack/react-query'
 
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
-import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { ChangePracticeDuration } from './ChangePracticeDuration.js'
 import { DemoControls } from './DemoControls.js'
 import { Preferences } from './Preferences.js'
 
 function RetryNotice({ onRetry }: { readonly onRetry: () => void }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm">Settings could not be loaded</p>
-      <Button
-        onClick={() => {
-          onRetry()
-        }}
-      >
-        Retry
-      </Button>
-    </div>
-  )
+  return <ErrorState onRetry={onRetry}>Settings could not be loaded</ErrorState>
 }
 
 /**
@@ -41,7 +31,7 @@ export function Settings() {
   const meQuery = useQuery({ queryKey: queryKeys.me, queryFn: api.me.get })
 
   if (meQuery.isPending) {
-    return <div aria-busy="true">Loading</div>
+    return <LoadingState>Loading</LoadingState>
   }
 
   if (meQuery.isError || meQuery.data === undefined) {

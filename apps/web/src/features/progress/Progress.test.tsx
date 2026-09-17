@@ -354,6 +354,27 @@ describe('Progress', () => {
     expect(sCell.className).toContain('align-top')
   })
 
+  it('GET /programs/current failure renders through the shared ErrorState: role alert, message unchanged, exactly one Retry (guard: already an Alert)', async () => {
+    mockApi.programs.current.mockRejectedValue(new Error('network exploded'))
+
+    renderWithProviders(<Progress />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Report unavailable. Retry.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
+  it('the report query failure renders through the shared ErrorState: role alert, message unchanged, exactly one Retry (guard: already an Alert)', async () => {
+    respond('programs.current', PROGRAM)
+    mockApi.report.get.mockRejectedValue(new Error('network exploded'))
+
+    renderWithProviders(<Progress />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Report unavailable. Retry.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
   it('while programs.current is pending, an aria-busy region shows the visible label Loading', () => {
     mockApi.programs.current.mockReturnValue(new Promise(() => {}))
 

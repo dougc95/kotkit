@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, screen } from '@testing-library/react'
 import type { CurrentProgramResponseValue, MeResponseValue } from '@attention-lab/shared'
 
-import { respond } from '../../test/mockClient.js'
+import { mockApi, reject, respond } from '../../test/mockClient.js'
 import { renderWithProviders } from '../../test/renderWithProviders.js'
 import { Settings } from './Settings.js'
 
@@ -89,6 +89,25 @@ function mount(me: MeResponseValue, program: CurrentProgramResponseValue = NO_PR
 }
 
 describe('Settings', () => {
+  it('while GET /me is pending, an aria-busy region shows the visible label Loading (guard: bare placeholder already carried both)', () => {
+    mockApi.me.get.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<Settings />)
+
+    const region = screen.getByText('Loading').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+  })
+
+  it('GET /me failure renders through the shared ErrorState: role alert, message unchanged, exactly one Retry', async () => {
+    reject('me.get', { status: 500, code: 'server_error' })
+
+    renderWithProviders(<Settings />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Settings could not be loaded')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
   it('renders exactly one primary action across the composed Preferences and Change practice duration sections', async () => {
     const { container } = mount(ME_REAL, activeProgramResponse())
 

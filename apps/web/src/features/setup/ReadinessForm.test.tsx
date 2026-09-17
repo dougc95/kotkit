@@ -398,4 +398,13 @@ describe('ReadinessForm', () => {
     expect(screen.getByText(/reading elsewhere is allowed/i)).toBeInTheDocument()
     expect(screen.getByText(/tallying on paper is fine/i)).toBeInTheDocument()
   })
+
+  it('while programs.current is pending, an aria-busy region shows the visible label Loading (guard: bare placeholder already carried both)', () => {
+    mockApi.programs.current.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<></>, { route: '/setup/readiness', routes: buildRoutes() })
+
+    const region = screen.getByText('Loading').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+  })
 })

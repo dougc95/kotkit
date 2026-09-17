@@ -20,8 +20,8 @@ import { localDateAt } from '@attention-lab/shared'
 
 import { api } from '../../lib/api/client.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
 import { LoadingState } from '../../ui/LoadingState.js'
-import { Alert, AlertDescription } from '../../ui/shadcn/alert.js'
 import { FormatToggle } from './FormatToggle.js'
 import type { ExportFormat } from './FormatToggle.js'
 
@@ -78,20 +78,13 @@ export function ExportPreview({ programId }: ExportPreviewProps) {
       {exportQuery.isPending ? (
         <LoadingState rows={2}>Loading export preview</LoadingState>
       ) : exportQuery.isError || text === undefined ? (
-        <Alert role="alert">
-          <AlertDescription className="flex items-center justify-between gap-3">
-            {/* U15a: an error message takes `text-attention` — never red
-                (`destructive`) and never plain neutral ink. */}
-            <span className="text-attention">Export unavailable. Retry.</span>
-            <Button
-              onClick={() => {
-                void exportQuery.refetch()
-              }}
-            >
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <ErrorState
+          onRetry={() => {
+            void exportQuery.refetch()
+          }}
+        >
+          Export unavailable. Retry.
+        </ErrorState>
       ) : (
         <>
           <p data-testid="export-label-line" className="text-sm font-medium text-ink">

@@ -100,6 +100,16 @@ function renderFocus(sessionId: string) {
 }
 
 describe('Focus', () => {
+  it('a non-404 load error renders through the shared ErrorState: role alert, message unchanged, exactly one Retry', async () => {
+    reject('sessions.get', { status: 500, code: 'server_error' })
+
+    renderFocus('session-load-error')
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The session could not be loaded.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
   it('no navigation landmarks are rendered', async () => {
     const session = makeSession({ id: 'session-nav' })
     respond('sessions.get', session)

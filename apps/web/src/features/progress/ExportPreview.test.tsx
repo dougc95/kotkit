@@ -194,6 +194,16 @@ describe('ExportPreview', () => {
     expect(screen.queryByTestId('export-preview-text')).not.toBeInTheDocument()
   })
 
+  it('error renders through the shared ErrorState: role alert, message unchanged, exactly one Retry (guard: already an Alert)', async () => {
+    reject('export.get', { status: 500, code: 'server_error' })
+
+    renderWithProviders(<ExportPreview programId="program-1" />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Export unavailable. Retry.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
   it('after unmount the query cache holds no export text (gcTime 0)', async () => {
     mockApi.export.get.mockResolvedValue(csvFixture())
 

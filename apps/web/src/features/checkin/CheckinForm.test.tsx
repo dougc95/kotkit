@@ -366,4 +366,23 @@ describe('CheckinForm', () => {
     expect(screen.queryByLabelText('Sleep minutes')).not.toBeInTheDocument()
     expect(mockApi.days.get).not.toHaveBeenCalled()
   })
+
+  it('while programs.current is pending, an aria-busy region shows the visible label Loading (guard: bare placeholder already carried both)', () => {
+    mockApi.programs.current.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<></>, { route: `/checkin/${DATE}`, routes: ROUTES })
+
+    const region = screen.getByText('Loading').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+  })
+
+  it('while days.get is pending, an aria-busy region shows the visible label Loading (guard: bare placeholder already carried both)', async () => {
+    respond('programs.current', OPEN_PROGRAM)
+    mockApi.days.get.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<></>, { route: `/checkin/${DATE}`, routes: ROUTES })
+
+    const label = await screen.findByText('Loading')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
+  })
 })

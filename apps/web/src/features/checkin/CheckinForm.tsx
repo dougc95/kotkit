@@ -49,6 +49,7 @@ import {
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { CheckinStatus } from './CheckinStatus.js'
 import { DeviceMinutesField, type HeadlineDevice } from './DeviceMinutesField.js'
 import {
@@ -431,7 +432,7 @@ export function CheckinForm() {
   // --- Loading / gating states ---------------------------------------------
 
   if (programQuery.isPending) {
-    return <div aria-busy="true">Loading</div>
+    return <LoadingState>Loading</LoadingState>
   }
 
   if (programQuery.isError || programQuery.data === undefined) {
@@ -462,7 +463,7 @@ export function CheckinForm() {
   }
 
   if (dayQuery.isPending) {
-    return <div aria-busy="true">Loading</div>
+    return <LoadingState>Loading</LoadingState>
   }
 
   if (dayQuery.isError) {

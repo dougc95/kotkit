@@ -37,6 +37,7 @@ import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
 import { useField } from '../../ui/field.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { Input } from '../../ui/shadcn/input.js'
 import { Label } from '../../ui/shadcn/label.js'
 
@@ -428,7 +429,7 @@ export function ReadinessForm() {
   })
 
   if (query.isPending) {
-    return <div aria-busy="true">Loading</div>
+    return <LoadingState>Loading</LoadingState>
   }
 
   if (query.isError || query.data === undefined) {
@@ -458,7 +459,7 @@ export function ReadinessForm() {
     // only once a fetch is not in flight — a genuinely absent program stays
     // absent once settled, but a mid-refetch `null` gets one more chance.
     if (query.isFetching) {
-      return <div aria-busy="true">Loading</div>
+      return <LoadingState>Loading</LoadingState>
     }
     return <Navigate to="/setup" replace />
   }

@@ -66,6 +66,7 @@ import type { SessionResponseValue, TransitionBodyValue } from '@attention-lab/s
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
 import { Reported } from '../../ui/Reported.js'
 import { ActiveSessionCard } from '../session/ActiveSessionCard.js'
 import { AgentPanel } from './AgentPanel.js'
@@ -146,9 +147,8 @@ function extractCurrentSession(details: Record<string, unknown> | undefined): Se
 
 function RetryNotice({ message, onRetry }: { readonly message: string; readonly onRetry: () => void }) {
   return (
-    <div className="mx-auto max-w-xl px-4 py-6 space-y-4">
-      <p>{message}</p>
-      <Button onClick={onRetry}>Retry</Button>
+    <div className="mx-auto max-w-xl px-4 py-6">
+      <ErrorState onRetry={onRetry}>{message}</ErrorState>
     </div>
   )
 }

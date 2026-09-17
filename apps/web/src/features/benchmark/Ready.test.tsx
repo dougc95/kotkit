@@ -269,6 +269,17 @@ describe('Ready', () => {
     expect(screen.queryByTestId('timer-digits')).not.toBeInTheDocument()
   })
 
+  it('GET /programs/current failure renders through the shared ErrorState: role alert, message unchanged, exactly one Retry', async () => {
+    reject('programs.current', { status: 500, code: 'server_error' })
+    respond('sessions.active', null)
+
+    renderWithProviders(<Ready />, { route: `/benchmark/${SLOT_ID}`, routes: routes() })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The benchmark could not be loaded.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
   it('an existing active session renders ActiveSessionCard instead of every Start control', async () => {
     renderReady(makeSlot(), { active: makeSession() })
 

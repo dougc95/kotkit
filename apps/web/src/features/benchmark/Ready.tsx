@@ -79,6 +79,7 @@ import { queryKeys } from '../../lib/query/keys.js'
 import { useActiveSession } from '../../lib/query/hooks.js'
 import { useStartSession } from '../../lib/query/useStartSession.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
 import { useField } from '../../ui/field.js'
 import { Label } from '../../ui/shadcn/label.js'
 import { Textarea } from '../../ui/shadcn/textarea.js'
@@ -194,9 +195,8 @@ function isApiErrorLike(value: unknown): value is ApiErrorLike {
 
 function RetryNotice({ message, onRetry }: { readonly message: string; readonly onRetry: () => void }) {
   return (
-    <div className="mx-auto max-w-xl px-4 py-6 space-y-4">
-      <p>{message}</p>
-      <Button onClick={onRetry}>Retry</Button>
+    <div className="mx-auto max-w-xl px-4 py-6">
+      <ErrorState onRetry={onRetry}>{message}</ErrorState>
     </div>
   )
 }
