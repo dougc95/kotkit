@@ -80,6 +80,7 @@ import { serverNowMs, type ClockAnchor } from '../../lib/clock/remaining.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
 import { useField } from '../../ui/field.js'
+import { Badge } from '../../ui/shadcn/badge.js'
 import { Label } from '../../ui/shadcn/label.js'
 import { Textarea } from '../../ui/shadcn/textarea.js'
 import { TimerDisplay } from '../focus/TimerDisplay.js'
@@ -354,14 +355,20 @@ export function Recall() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-6 space-y-6">
-      <h1 className="text-lg font-semibold text-[var(--color-text)]">Recall</h1>
+      <h1 className="text-lg font-semibold text-ink">Recall</h1>
 
       {phase === 'confirm' ? (
         <div className="space-y-4">
           {session.completeInterval === false ? (
-            <p className="inline-block rounded-full border border-[var(--color-border)] px-2 py-0.5 text-xs text-[var(--color-text-muted)]">
+            // A recorded fact about this session (D25), not a live warning —
+            // ink, per "Recorded data is ink, not a colour" (the rework spec §3).
+            // variant="outline" is just a plain bordered container;
+            // className="text-ink" overrides Badge's default text-foreground
+            // so this never reads as the muted "not reported" tier or the
+            // amber "uncertain" one.
+            <Badge variant="outline" className="text-ink">
               Incomplete attempt
-            </p>
+            </Badge>
           ) : null}
           <p>Is your reading material closed?</p>
           <div className="flex flex-wrap gap-3">
@@ -376,7 +383,11 @@ export function Recall() {
       ) : (
         <div className="space-y-6">
           <TimerDisplay remainingSeconds={remainingSeconds} />
-          {timeIsUp ? <p role="status">Time is up — save when you are ready</p> : null}
+          {timeIsUp ? (
+            <p role="status" className="text-sm text-ink-muted">
+              Time is up — save when you are ready
+            </p>
+          ) : null}
 
           <RecallPoints values={points} disabled={false} onChange={handlePointChange} />
 
@@ -385,8 +396,11 @@ export function Recall() {
               Save recall
             </Button>
             {showRetryRow ? (
-              <div role="status" className="flex items-center gap-3 text-sm text-[var(--color-text)]">
-                <p>The recall could not be saved. Retry.</p>
+              <div role="status" className="flex items-center gap-3 text-sm">
+                {/* U15a: an error/save-failure message takes the attention
+                    tier, never red and never neutral ink — the row container
+                    itself carries no text-colour utility. */}
+                <p className="text-attention">The recall could not be saved. Retry.</p>
                 <Button variant="secondary" onClick={handleRetry}>
                   Retry
                 </Button>
