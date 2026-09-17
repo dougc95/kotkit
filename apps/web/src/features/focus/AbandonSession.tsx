@@ -23,14 +23,23 @@
  * visually subordinate `quiet`-variant trigger: this is never the one
  * dominant action a session screen offers.
  */
-import { useEffect, useId, useState } from 'react'
-import { AlertDialog } from 'radix-ui'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import type { SessionResponseValue } from '@attention-lab/shared'
 
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../../ui/shadcn/alert-dialog.js'
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
 import { useAbandonSession } from './useAbandonSession.js'
 
 const ABANDONABLE_LIFECYCLES: ReadonlySet<SessionResponseValue['lifecycle']> = new Set([
@@ -60,7 +69,7 @@ export function AbandonSession({ session }: AbandonSessionProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { abandon, status } = useAbandonSession(session.id)
-  const reasonInputId = useId()
+  const reasonField = useField({ name: 'abandon-reason' })
 
   const isPending = status === 'pending'
   const { id: sessionId, programId, version: expectedVersion } = session
@@ -111,56 +120,55 @@ export function AbandonSession({ session }: AbandonSessionProps) {
   }
 
   return (
-    <AlertDialog.Root open={open} onOpenChange={handleOpenChange}>
-      <AlertDialog.Trigger className="fixed bottom-4 right-4 z-40 inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-4 text-xs font-medium text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-[var(--color-surface)]">
-        Abandon session
-      </AlertDialog.Trigger>
-      <AlertDialog.Portal>
-        <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-lg">
-          <AlertDialog.Title className="text-base font-semibold text-[var(--color-text)]">
-            Abandon this session?
-          </AlertDialog.Title>
-          <AlertDialog.Description className="mt-2 text-sm text-[var(--color-text-muted)]">
-            Unsent entries on this device will be discarded; the attempt stays in your record as abandoned.
-          </AlertDialog.Description>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+      <AlertDialogTrigger asChild>
+        <Button variant="quiet" className="fixed bottom-4 right-4 z-40">
+          Abandon session
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogTitle>Abandon this session?</AlertDialogTitle>
+        <AlertDialogDescription>
+          Unsent entries on this device will be discarded; the attempt stays in your record as abandoned.
+        </AlertDialogDescription>
 
-          <div className="mt-4 space-y-1">
-            <label htmlFor={reasonInputId} className="block text-sm font-medium text-[var(--color-text)]">
-              Reason (optional)
-            </label>
-            <input
-              id={reasonInputId}
-              type="text"
-              value={reason}
-              maxLength={REASON_MAX_LENGTH}
-              disabled={isPending}
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </div>
+        <div className="mt-4 space-y-1">
+          <Label {...reasonField.labelProps}>Reason (optional)</Label>
+          <Input
+            {...reasonField.controlProps}
+            type="text"
+            value={reason}
+            maxLength={REASON_MAX_LENGTH}
+            disabled={isPending}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </div>
 
-          {status === 'stale' ? (
-            <p role="status" className="mt-3 text-sm text-[var(--color-text-muted)]">
-              This session was updated in another tab
-            </p>
-          ) : null}
-          {status === 'error' ? (
-            <p role="alert" className="mt-3 text-sm text-[var(--color-text-muted)]">
-              Could not abandon. Retry.
-            </p>
-          ) : null}
+        {status === 'stale' ? (
+          <p role="status" className="mt-3 text-sm text-ink-muted">
+            This session was updated in another tab
+          </p>
+        ) : null}
+        {status === 'error' ? (
+          <p role="alert" className="mt-3 text-sm text-attention">
+            Could not abandon. Retry.
+          </p>
+        ) : null}
 
-          <div className="mt-6 flex justify-end gap-3">
-            <Button variant="secondary" disabled={isPending} onClick={() => handleOpenChange(false)}>
-              Keep session
-            </Button>
-            <Button variant="primary" disabled={isPending} onClick={handleConfirm}>
-              Abandon
-            </Button>
-          </div>
-        </AlertDialog.Content>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+        <div className="mt-6 flex justify-end gap-3">
+          <Button variant="secondary" disabled={isPending} onClick={() => handleOpenChange(false)}>
+            Keep session
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={isPending}
+            onClick={handleConfirm}
+            className="border-destructive text-destructive hover:bg-destructive/10"
+          >
+            Abandon
+          </Button>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

@@ -11,7 +11,7 @@
  * "Two tabs end a session").
  *
  * Meant to be mounted into Focus (8.5.3) at the `TODO(8.5.4)` slot Focus.tsx
- * already left below `TimerDisplay` — this file does NOT edit Focus.tsx
+ * already left below `EventButtons` and a hairline — this file does NOT edit Focus.tsx
  * itself (see this task's own `centralWiringNeeded` report); its test file
  * mounts this component (and `useTransition`) directly against a small
  * self-contained harness, never the real `Focus` screen.
@@ -75,11 +75,17 @@
 import { useCallback, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
-import { AlertDialog } from 'radix-ui'
 import type { SessionResponseValue, TransitionBodyValue } from '@attention-lab/shared'
 
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../../ui/shadcn/alert-dialog.js'
 import { Button } from '../../ui/Button.js'
 import { ActiveSessionCard } from '../session/ActiveSessionCard.js'
 
@@ -231,10 +237,6 @@ export interface TransitionControlsProps {
   readonly onTransition?: (session: SessionResponseValue) => void
 }
 
-const DIALOG_OVERLAY_CLASSES = 'fixed inset-0 z-50 bg-black/40'
-const DIALOG_CONTENT_CLASSES =
-  'fixed left-1/2 top-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-lg'
-
 export function TransitionControls({ session, onTransition }: TransitionControlsProps) {
   const navigate = useNavigate()
   const { status, message, currentSession, transition } = useTransition(session.id)
@@ -310,7 +312,7 @@ export function TransitionControls({ session, onTransition }: TransitionControls
       <div className="flex flex-wrap items-center gap-3">
         {session.lifecycle === 'paused' ? (
           <>
-            <p role="status" className="text-sm text-[var(--color-text-muted)]">
+            <p role="status" className="text-sm text-ink-muted">
               Paused
             </p>
             <Button variant="secondary" disabled={isPending} onClick={handleResume}>
@@ -323,41 +325,36 @@ export function TransitionControls({ session, onTransition }: TransitionControls
           </Button>
         )}
 
-        <AlertDialog.Root open={confirmOpen} onOpenChange={handleDialogOpenChange}>
-          <AlertDialog.Trigger asChild>
+        <AlertDialog open={confirmOpen} onOpenChange={handleDialogOpenChange}>
+          <AlertDialogTrigger asChild>
             <Button variant="secondary" disabled={isPending}>
               Finish early
             </Button>
-          </AlertDialog.Trigger>
-          <AlertDialog.Portal>
-            <AlertDialog.Overlay className={DIALOG_OVERLAY_CLASSES} />
-            <AlertDialog.Content className={DIALOG_CONTENT_CLASSES}>
-              <AlertDialog.Title className="text-base font-semibold text-[var(--color-text)]">
-                Finish this block early?
-              </AlertDialog.Title>
-              <AlertDialog.Description className="mt-2 text-sm text-[var(--color-text-muted)]">
-                Your recorded time and events stay saved; you&apos;ll review what you completed next.
-              </AlertDialog.Description>
-              <div className="mt-6 flex justify-end gap-3">
-                <Button
-                  ref={focusOnMount}
-                  variant="secondary"
-                  disabled={isPending}
-                  onClick={() => handleDialogOpenChange(false)}
-                >
-                  Keep going
-                </Button>
-                <Button variant="primary" disabled={isPending} onClick={handleFinishConfirm}>
-                  Finish now
-                </Button>
-              </div>
-            </AlertDialog.Content>
-          </AlertDialog.Portal>
-        </AlertDialog.Root>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogTitle>Finish this block early?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your recorded time and events stay saved; you&apos;ll review what you completed next.
+            </AlertDialogDescription>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                ref={focusOnMount}
+                variant="secondary"
+                disabled={isPending}
+                onClick={() => handleDialogOpenChange(false)}
+              >
+                Keep going
+              </Button>
+              <Button variant="primary" disabled={isPending} onClick={handleFinishConfirm}>
+                Finish now
+              </Button>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {message !== null ? (
-        <p role="alert" className="text-sm text-[var(--color-text-muted)]">
+        <p role="alert" className="text-sm text-attention">
           {message}
         </p>
       ) : null}

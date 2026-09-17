@@ -123,6 +123,31 @@ describe('AbandonSession', () => {
     expect(screen.queryByRole('button', { name: 'Abandon session' })).not.toBeInTheDocument()
   })
 
+  it('the trigger is the shared quiet Button and the reason field is Field-wired, with no retired --color- token', async () => {
+    const session = makeSession()
+    const { user } = renderWithProviders(<AbandonSession session={session} />)
+
+    expect(screen.getByRole('button', { name: 'Abandon session' })).toHaveAttribute('data-variant', 'quiet')
+
+    await openDialog(user)
+    const reason = screen.getByLabelText('Reason (optional)')
+    await user.type(reason, 'changed my mind')
+
+    expect(reason).toHaveValue('changed my mind')
+    expect(reason.className).not.toMatch(/--color-/)
+    expect(screen.getByRole('alertdialog').className).not.toMatch(/--color-/)
+  })
+
+  it('the confirm Abandon button carries the destructive-scoped treatment design.md names this action for, not variant=primary', async () => {
+    const session = makeSession()
+    const { user } = renderWithProviders(<AbandonSession session={session} />)
+    await openDialog(user)
+
+    const confirmButton = screen.getByRole('button', { name: 'Abandon' })
+    expect(confirmButton).toHaveAttribute('data-variant', 'secondary')
+    expect(confirmButton.className).toMatch(/destructive/)
+  })
+
   it('nothing is posted without confirmation; confirm calls abandonWithPurge with type abandon and expectedVersion', async () => {
     const session = makeSession({ version: 4 })
     respond('sessions.transition', session)

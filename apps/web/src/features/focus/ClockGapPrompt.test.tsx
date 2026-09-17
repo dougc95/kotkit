@@ -148,6 +148,20 @@ describe('ClockGapPrompt', () => {
     }
   })
 
+  it('the Timing uncertain chip carries the uncertain tier mark, per absenceTier', async () => {
+    const session = makeSession({ id: 'session-tier' })
+    respond('sessions.clockGap', { ...session, timerQuality: 'uncertain' })
+    const { factory, fire } = makeFakeDetector()
+    const { user } = renderWithProviders(<ClockGapPrompt session={session} createDetector={factory} />)
+
+    act(() => fire({ gapSeconds: 90, detectedAtMs: Date.now() }))
+    await openAlertDialog()
+    await user.click(screen.getByRole('button', { name: 'Not sure' }))
+
+    const chip = await screen.findByText('Timing uncertain')
+    expect(chip.closest('[data-tier]')).toHaveAttribute('data-tier', 'uncertain')
+  })
+
   it('Save as incomplete posts save_incomplete and navigates to the incomplete review where recall is skippable', async () => {
     const session = makeSession({ id: 'session-4', kind: 'benchmark' })
     respond('sessions.clockGap', {
