@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cleanup, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   EXCLUSION_REASON_COPY,
   type ObservedConditionsValue,
@@ -148,6 +148,56 @@ describe('ReviewAttestation', () => {
     expect(screen.getByText('500/500')).toBeInTheDocument()
   }, 15000)
 
+  it('disruption note counter is linked to the textarea via aria-describedby', () => {
+    renderWithProviders(<Harness />)
+
+    const note = screen.getByLabelText('Disruption note (optional)')
+    const describedById = note.getAttribute('aria-describedby')
+    expect(describedById).not.toBeNull()
+    expect(document.getElementById(describedById ?? '')).toHaveTextContent('0/500')
+  })
+
+  it('radios sit in a legend-named radiogroup, guard onChange to literal yes/no, and #materially-disrupted-no is the No radio', async () => {
+    // The Yes/No radios stay on the direct radix-ui RadioGroup (unconverted,
+    // see DisruptionField's own comment), so unlike the shadcn-wrapped
+    // groups elsewhere it needs its own aria-labelledby or an anonymous
+    // role="radiogroup" sits between the radios and their named fieldset.
+    // This also proves the onValueChange guard reports the literal
+    // 'yes'/'no' strings (no `as` cast covering an untyped string), and
+    // pins the literal #materially-disrupted-no id that
+    // e2e/benchmark-review.spec.ts and e2e/recovery.spec.ts click directly.
+    const onChange = vi.fn()
+
+    function Wrapper() {
+      const [value, setValue] = useState<DisruptionAnswer>(null)
+      const [note, setNote] = useState('')
+      return (
+        <DisruptionField
+          value={value}
+          note={note}
+          onChange={(nextValue, nextNote) => {
+            onChange(nextValue, nextNote)
+            setValue(nextValue)
+            setNote(nextNote)
+          }}
+        />
+      )
+    }
+
+    const { user } = renderWithProviders(<Wrapper />)
+
+    const radiogroup = screen.getByRole('radiogroup', { name: 'Was this session materially disrupted?' })
+    const noRadio = screen.getByRole('radio', { name: 'No' })
+    expect(radiogroup).toContainElement(noRadio)
+    expect(document.getElementById('materially-disrupted-no')).toBe(noRadio)
+
+    await user.click(screen.getByRole('radio', { name: 'Yes' }))
+    await user.click(noRadio)
+
+    expect(onChange).toHaveBeenNthCalledWith(1, 'yes', '')
+    expect(onChange).toHaveBeenNthCalledWith(2, 'no', '')
+  })
+
   it('E=2 with disruption No keeps the eligibility preview eligible', async () => {
     // External interruptions (E) never appear in `EligibilityInput` at all
     // (packages/shared's `evaluateEligibility` deliberately omits it) — this
@@ -243,9 +293,11 @@ describe('ReviewAttestation', () => {
   it('keyboard-only traversal reaches every field in order with focus visible', async () => {
     const { user } = renderWithProviders(<Harness />)
 
-    const expectedOrder = [
+    const noteField = screen.getByLabelText('Disruption note (optional)')
+
+    const expectedStops: readonly (string | HTMLElement)[] = [
       'materially-disrupted-yes',
-      'disruption-note',
+      noteField,
       'conditions-device-format',
       'conditions-language',
       'conditions-material-level',
@@ -259,12 +311,17 @@ describe('ReviewAttestation', () => {
       'conditions-confirmed',
     ]
 
-    for (const id of expectedOrder) {
+    for (const stop of expectedStops) {
       await user.tab()
-      expect(document.activeElement).toHaveAttribute('id', id)
-      // The app's global `:focus-visible` rule (index.css) styles every
-      // interactive element with no per-component opt-out — every stop here
-      // is a plain native input/textarea/radio, so none suppresses it.
+      if (typeof stop === 'string') {
+        expect(document.activeElement).toHaveAttribute('id', stop)
+      } else {
+        // disruption-note's id now comes from useField (Task 32) rather than
+        // a hand-written string, so this stop is checked by element identity
+        // instead — resolved the same way a screen reader would, through the
+        // label/control pairing, not a guessed id.
+        expect(document.activeElement).toBe(stop)
+      }
       expect(document.activeElement?.tagName).not.toBe('BODY')
     }
   })

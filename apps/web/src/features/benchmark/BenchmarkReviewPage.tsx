@@ -190,13 +190,21 @@ export function BenchmarkReviewPage() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-6 space-y-8">
-      <h1 className="text-lg font-semibold text-[var(--color-text)]">Benchmark review</h1>
+      <h1 className="text-lg font-semibold text-ink">Benchmark review</h1>
 
-      <Scoring session={session} review={session.review} onChange={handleScoringChange} />
+      <section className="space-y-4">
+        <h2 className="text-sm font-medium text-ink-muted">Recall</h2>
+        <Scoring session={session} review={session.review} onChange={handleScoringChange} />
+      </section>
 
-      <CountFields session={session} value={countFieldsValue} onChange={setCountFieldsValue} />
+      <section className="space-y-4 border-t border-rule pt-8">
+        <h2 className="text-sm font-medium text-ink-muted">Counts</h2>
+        <CountFields session={session} value={countFieldsValue} onChange={setCountFieldsValue} />
+      </section>
 
-      <div className="space-y-6">
+      <section className="space-y-6 border-t border-rule pt-8">
+        <h2 className="text-sm font-medium text-ink-muted">Disruption and conditions</h2>
+
         {session.completeInterval === false ? (
           <IncompleteBanner elapsedSeconds={session.timing.elapsedSeconds} />
         ) : null}
@@ -206,19 +214,22 @@ export function BenchmarkReviewPage() {
         <ConditionsFields value={conditions} confirmed={conditionsConfirmed} onChange={handleConditionsChange} />
 
         <EligibilityPreview input={eligibilityInput} />
-      </div>
+      </section>
 
-      <FinalizeSection
-        session={session}
-        countFieldsValue={countFieldsValue}
-        recallScores={recallScores}
-        scoringComplete={scoringComplete}
-        materiallyDisrupted={materiallyDisrupted}
-        disruptionNote={disruptionNote}
-        conditions={conditions}
-        conditionsConfirmed={conditionsConfirmed}
-        nextAction={currentQuery.data?.nextAction}
-      />
+      <section className="space-y-4 border-t border-rule pt-8">
+        <h2 className="text-sm font-medium text-ink-muted">Finalize</h2>
+        <FinalizeSection
+          session={session}
+          countFieldsValue={countFieldsValue}
+          recallScores={recallScores}
+          scoringComplete={scoringComplete}
+          materiallyDisrupted={materiallyDisrupted}
+          disruptionNote={disruptionNote}
+          conditions={conditions}
+          conditionsConfirmed={conditionsConfirmed}
+          nextAction={currentQuery.data?.nextAction}
+        />
+      </section>
     </div>
   )
 }

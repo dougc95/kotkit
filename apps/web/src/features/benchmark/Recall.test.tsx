@@ -12,7 +12,7 @@ import { expectNoIdentifiers } from '../../test/expectNoIdentifiers.js'
 import { renderWithProviders } from '../../test/renderWithProviders.js'
 import { AppBootstrap } from '../../app/AppBootstrap.js'
 import { LiveRegion } from '../../ui/LiveRegion.js'
-import { Recall } from './Recall.js'
+import { Recall, POINT_SHELL_CLASSNAME } from './Recall.js'
 
 /**
  * task 8.4.1's verify list: the 11 named Recall cases. Deliberately never
@@ -334,5 +334,104 @@ describe('Recall', () => {
 
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
     expectNoIdentifiers(document.body)
+  })
+
+  it('each recall point textarea is described by its own character counter (aria-describedby)', async () => {
+    respond('sessions.get', makeSession())
+
+    const { user } = renderRecall()
+    await waitForConfirmStep()
+    await user.click(screen.getByRole('button', { name: 'Start recall' }))
+    await screen.findByTestId('timer-digits')
+
+    const firstPoint = screen.getByLabelText('Point 1')
+    const describedBy = firstPoint.getAttribute('aria-describedby')
+    expect(describedBy).toBeTruthy()
+    const counter = describedBy === null ? null : document.getElementById(describedBy)
+    expect(counter).not.toBeNull()
+    expect(counter).toHaveTextContent('0/500')
+
+    await user.type(firstPoint, 'ab')
+    expect(counter).toHaveTextContent('2/500')
+  })
+
+  it('every recall point sits inside the shared point-shell container exported for Scoring to reuse', async () => {
+    respond('sessions.get', makeSession())
+
+    const { user, container } = renderRecall()
+    await waitForConfirmStep()
+    await user.click(screen.getByRole('button', { name: 'Start recall' }))
+    await screen.findByTestId('timer-digits')
+
+    const shells = container.querySelectorAll('[data-point-shell="true"]')
+    expect(shells).toHaveLength(5)
+    for (const shell of Array.from(shells)) {
+      expect(shell.className).toBe(POINT_SHELL_CLASSNAME)
+    }
+  })
+
+  it('incomplete attempt renders as a recorded fact — ink, never amber or muted-gap styling', async () => {
+    respond('sessions.get', makeSession({ completeInterval: false }))
+
+    renderRecall()
+    await waitForConfirmStep()
+
+    const badge = screen.getByText('Incomplete attempt')
+    expect(badge.className).toContain('text-ink')
+    expect(badge.className).not.toContain('text-ink-muted')
+    expect(badge.className).not.toMatch(/text-attention/)
+  })
+
+  it('the calm "Time is up" notice renders in the muted ink tier, never the attention/amber treatment', async () => {
+    const clock = stubMonotonicClock()
+    respond('sessions.get', makeSession())
+
+    const { user } = renderRecall()
+    await waitForConfirmStep()
+
+    await user.click(screen.getByRole('button', { name: 'Start recall' }))
+    await screen.findByTestId('timer-digits')
+    clock.advanceSeconds(181)
+    await user.type(screen.getByLabelText('Point 1'), 'x')
+
+    const notice = await screen.findByText('Time is up — save when you are ready')
+    expect(notice.className).toContain('text-ink-muted')
+    expect(notice.className).not.toMatch(/text-attention/)
+  })
+
+  it('the save-failure message takes the attention tier, never neutral ink (U15a)', async () => {
+    respond('sessions.get', makeSession())
+    mockApi.sessions.recall.mockRejectedValueOnce(
+      Object.assign(new Error('The request could not be completed.'), {
+        status: 0,
+        code: 'network_error',
+        retryable: true,
+        requestId: '',
+      }),
+    )
+
+    const { user } = renderRecall()
+    await waitForConfirmStep()
+
+    await user.click(screen.getByRole('button', { name: 'Start recall' }))
+    await screen.findByTestId('timer-digits')
+    await user.click(screen.getByRole('button', { name: 'Save recall' }))
+
+    const message = await screen.findByText('The recall could not be saved. Retry.')
+    expect(message.className).toContain('text-attention')
+    expect(message.textContent).toBe('The recall could not be saved. Retry.')
+  })
+
+  it('no leftover --color-* custom property reference remains in the rendered recall screen', async () => {
+    respond('sessions.get', makeSession({ completeInterval: false }))
+
+    const { user, container } = renderRecall()
+    await waitForConfirmStep()
+    expect(container.innerHTML).not.toMatch(/var\(--color-/)
+
+    await user.click(screen.getByRole('button', { name: 'Start recall' }))
+    await screen.findByTestId('timer-digits')
+
+    expect(container.innerHTML).not.toMatch(/var\(--color-/)
   })
 })

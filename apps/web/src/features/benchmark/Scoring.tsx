@@ -46,9 +46,12 @@
  * `complete` is true only once every non-blank point has been answered.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { RadioGroup } from 'radix-ui'
 import { Link } from 'react-router'
 import type { RecallFlag, ReviewInputValue, ReviewResponseValue, SessionResponseValue } from '@attention-lab/shared'
+
+import { Label } from '../../ui/shadcn/label.js'
+import { RadioGroup, RadioGroupItem } from '../../ui/shadcn/radio-group.js'
+import { POINT_SHELL_CLASSNAME } from './Recall.js'
 
 type RecallScoresInput = NonNullable<ReviewInputValue['recallScores']>
 
@@ -65,6 +68,11 @@ const BLANK_ANSWERS: Answers = [null, null, null, null, null]
 const FLAG_COPY: Record<RecallFlag, string> = {
   recall_delayed: 'Recall started more than 10 minutes after the interval',
   recall_overrun: 'Recall ran more than 30 s over 3:00',
+}
+
+/** Guards `RadioGroup`'s `onValueChange` (typed `(value: string) => void`) without an `as` cast. */
+function isPointScore(value: string): value is 'accurate' | 'not_accurate' {
+  return value === 'accurate' || value === 'not_accurate'
 }
 
 // ---------------------------------------------------------------------------
@@ -90,53 +98,58 @@ export function PointRow({ index, text, value, onChange }: PointRowProps) {
 
   if (isBlank) {
     return (
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-[var(--color-text)]">{label}</p>
-        <p className="text-sm text-[var(--color-text-muted)]">Scored 0 because blank</p>
+      <div className={POINT_SHELL_CLASSNAME} data-point-shell="true">
+        <p className="text-sm font-medium text-ink">{label}</p>
+        {/* The 0 is a real derived score (ink); the explanation is the
+            not-a-value clause (ink-muted) — two spans, deliberately not one
+            <Reported>, since absenceTier only recognizes a closed set of
+            exact absence strings and "because blank" is not one of them. The
+            single space between the spans is load-bearing: it keeps the
+            phrase inside this one <p>, which is what
+            e2e/acceptance/baseline-day.spec.ts and
+            e2e/acceptance/timing-deviation.spec.ts match on with an exact
+            getByText('Scored 0 because blank') count. */}
+        <p className="text-sm">
+          <span className="text-ink">Scored 0</span> <span className="text-ink-muted">because blank</span>
+        </p>
       </div>
     )
   }
 
   const accurateId = `point-${index}-accurate`
   const notAccurateId = `point-${index}-not-accurate`
+  const legendId = `point-${index}-legend`
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium text-[var(--color-text)]">{label}</p>
-      <p className="text-sm text-[var(--color-text)]">{text}</p>
+    <div className={POINT_SHELL_CLASSNAME} data-point-shell="true">
+      <p className="text-sm font-medium text-ink">{label}</p>
+      <p className="text-sm text-ink">{text}</p>
       <fieldset>
-        <legend className="sr-only">{`${label} score`}</legend>
-        <RadioGroup.Root
+        <legend id={legendId} className="sr-only">{`${label} score`}</legend>
+        <RadioGroup
           className="flex gap-4"
           required
           value={value ?? null}
-          onValueChange={(next) => onChange(next as 'accurate' | 'not_accurate')}
+          aria-labelledby={legendId}
+          onValueChange={(next) => {
+            if (isPointScore(next)) {
+              onChange(next)
+            }
+          }}
         >
           <div className="flex items-center gap-2">
-            <RadioGroup.Item
-              id={accurateId}
-              value="accurate"
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] data-[state=checked]:border-[var(--color-primary)]"
-            >
-              <RadioGroup.Indicator className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)]" />
-            </RadioGroup.Item>
-            <label htmlFor={accurateId} className="text-sm text-[var(--color-text)]">
+            <RadioGroupItem id={accurateId} value="accurate" />
+            <Label htmlFor={accurateId} className="flex min-h-11 items-center text-sm font-normal text-ink">
               Accurate
-            </label>
+            </Label>
           </div>
           <div className="flex items-center gap-2">
-            <RadioGroup.Item
-              id={notAccurateId}
-              value="not_accurate"
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] data-[state=checked]:border-[var(--color-primary)]"
-            >
-              <RadioGroup.Indicator className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)]" />
-            </RadioGroup.Item>
-            <label htmlFor={notAccurateId} className="text-sm text-[var(--color-text)]">
+            <RadioGroupItem id={notAccurateId} value="not_accurate" />
+            <Label htmlFor={notAccurateId} className="flex min-h-11 items-center text-sm font-normal text-ink">
               Not accurate
-            </label>
+            </Label>
           </div>
-        </RadioGroup.Root>
+        </RadioGroup>
       </fieldset>
     </div>
   )
@@ -218,7 +231,7 @@ export function Scoring({ session, review, onChange }: ScoringProps) {
     return (
       <div className="space-y-2">
         <p>Recall must be saved first</p>
-        <Link to={`/benchmark/${session.id}/recall`} className="text-sm underline text-[var(--color-primary)]">
+        <Link to={`/benchmark/${session.id}/recall`} className="text-sm underline text-signal">
           Go to recall
         </Link>
       </div>
@@ -247,12 +260,15 @@ export function Scoring({ session, review, onChange }: ScoringProps) {
         ))}
       </div>
 
-      <p className="text-sm font-medium text-[var(--color-text)]">
+      <p className="text-sm font-medium text-ink">
         Recall score (self-reported, preview): {previewScore}/5
       </p>
 
       {review.recallFlags.length > 0 ? (
-        <ul className="space-y-1 text-sm text-[var(--color-text-muted)]">
+        // recall_delayed/recall_overrun are precisely-known facts about this
+        // attempt, not uncertainty — ink-muted, never the amber attention
+        // token that the taxonomy reserves for "Unknown"/"Timing uncertain".
+        <ul className="space-y-1 text-sm text-ink-muted">
           {review.recallFlags.map((flag) => (
             <li key={flag}>
               {FLAG_COPY[flag]} (noted, not excluding)

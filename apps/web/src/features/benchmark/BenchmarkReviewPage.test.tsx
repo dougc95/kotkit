@@ -120,6 +120,19 @@ describe('BenchmarkReviewPage', () => {
     expect(screen.getByRole('link', { name: /recall/i })).toHaveAttribute('href', `/benchmark/${SESSION_ID}/recall`)
   })
 
+  it('groups the review into Recall, Counts, Disruption and conditions, and Finalize sections', async () => {
+    respond('sessions.get', makeSession())
+
+    renderPage()
+
+    await screen.findByText('Recall must be saved first')
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Recall' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Counts' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Disruption and conditions' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Finalize' })).toBeInTheDocument()
+  })
+
   it('error state offers Retry that refetches the session', async () => {
     mockApi.sessions.get.mockRejectedValueOnce(
       Object.assign(new Error('boom'), { status: 500, code: 'server_error', retryable: true, requestId: 'r1' }),
