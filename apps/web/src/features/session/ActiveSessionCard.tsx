@@ -32,6 +32,7 @@
 import { Link } from 'react-router'
 import type { SessionResponseValue } from '@attention-lab/shared'
 
+import { Button } from '../../ui/Button.js'
 import { Card } from '../../ui/shadcn/card.js'
 
 export interface ActiveSessionCardProps {
@@ -111,9 +112,6 @@ function destinationFor(session: SessionResponseValue): Destination {
   }
 }
 
-const LINK_CLASSES =
-  'inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-primary-text)] hover:brightness-95 self-start'
-
 export function ActiveSessionCard({ session, staleNotice = false }: ActiveSessionCardProps) {
   const destination = destinationFor(session)
 
@@ -125,9 +123,9 @@ export function ActiveSessionCard({ session, staleNotice = false }: ActiveSessio
         </p>
       ) : null}
       <p className="text-sm text-ink">{destination.description}</p>
-      <Link className={LINK_CLASSES} to={destination.to}>
-        {destination.label}
-      </Link>
+      <Button asChild className="self-start">
+        <Link to={destination.to}>{destination.label}</Link>
+      </Button>
     </Card>
   )
 }
