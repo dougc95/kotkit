@@ -33,6 +33,10 @@ describe('absenceTier', () => {
     expect(absenceTier('0')).toBe('recorded')
     expect(absenceTier('0 min')).toBe('recorded')
   })
+
+  it('treats the unfilled intended-output fallback string as absent', () => {
+    expect(absenceTier('No intended output recorded')).toBe('absent')
+  })
 })
 
 describe('Reported', () => {
@@ -50,5 +54,31 @@ describe('Reported', () => {
   it('marks Unknown as uncertain, distinctly from an absent value', () => {
     render(<Reported>Unknown</Reported>)
     expect(screen.getByText('Unknown')).toHaveAttribute('data-tier', 'uncertain')
+  })
+
+  it('applies mono formatting to a recorded number', () => {
+    render(<Reported mono>12</Reported>)
+    const el = screen.getByText('12')
+    expect(el).toHaveClass('font-mono')
+    expect(el).toHaveClass('tabular-nums')
+  })
+
+  it('applies mono formatting to 20+, capped because it is a measurement', () => {
+    render(<Reported mono>20+, capped</Reported>)
+    expect(screen.getByText('20+, capped')).toHaveClass('font-mono')
+  })
+
+  it('never applies mono to an absent status word, even when mono is requested', () => {
+    render(<Reported mono>Not reported</Reported>)
+    const el = screen.getByText('Not reported')
+    expect(el).not.toHaveClass('font-mono')
+    expect(el).toHaveClass('font-sans')
+  })
+
+  it('never applies mono to an uncertain status word, even when mono is requested', () => {
+    render(<Reported mono>Unknown</Reported>)
+    const el = screen.getByText('Unknown')
+    expect(el).not.toHaveClass('font-mono')
+    expect(el).toHaveClass('font-sans')
   })
 })

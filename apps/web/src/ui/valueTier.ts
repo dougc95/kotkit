@@ -11,7 +11,14 @@
  */
 export type ValueTier = 'recorded' | 'absent' | 'uncertain'
 
-const ABSENT = new Set(['Not reported', 'not yet reported', 'Not finalized', '—', 'Percentage: not applicable'])
+const ABSENT = new Set([
+  'Not reported',
+  'not yet reported',
+  'Not finalized',
+  '—',
+  'Percentage: not applicable',
+  'No intended output recorded',
+])
 const UNCERTAIN = new Set(['Unknown', 'Timing uncertain'])
 
 export function absenceTier(text: string): ValueTier {

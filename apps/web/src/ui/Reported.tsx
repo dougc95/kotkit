@@ -5,15 +5,19 @@ import { absenceTier, type ValueTier } from './valueTier.js'
 
 export interface ReportedProps {
   readonly children: string
-  /** Tabular figures. Only for the three contexts mono is permitted in. */
+  /**
+   * Tabular figures, for the three contexts mono is permitted in. Applied only
+   * to a recorded value: a status word such as 'Not reported' or 'Unknown'
+   * stays in the sans face, even inside a table that sets mono on an ancestor.
+   */
   readonly mono?: boolean
   readonly className?: string
 }
 
 const TIER_CLASS: Record<ValueTier, string> = {
   recorded: 'text-ink',
-  absent: 'text-ink-muted border-b border-dashed border-rule',
-  uncertain: 'text-attention',
+  absent: 'font-sans text-ink-muted border-b border-dashed border-rule',
+  uncertain: 'font-sans text-attention',
 }
 
 /**
@@ -26,7 +30,7 @@ export function Reported({ children, mono = false, className }: ReportedProps): 
   return (
     <span
       data-tier={tier}
-      className={cn(TIER_CLASS[tier], mono ? 'font-mono tabular-nums' : undefined, className)}
+      className={cn(TIER_CLASS[tier], mono && tier === 'recorded' ? 'font-mono tabular-nums' : undefined, className)}
     >
       {children}
     </span>
