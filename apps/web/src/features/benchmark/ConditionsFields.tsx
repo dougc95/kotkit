@@ -21,6 +21,7 @@
  */
 import { ACCOMMODATIONS, type Accommodation, type ObservedConditionsValue } from '@attention-lab/shared'
 
+import { Checkbox } from '../../ui/shadcn/checkbox.js'
 import { Input } from '../../ui/shadcn/input.js'
 import { Label } from '../../ui/shadcn/label.js'
 
@@ -84,31 +85,30 @@ export function ConditionsFields({ value, confirmed, onChange }: ConditionsField
         {ACCOMMODATIONS.map((accommodation) => {
           const id = `conditions-accommodation-${accommodation}`
           return (
-            <label key={accommodation} htmlFor={id} className="flex items-center gap-2 text-sm text-ink">
-              <input
+            <div key={accommodation} className="flex items-center gap-2">
+              <Checkbox
                 id={id}
-                type="checkbox"
                 checked={value.accommodations.includes(accommodation)}
-                onChange={(event) => handleAccommodationToggle(accommodation, event.target.checked)}
+                onCheckedChange={(checked) => handleAccommodationToggle(accommodation, checked === true)}
               />
-              {ACCOMMODATION_COPY[accommodation]}
-            </label>
+              <Label htmlFor={id} className="flex min-h-11 items-center text-sm font-normal text-ink">
+                {ACCOMMODATION_COPY[accommodation]}
+              </Label>
+            </div>
           )
         })}
       </fieldset>
 
-      <label
-        htmlFor="conditions-confirmed"
-        className="flex items-center gap-2 text-sm font-medium text-ink"
-      >
-        <input
+      <div className="flex items-center gap-2">
+        <Checkbox
           id="conditions-confirmed"
-          type="checkbox"
           checked={confirmed}
-          onChange={(event) => onChange(value, event.target.checked)}
+          onCheckedChange={(checked) => onChange(value, checked === true)}
         />
-        These conditions are correct
-      </label>
+        <Label htmlFor="conditions-confirmed" className="flex min-h-11 items-center text-sm font-normal text-ink">
+          These conditions are correct
+        </Label>
+      </div>
     </div>
   )
 }

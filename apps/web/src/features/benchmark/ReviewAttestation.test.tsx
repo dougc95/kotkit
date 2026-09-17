@@ -219,6 +219,46 @@ describe('ReviewAttestation', () => {
     expect(screen.queryByText('Eligible')).not.toBeInTheDocument()
   })
 
+  it('all eight checkboxes (seven accommodations plus the confirm) are Radix controls with min-h-11 labels, toggling on click (task V5 item 10)', async () => {
+    const { user } = renderWithProviders(<Harness />)
+
+    const accommodationNames = [
+      'Screen reader',
+      'Magnification',
+      'Increased font size',
+      'High contrast',
+      'Reduced motion',
+      'Extra lighting',
+      'Other',
+    ]
+
+    for (const name of accommodationNames) {
+      const checkbox = screen.getByRole('checkbox', { name })
+      // A native <input type="checkbox"> would report tagName INPUT — the
+      // Radix Checkbox this converts to is a real <button role="checkbox">.
+      expect(checkbox.tagName).toBe('BUTTON')
+      expect(checkbox).not.toBeChecked()
+
+      const label = screen.getByText(name)
+      expect(label.tagName).toBe('LABEL')
+      expect(label.className).toContain('min-h-11')
+
+      await user.click(checkbox)
+      expect(checkbox).toBeChecked()
+      await user.click(checkbox)
+      expect(checkbox).not.toBeChecked()
+    }
+
+    const confirmCheckbox = screen.getByRole('checkbox', { name: 'These conditions are correct' })
+    expect(confirmCheckbox.tagName).toBe('BUTTON')
+    const confirmLabel = screen.getByText('These conditions are correct')
+    expect(confirmLabel.tagName).toBe('LABEL')
+    expect(confirmLabel.className).toContain('min-h-11')
+
+    await user.click(confirmCheckbox)
+    expect(confirmCheckbox).toBeChecked()
+  })
+
   it('accommodation checkbox adds increased_font_size to conditions.accommodations', async () => {
     const { user } = renderWithProviders(<Harness />)
 

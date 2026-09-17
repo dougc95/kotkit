@@ -10,7 +10,7 @@ function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="skeleton"
-      className={cn('rounded-sm border-b border-dashed border-[var(--color-rule)] bg-transparent', className)}
+      className={cn('rounded-sm border-b border-dashed border-rule bg-transparent', className)}
       {...props}
     />
   )
