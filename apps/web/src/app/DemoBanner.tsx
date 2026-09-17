@@ -27,7 +27,7 @@ export function DemoBanner() {
   return (
     <aside
       aria-label="Demonstration data notice"
-      className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-center text-sm text-[var(--color-text)]"
+      className="sticky top-0 z-50 border-b border-rule bg-paper px-4 py-2 text-center text-sm text-ink"
     >
       This is synthetic demonstration data — not a real measurement.
     </aside>

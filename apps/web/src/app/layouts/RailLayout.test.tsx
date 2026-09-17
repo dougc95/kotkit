@@ -163,4 +163,11 @@ describe('RailLayout', () => {
     expect(mains).toHaveLength(1)
     expect(mains[0]).toHaveAttribute('id', 'main')
   })
+
+  it('rendered rail markup uses the new design tokens, not the retired --color- custom properties', async () => {
+    const { container } = mount('/progress')
+    await screen.findByRole('navigation', { name: 'Main' })
+
+    expect(container.innerHTML).not.toMatch(/--color-/)
+  })
 })

@@ -91,4 +91,11 @@ describe('DemoBanner', () => {
     expect(text).not.toContain('principal')
     expect(banner.textContent).not.toContain(ME_LOCAL_DEMO.principalId)
   })
+
+  it('banner markup uses the new design tokens, not the retired --color- custom properties', async () => {
+    mountBanner(ME_LOCAL_DEMO)
+
+    const banner = await screen.findByLabelText('Demonstration data notice')
+    expect(banner.className).not.toMatch(/--color-/)
+  })
 })

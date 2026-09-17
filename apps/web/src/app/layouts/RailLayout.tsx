@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { NavLink, Outlet } from 'react-router'
 
 import { useMediaQuery } from '../../lib/a11y/useMediaQuery.js'
@@ -24,8 +23,6 @@ const DESKTOP_QUERY = '(min-width: 768px)'
 export interface NavItemProps {
   readonly to: string
   readonly label: string
-  /** Decorative only; the accessible name always comes from `label`. */
-  readonly icon?: ReactNode
 }
 
 /**
@@ -35,7 +32,7 @@ export interface NavItemProps {
  * this task calls for, a stricter number than the WCAG 2.2 AA 24px minimum
  * D40 records for touch targets elsewhere in the app.
  */
-export function NavItem({ to, label, icon }: NavItemProps) {
+export function NavItem({ to, label }: NavItemProps) {
   return (
     <NavLink
       to={to}
@@ -44,11 +41,10 @@ export function NavItem({ to, label, icon }: NavItemProps) {
           'flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1',
           'rounded-md px-2 py-1 text-sm font-medium',
           'md:flex-none md:flex-row md:justify-start md:gap-2 md:px-3',
-          isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
+          isActive ? 'text-signal' : 'text-ink-muted hover:text-ink',
         ].join(' ')
       }
     >
-      {icon !== undefined ? <span aria-hidden="true">{icon}</span> : null}
       <span>{label}</span>
     </NavLink>
   )
@@ -77,7 +73,7 @@ export function RailLayout() {
 
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-[var(--color-bg)] focus:px-4 focus:py-2 focus:text-[var(--color-text)] focus:shadow"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-paper focus:px-4 focus:py-2 focus:text-ink focus:shadow"
       >
         Skip to content
       </a>
@@ -87,8 +83,8 @@ export function RailLayout() {
         data-placement={placement}
         className={
           placement === 'rail'
-            ? 'sticky top-0 flex h-dvh w-56 shrink-0 flex-col gap-1 border-r border-[var(--color-border)] bg-[var(--color-surface)] p-3'
-            : 'fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1'
+            ? 'sticky top-0 flex h-dvh w-56 shrink-0 flex-col gap-1 border-r border-rule bg-paper p-3'
+            : 'fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-rule bg-paper px-1 py-1'
         }
       >
         {DESTINATIONS.map((destination) => (
