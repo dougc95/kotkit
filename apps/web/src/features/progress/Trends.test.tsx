@@ -212,6 +212,69 @@ describe('PracticeTrend / DailyTrend / ExactValuesTable', () => {
     }
   })
 
+  it('Timer flag column renders all three tiers: OK recorded, Timing uncertain amber, Not reported absent', () => {
+    // `timerQuality` is `Type.Optional` on `PracticeRowValue`, and apps/web
+    // runs with `exactOptionalPropertyTypes: true` (tsconfig.base.json), so
+    // `makePracticeRow({ ..., timerQuality: undefined })` does not typecheck
+    // (TS2379 — an explicit `undefined` is not the same thing as omitting an
+    // optional property under that flag). The "not reported" row is built by
+    // destructuring the key back OFF a normal row instead: the result
+    // genuinely lacks `timerQuality`, which is exactly what "not reported"
+    // means, and is still a valid `PracticeRowValue` since the field is
+    // optional.
+    const { timerQuality: _omittedTimerQuality, ...unsetRow } = makePracticeRow({
+      sessionId: 's-unset',
+      day: 3,
+      localDate: '2026-09-03',
+      targetSeconds: 600,
+    })
+    const rows = [
+      makePracticeRow({ sessionId: 's-ok', day: 1, localDate: '2026-09-01', targetSeconds: 600, timerQuality: 'ok' }),
+      makePracticeRow({
+        sessionId: 's-uncertain',
+        day: 2,
+        localDate: '2026-09-02',
+        targetSeconds: 600,
+        timerQuality: 'uncertain',
+      }),
+      unsetRow,
+    ]
+    renderWithProviders(<PracticeTrend practice={rows} />)
+
+    // Column order is COLUMNS' own fixed order (Day, Date, Block, Planned,
+    // Completed, Output quality, S, E, Agent checks, Timer flag, Time
+    // source) — index 9 is Timer flag.
+    function timerCellForDay(day: number): HTMLElement {
+      const row = screen
+        .getAllByRole('row')
+        .find((candidate) => within(candidate).queryAllByRole('cell')[0]?.textContent === String(day))
+      if (row === undefined) throw new Error(`no row rendered for day ${day}`)
+      const cell = within(row).getAllByRole('cell')[9]
+      if (cell === undefined) throw new Error('Timer flag column missing')
+      return cell
+    }
+
+    const okCell = timerCellForDay(1)
+    expect(okCell).toHaveTextContent('OK')
+    expect(okCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'recorded')
+
+    const uncertainCell = timerCellForDay(2)
+    expect(uncertainCell).toHaveTextContent('Timing uncertain')
+    expect(uncertainCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'uncertain')
+
+    const unsetCell = timerCellForDay(3)
+    expect(unsetCell).toHaveTextContent('Not reported')
+    expect(unsetCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'absent')
+  })
+
+  it('stress renders through <Reported> as a recorded figure, never a bare number outside the taxonomy', () => {
+    const days = [makeDayRow({ localDate: '2026-09-01', day: 1, stress: 4 })]
+    renderWithProviders(<DailyTrend days={days} />)
+
+    const stressText = screen.getByText('4', { selector: '[data-tier]' })
+    expect(stressText).toHaveAttribute('data-tier', 'recorded')
+  })
+
   it('feed totals are labelled device-minutes', () => {
     const days = [makeDayRow({ localDate: '2026-09-01', day: 1 })]
     renderWithProviders(<DailyTrend days={days} />)
