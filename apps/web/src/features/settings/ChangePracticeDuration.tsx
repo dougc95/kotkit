@@ -5,6 +5,10 @@ import type { CreateRevisionBodyValue } from '@attention-lab/shared'
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button, type ButtonVariant } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { RadioGroup, RadioGroupItem } from '../../ui/shadcn/radio-group.js'
 
 /**
  * Settings' "Change practice duration" panel (task 8.9.5; design.md D33/D38;
@@ -53,6 +57,17 @@ const DURATION_OPTIONS: ReadonlyArray<{ minutes: 5 | 10 | 15 | 20 | 25; seconds:
   { minutes: 25, seconds: 1500 },
 ]
 
+/**
+ * Radix `RadioGroup`'s `onValueChange` delivers a plain string; only a value
+ * that matches one of the five offered durations is accepted, so an
+ * unexpected string can never coerce into `NaN` or silently fall through to
+ * `0` the way a bare `Number(...)` cast could.
+ */
+function parseDurationSeconds(value: string): number | undefined {
+  const seconds = Number(value)
+  return DURATION_OPTIONS.some((option) => option.seconds === seconds) ? seconds : undefined
+}
+
 interface DurationFieldProps {
   readonly value: number
   readonly onChange: (seconds: number) => void
@@ -60,25 +75,36 @@ interface DurationFieldProps {
 
 /** The five practice durations a revision may set (300..1500 s, step 300), rendered as their minute labels. */
 function DurationField({ value, onChange }: DurationFieldProps) {
+  const legendId = useId()
+
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="text-sm font-medium">New practice duration</legend>
-      <div className="flex flex-wrap gap-4">
-        {DURATION_OPTIONS.map((option) => (
-          <label key={option.minutes} className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="changePracticeDuration"
-              value={option.seconds}
-              checked={value === option.seconds}
-              onChange={() => {
-                onChange(option.seconds)
-              }}
-            />
-            {option.minutes} minutes
-          </label>
-        ))}
-      </div>
+      <legend id={legendId} className="text-sm font-medium text-ink">
+        New practice duration
+      </legend>
+      <RadioGroup
+        aria-labelledby={legendId}
+        value={String(value)}
+        onValueChange={(next) => {
+          const seconds = parseDurationSeconds(next)
+          if (seconds !== undefined) {
+            onChange(seconds)
+          }
+        }}
+        className="flex flex-wrap gap-4"
+      >
+        {DURATION_OPTIONS.map((option) => {
+          const optionId = `change-practice-duration-${option.seconds}`
+          return (
+            <div key={option.minutes} className="flex items-center gap-2">
+              <RadioGroupItem id={optionId} value={String(option.seconds)} />
+              <Label htmlFor={optionId} className="flex min-h-11 items-center text-sm font-normal text-ink">
+                {option.minutes} minutes
+              </Label>
+            </div>
+          )
+        })}
+      </RadioGroup>
     </fieldset>
   )
 }
@@ -137,8 +163,7 @@ export function ChangePracticeDuration({ saveVariant = 'primary' }: ChangePracti
   // which only ever sees the LAST-FETCHED status.
   const [raceEnded, setRaceEnded] = useState(false)
 
-  const reasonId = useId()
-  const reasonErrorId = useId()
+  const reasonField = useField({ name: 'change-practice-duration-reason', error: reasonError ?? null })
 
   const program = current.data?.program ?? null
   const revision = current.data?.revision ?? null
@@ -256,22 +281,19 @@ export function ChangePracticeDuration({ saveVariant = 'primary' }: ChangePracti
         />
 
         <div className="flex flex-col gap-2">
-          <label htmlFor={reasonId} className="text-sm font-medium">
+          <Label {...reasonField.labelProps} className="text-sm font-medium text-ink">
             Reason for change
-          </label>
-          <input
-            id={reasonId}
+          </Label>
+          <Input
+            {...reasonField.controlProps}
             type="text"
             value={reason}
             onChange={(event) => {
               setReason(event.target.value)
             }}
-            aria-invalid={reasonError !== undefined ? true : undefined}
-            aria-describedby={reasonError !== undefined ? reasonErrorId : undefined}
-            className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
           />
-          {reasonError !== undefined ? (
-            <p id={reasonErrorId} role="alert" className="text-sm">
+          {reasonField.errorProps !== undefined ? (
+            <p {...reasonField.errorProps} className="text-sm text-attention">
               {reasonError}
             </p>
           ) : null}

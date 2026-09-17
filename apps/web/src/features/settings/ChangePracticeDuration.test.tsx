@@ -113,6 +113,13 @@ describe('ChangePracticeDuration', () => {
     expect(screen.getByRole('radio', { name: '5 minutes' })).not.toBeChecked()
   })
 
+  it('the duration options form an ARIA radiogroup labelled by the fieldset legend', async () => {
+    mount(activeProgramResponse())
+
+    await screen.findByRole('radio', { name: '15 minutes' })
+    expect(screen.getByRole('radiogroup', { name: 'New practice duration' })).toBeInTheDocument()
+  })
+
   it('empty reason blocks submit with A reason is required and no request is sent', async () => {
     const { user } = mount(activeProgramResponse())
 
