@@ -144,6 +144,13 @@ describe('DemoControls', () => {
     expect(mockApi.programs.current).not.toHaveBeenCalled()
   })
 
+  it('Load scenario and Reset demo data triggers do not stretch across their column (task V5)', () => {
+    renderWithProviders(<DemoControls me={ME_LOCAL_DEMO} />)
+
+    expect(screen.getByRole('button', { name: 'Load scenario' })).toHaveClass('self-start')
+    expect(screen.getByRole('button', { name: 'Reset demo data' })).toHaveClass('self-start')
+  })
+
   it("Skip to Day 14 posts the offset mapping now to the final date at final slot A's planned_local_time in the program timezone", async () => {
     respond('programs.current', programResponse([makeFinalSlotA({ plannedLocalTime: '09:00' })]))
     respond('demo.clock', { demoClockOffsetSeconds: 637_200 })

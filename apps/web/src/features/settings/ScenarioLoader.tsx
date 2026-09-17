@@ -101,7 +101,9 @@ export function ScenarioLoader() {
 
       <AlertDialog open={open} onOpenChange={handleOpenChange}>
         <AlertDialogTrigger asChild>
-          <Button variant="secondary">Load scenario</Button>
+          <Button variant="secondary" className="self-start">
+            Load scenario
+          </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>

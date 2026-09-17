@@ -45,7 +45,7 @@ export function TimezoneSelect({ value, zones, onChange, error }: TimezoneSelect
         onChange={(event) => {
           onChange(event.target.value)
         }}
-        className="min-h-11 rounded-md border border-rule bg-card px-3 py-2 text-sm text-ink"
+        className="min-h-11 rounded-md border border-rule bg-transparent px-3 py-2 text-base text-ink md:text-sm"
       >
         {zones.map((zone) => (
           <option key={zone} value={zone}>

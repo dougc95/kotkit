@@ -127,6 +127,32 @@ afterEach(() => {
 })
 
 describe('ReadinessForm', () => {
+  it('heading and intro match the app rhythm: text-lg font-semibold text-ink and text-sm text-ink-muted (task V5)', async () => {
+    const current = makeCurrent(makeProgram(), fourBlankSlots())
+    mount(current)
+    await screen.findByRole('group', { name: 'Baseline A' })
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Readiness' })
+    expect(heading.className).toContain('text-lg')
+    expect(heading.className).toContain('font-semibold')
+    expect(heading.className).toContain('text-ink')
+
+    const intro = screen.getByText('Reading elsewhere is allowed; tallying on paper is fine.')
+    expect(intro.className).toContain('text-sm')
+    expect(intro.className).toContain('text-ink-muted')
+  })
+
+  it('a failed programs.current load renders the shared ErrorState, colored for attention, with Retry (task V5)', async () => {
+    reject('programs.current', { status: 500, code: 'server_error' })
+
+    renderWithProviders(<></>, { route: '/setup/readiness', routes: buildRoutes() })
+
+    const alert = await screen.findByRole('alert')
+    const message = within(alert).getByText('Could not reach the server')
+    expect(message.className).toContain('text-attention')
+    expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+  })
+
   it('two blank references -> stays on page and lists exactly baseline B and final B as missing', async () => {
     const current = makeCurrent(makeProgram(), fourBlankSlots())
     const { user, router } = mount(current)

@@ -91,7 +91,12 @@ export function ClockGapPrompt({ session, createDetector }: ClockGapPromptProps)
             <Button variant="secondary" disabled={isPending} onClick={() => void resolve('uncertain')}>
               Not sure
             </Button>
-            <Button variant="quiet" disabled={isPending} onClick={() => void resolve('save_incomplete')}>
+            <Button
+              variant="quiet"
+              className="hover:bg-paper"
+              disabled={isPending}
+              onClick={() => void resolve('save_incomplete')}
+            >
               Save as incomplete
             </Button>
           </div>

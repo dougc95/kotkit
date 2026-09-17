@@ -59,6 +59,16 @@ function lastCreateCall(): [CreateProgramBodyValue, { idempotencyKey: string }] 
 }
 
 describe('PlanForm', () => {
+  it('heading matches every other page heading: text-lg font-semibold text-ink, not text-xl (task V5)', () => {
+    mount()
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Set up your plan' })
+    expect(heading.className).toContain('text-lg')
+    expect(heading.className).toContain('font-semibold')
+    expect(heading.className).toContain('text-ink')
+    expect(heading.className).not.toContain('text-xl')
+  })
+
   it('omits feedEstimateMinutes when blank', async () => {
     respond('programs.create', { program: { id: 'p1' }, revision: { id: 'r1' } })
     const { user } = mount()
@@ -301,6 +311,16 @@ describe('PlanForm', () => {
     mount()
 
     expect(screen.getByLabelText('Timezone', { exact: true }).tagName).toBe('SELECT')
+  })
+
+  it('the Timezone select sits on the page ground like every other field, not raised card white (task V5)', () => {
+    mount()
+
+    const select = screen.getByLabelText('Timezone', { exact: true })
+    expect(select.className).toContain('bg-transparent')
+    expect(select.className).not.toContain('bg-card')
+    expect(select.className).toContain('text-base')
+    expect(select.className).toContain('md:text-sm')
   })
 
   it('Confirm timezone is still operable by its label', async () => {

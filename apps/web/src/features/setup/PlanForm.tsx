@@ -162,7 +162,7 @@ function TimezoneConfirm({ value, confirmed, onChange, onConfirm, zones, error }
         onChange={(event) => {
           onChange(event.target.value)
         }}
-        className="min-h-11 rounded-md border border-rule bg-card px-3 py-2 text-sm text-ink"
+        className="min-h-11 rounded-md border border-rule bg-transparent px-3 py-2 text-base text-ink md:text-sm"
       >
         {zones.map((zone) => (
           <option key={zone} value={zone}>
@@ -357,7 +357,7 @@ export function PlanForm() {
   return (
     <form onSubmit={handleSubmit} noValidate className="flex max-w-md flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold">Set up your plan</h1>
+        <h1 className="text-lg font-semibold text-ink">Set up your plan</h1>
         <p className="text-sm text-ink-muted">
           This saves a draft — nothing starts running yet.
         </p>

@@ -226,7 +226,31 @@ describe('CheckinForm', () => {
     mount(OPEN_PROGRAM, dayFixture({ sleepMinutes: 420, status: 'incomplete', missing: ['feed'], version: 1 }))
 
     await screen.findByLabelText('Sleep minutes')
-    expect(screen.getByRole('status')).toHaveTextContent('Incomplete — missing: feed')
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Incomplete — missing: feed')
+    // Task V5 ruling: an incomplete check-in is a needs-you message, so it is
+    // text-attention (not neutral ink), matching Today's own CheckinCard.
+    expect(status.className).toContain('text-attention')
+    expect(status.className).not.toContain('text-ink')
+  })
+
+  it('a complete check-in renders its status in ink, never attention (task V5)', async () => {
+    mount(
+      OPEN_PROGRAM,
+      dayFixture({
+        sleepMinutes: 420,
+        feed: [{ device: 'phone', platform: 'all', minutes: 30, measurementScope: 'feed', source: 'estimate' }],
+        status: 'complete',
+        missing: [],
+        version: 1,
+      }),
+    )
+
+    await screen.findByLabelText('Sleep minutes')
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Complete')
+    expect(status.className).toContain('text-ink')
+    expect(status.className).not.toContain('text-attention')
   })
 
   it('adding a desktop detail row disables the desktop headline input and shows the summed total', async () => {

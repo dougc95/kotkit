@@ -352,6 +352,19 @@ describe('FeedRows', () => {
     expect(deviceControl.tagName).toBe('SELECT')
   })
 
+  it('the Device select sits on the page ground like every other field, not raised card white (task V5)', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    const group = await addRow(user, 1)
+    const deviceControl = within(group).getByLabelText('Device')
+    expect(deviceControl.className).toContain('bg-transparent')
+    expect(deviceControl.className).not.toContain('bg-card')
+    expect(deviceControl.className).toContain('text-base')
+    expect(deviceControl.className).toContain('md:text-sm')
+  })
+
   it('each row renders its own named Measurement scope radiogroup', async () => {
     const { user } = mount(EMPTY_DAY)
     await screen.findByLabelText('Sleep minutes')
