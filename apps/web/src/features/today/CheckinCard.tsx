@@ -45,7 +45,7 @@ export function CheckinCard({ localDate, checkin }: CheckinCardProps) {
       <h2 className="text-sm font-semibold text-ink">Check-in</h2>
 
       {status !== 'complete' && missing.length > 0 && (
-        <p role="status" className="text-sm text-ink-muted">
+        <p role="status" className="text-sm text-attention">
           {`Still needed: ${missing.map((field) => FIELD_LABEL[field]).join(', ')}`}
         </p>
       )}
