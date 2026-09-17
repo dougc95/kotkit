@@ -100,7 +100,7 @@ export interface ChecklistProps {
 
 export function Checklist({ items }: ChecklistProps) {
   return (
-    <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--color-text)]">
+    <ul className="list-disc space-y-1 pl-5 text-sm text-ink">
       {items.map((item) => (
         <li key={item}>{item}</li>
       ))}
@@ -121,7 +121,7 @@ export interface ReplacementReasonFieldProps {
 export function ReplacementReasonField({ value, onChange, required }: ReplacementReasonFieldProps) {
   return (
     <div className="space-y-1">
-      <label htmlFor="replacement-reason" className="block text-sm font-medium text-[var(--color-text)]">
+      <label htmlFor="replacement-reason" className="block text-sm font-medium text-ink">
         Reason for replacement
       </label>
       <textarea
@@ -130,9 +130,9 @@ export function ReplacementReasonField({ value, onChange, required }: Replacemen
         maxLength={MAX_REASON_LENGTH}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+        className="w-full rounded-md border border-rule bg-card px-3 py-2 text-sm text-ink"
       />
-      <p className="text-xs text-[var(--color-text-muted)]">
+      <p className="text-xs text-ink-muted">
         {value.length}/{MAX_REASON_LENGTH}
       </p>
     </div>
@@ -306,20 +306,20 @@ export function Ready() {
     priorState === 'none' || (priorState === 'requiresReason' && reasonTrimmed.length >= 1)
 
   return (
-    <div data-mode="benchmark" className="mx-auto max-w-xl px-4 py-6 space-y-6 border-t-4 border-t-amber-500">
+    <div data-mode="benchmark" className="mx-auto max-w-xl px-4 py-6 space-y-6">
       <header className="space-y-1">
-        <h1 className="text-lg font-semibold text-[var(--color-text)]">
+        <h1 className="text-lg font-semibold text-ink">
           {`Fixed 20-minute assessment — ${phaseLabel(slot.phase)} ${slot.label}`}
         </h1>
-        <p className="text-sm text-[var(--color-text)]">{slot.materialRef}</p>
+        <p className="text-sm text-ink">{slot.materialRef}</p>
         {slot.plannedLocalTime !== null ? (
-          <p className="text-sm text-[var(--color-text-muted)]">{`Planned time: ${slot.plannedLocalTime}`}</p>
+          <p className="text-sm text-ink-muted">{`Planned time: ${slot.plannedLocalTime}`}</p>
         ) : null}
       </header>
 
       <Checklist items={PROTOCOL_CHECKLIST_ITEMS} />
 
-      <p className="text-sm text-[var(--color-text-muted)]">{LEAVING_NOTE}</p>
+      <p className="text-sm text-ink-muted">{LEAVING_NOTE}</p>
 
       {isBeforeDate ? (
         <p>

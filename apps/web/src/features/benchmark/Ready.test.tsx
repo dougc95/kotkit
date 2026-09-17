@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
@@ -295,5 +297,23 @@ describe('Ready', () => {
     await screen.findByRole('button', { name: 'Start' })
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
     expectNoIdentifiers(document.body)
+  })
+})
+
+describe('token conversion', () => {
+  it('Ready.tsx and Running.tsx use no legacy --color-* token and no decorative amber class', () => {
+    // A bare string base is silently ignored by this jsdom environment's URL
+    // constructor, which falls back to window.location.href instead of the
+    // given file:// path — wrapping it in `new URL(...)` first resolves
+    // correctly. Verified by direct reproduction on 2026-09-17.
+    const readyPath = fileURLToPath(new URL('./Ready.tsx', new URL(import.meta.url)))
+    const runningPath = fileURLToPath(new URL('./Running.tsx', new URL(import.meta.url)))
+    const readySource = readFileSync(readyPath, 'utf8')
+    const runningSource = readFileSync(runningPath, 'utf8')
+
+    for (const source of [readySource, runningSource]) {
+      expect(source).not.toMatch(/--color-(bg|surface|border|text|primary|focus-ring)/)
+      expect(source).not.toMatch(/amber-/)
+    }
   })
 })
