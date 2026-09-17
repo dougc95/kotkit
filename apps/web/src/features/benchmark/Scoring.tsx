@@ -118,19 +118,26 @@ export function PointRow({ index, text, value, onChange }: PointRowProps) {
 
   const accurateId = `point-${index}-accurate`
   const notAccurateId = `point-${index}-not-accurate`
-  const legendId = `point-${index}-legend`
 
   return (
     <div className={POINT_SHELL_CLASSNAME} data-point-shell="true">
       <p className="text-sm font-medium text-ink">{label}</p>
       <p className="text-sm text-ink">{text}</p>
       <fieldset>
-        <legend id={legendId} className="sr-only">{`${label} score`}</legend>
+        <legend className="sr-only">{`${label} score`}</legend>
+        {/* Deliberately no aria-label / aria-labelledby on this RadioGroup:
+            the fieldset/legend above already names and groups the radios
+            (as this screen did before the rework), and Playwright's
+            getByLabel is a case-insensitive substring match that also
+            follows aria-labelledby, so a name containing "Point N" would
+            make getByLabel('Point N') match this element too.
+            e2e/acceptance/baseline-day.spec.ts:241 asserts
+            page.getByLabel('Point 1') has count 0 on this locked scoring
+            screen. */}
         <RadioGroup
           className="flex gap-4"
           required
           value={value ?? null}
-          aria-labelledby={legendId}
           onValueChange={(next) => {
             if (isPointScore(next)) {
               onChange(next)
