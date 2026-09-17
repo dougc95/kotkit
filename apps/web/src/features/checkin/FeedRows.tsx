@@ -22,6 +22,7 @@
 import {
   FEED_DEVICES,
   FEED_PLATFORM_ALL,
+  MEASUREMENT_SCOPES,
   type FeedDevice,
   type FeedRowInput,
   type FeedRowValue,
@@ -30,6 +31,12 @@ import {
 } from '@attention-lab/shared'
 
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Checkbox } from '../../ui/shadcn/checkbox.js'
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { RadioGroup, RadioGroupItem } from '../../ui/shadcn/radio-group.js'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/shadcn/select.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -219,6 +226,16 @@ function parseOptionalNonNegativeInteger(raw: string): number | null | undefined
   return parsed
 }
 
+/** Radix `Select`'s `onValueChange` delivers a plain string; narrow it before writing to the draft (mirrors ScenarioLoader's `isDemoScenarioName`). */
+function isFeedDevice(value: string): value is FeedDevice {
+  return (FEED_DEVICES as readonly string[]).includes(value)
+}
+
+/** Radix `RadioGroup`'s `onValueChange` delivers a plain string; narrow it the same way as `isFeedDevice` above. */
+function isMeasurementScope(value: string): value is MeasurementScope {
+  return (MEASUREMENT_SCOPES as readonly string[]).includes(value)
+}
+
 interface FeedRowProps {
   readonly index: number
   readonly row: FeedRowDraft
@@ -234,56 +251,60 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
     onChange({ ...row, ...next })
   }
 
+  const deviceField = useField({ name: `${idBase}-device` })
+  const platformField = useField({ name: `${idBase}-platform`, error: errors?.platform })
+  const minutesField = useField({ name: `${idBase}-minutes` })
+  const shortVideoField = useField({ name: `${idBase}-shortvideo`, error: errors?.shortVideoMinutes })
+
   return (
-    <div role="group" aria-label={`Feed detail row ${index + 1}`} className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-3">
+    <div role="group" aria-label={`Feed detail row ${index + 1}`} className="flex flex-col gap-2 rounded-md border border-rule p-3">
       {errors?.row !== undefined ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-attention">
           {errors.row}
         </p>
       ) : null}
 
       <div className="flex flex-col gap-1">
-        <label htmlFor={`${idBase}-device`} className="text-sm font-medium text-[var(--color-text)]">
-          Device
-        </label>
-        <select
-          id={`${idBase}-device`}
+        <Label {...deviceField.labelProps}>Device</Label>
+        <Select
           value={row.device}
-          onChange={(event) => patch({ device: event.target.value as FeedDevice })}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          onValueChange={(value) => {
+            if (isFeedDevice(value)) patch({ device: value })
+          }}
         >
-          {FEED_DEVICES.map((device) => (
-            <option key={device} value={device}>
-              {DEVICE_LABEL[device]}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger {...deviceField.controlProps} className="min-h-11 w-full max-w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FEED_DEVICES.map((device) => (
+              <SelectItem key={device} value={device}>
+                {DEVICE_LABEL[device]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor={`${idBase}-platform`} className="text-sm font-medium text-[var(--color-text)]">
-          Platform
-        </label>
-        <input
-          id={`${idBase}-platform`}
+        <Label {...platformField.labelProps}>Platform</Label>
+        <Input
+          {...platformField.controlProps}
           type="text"
           value={row.platform}
           onChange={(event) => patch({ platform: event.target.value })}
-          className="min-h-11 w-full max-w-60 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-60"
         />
-        {errors?.platform !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
-            {errors.platform}
+        {platformField.errorProps !== undefined ? (
+          <p {...platformField.errorProps} className="text-sm text-attention">
+            {errors?.platform}
           </p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor={`${idBase}-minutes`} className="text-sm font-medium text-[var(--color-text)]">
-          Minutes
-        </label>
-        <input
-          id={`${idBase}-minutes`}
+        <Label {...minutesField.labelProps}>Minutes</Label>
+        <Input
+          {...minutesField.controlProps}
           type="number"
           inputMode="numeric"
           min={0}
@@ -294,16 +315,14 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
             if (next === undefined) return
             patch({ minutes: next })
           }}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-40"
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor={`${idBase}-shortvideo`} className="text-sm font-medium text-[var(--color-text)]">
-          Short-video minutes
-        </label>
-        <input
-          id={`${idBase}-shortvideo`}
+        <Label {...shortVideoField.labelProps}>Short-video minutes</Label>
+        <Input
+          {...shortVideoField.controlProps}
           type="number"
           inputMode="numeric"
           min={0}
@@ -314,56 +333,60 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
             if (next === undefined) return
             patch({ shortVideoMinutes: next })
           }}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-40"
         />
-        {errors?.shortVideoMinutes !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
-            {errors.shortVideoMinutes}
+        {shortVideoField.errorProps !== undefined ? (
+          <p {...shortVideoField.errorProps} className="text-sm text-attention">
+            {errors?.shortVideoMinutes}
           </p>
         ) : null}
       </div>
 
       <fieldset className="flex flex-col gap-1">
-        <legend className="text-sm font-medium text-[var(--color-text)]">Measurement scope</legend>
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2 text-sm text-[var(--color-text)]">
-            <input
-              type="radio"
-              name={`${idBase}-scope`}
-              checked={row.measurementScope === 'feed'}
-              onChange={() => patch({ measurementScope: 'feed' })}
-            />
-            Feed only
-          </label>
-          <label className="flex items-center gap-2 text-sm text-[var(--color-text)]">
-            <input
-              type="radio"
-              name={`${idBase}-scope`}
-              checked={row.measurementScope === 'app_total'}
-              onChange={() => patch({ measurementScope: 'app_total' })}
-            />
-            Whole app
-          </label>
-        </div>
+        <legend className="text-sm font-medium text-ink">Measurement scope</legend>
+        <RadioGroup
+          value={row.measurementScope}
+          onValueChange={(value) => {
+            if (isMeasurementScope(value)) patch({ measurementScope: value })
+          }}
+          className="flex gap-4"
+        >
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="feed" id={`${idBase}-scope-feed`} />
+            <Label htmlFor={`${idBase}-scope-feed`} className="py-2 text-sm text-ink">
+              Feed only
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="app_total" id={`${idBase}-scope-app`} />
+            <Label htmlFor={`${idBase}-scope-app`} className="py-2 text-sm text-ink">
+              Whole app
+            </Label>
+          </div>
+        </RadioGroup>
       </fieldset>
 
-      <label className="flex items-center gap-2 text-sm text-[var(--color-text)]">
-        <input
-          type="checkbox"
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id={`${idBase}-device-report`}
           checked={row.source === 'device_report'}
-          onChange={(event) => patch({ source: event.target.checked ? 'device_report' : 'estimate' })}
+          onCheckedChange={(checked) => patch({ source: checked === true ? 'device_report' : 'estimate' })}
         />
-        From device report
-      </label>
+        <Label htmlFor={`${idBase}-device-report`} className="py-2 text-sm text-ink">
+          From device report
+        </Label>
+      </div>
 
-      <label className="flex items-center gap-2 text-sm text-[var(--color-text)]">
-        <input
-          type="checkbox"
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id={`${idBase}-planned-window`}
           checked={row.plannedWindow === true}
-          onChange={(event) => patch({ plannedWindow: event.target.checked ? true : null })}
+          onCheckedChange={(checked) => patch({ plannedWindow: checked === true ? true : null })}
         />
-        Planned window
-      </label>
+        <Label htmlFor={`${idBase}-planned-window`} className="py-2 text-sm text-ink">
+          Planned window
+        </Label>
+      </div>
 
       <Button type="button" variant="secondary" onClick={onRemove}>
         Remove row
