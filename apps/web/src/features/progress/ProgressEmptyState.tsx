@@ -12,19 +12,33 @@
  * Slot's CHILD element (the real `<Link>` -> `<a>`), never a `<button>`
  * wrapping an anchor, so `getByRole('link', { name: 'Go to Setup' })` keeps
  * resolving to a real anchor with a real `href`.
+ *
+ * The message and the Setup action render through `ui/EmptyState` (the
+ * rework spec §8's app-wide empty-state treatment: a hairline above muted
+ * message text, with an optional action below it) rather than a hand-rolled
+ * `<p>`/`<Button>` pair, so this screen's one empty state matches every
+ * future one built the same way. The `<h1>` sits outside `EmptyState`
+ * because the heading is this screen's own concern, not part of the shared
+ * shell.
  */
 import { Link } from 'react-router'
 
 import { Button } from '../../ui/Button.js'
+import { EmptyState } from '../../ui/EmptyState.js'
 
 export function ProgressEmptyState() {
   return (
     <div className="flex flex-col gap-3">
       <h1 className="text-lg font-semibold">Progress</h1>
-      <p className="text-ink">There is nothing to report yet. Set up your program to start your baseline.</p>
-      <Button asChild className="self-start">
-        <Link to="/setup">Go to setup</Link>
-      </Button>
+      <EmptyState
+        action={
+          <Button asChild className="self-start">
+            <Link to="/setup">Go to setup</Link>
+          </Button>
+        }
+      >
+        There is nothing to report yet. Set up your program to start your baseline.
+      </EmptyState>
     </div>
   )
 }

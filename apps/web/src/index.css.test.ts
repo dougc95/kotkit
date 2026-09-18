@@ -34,17 +34,20 @@ const COLOR_PROPERTY_KEYWORDS = [
 ]
 
 describe('index.css token contract', () => {
-  it('declares every Instrument-log token', () => {
-    for (const token of [
-      '--color-paper: #F3F5F5',
-      '--color-card: #FFFFFF',
-      '--color-rule: #D5DBDA',
-      '--color-ink: #16232B',
-      '--color-ink-muted: #455761',
-      '--color-signal: #0B5F63',
-      '--color-attention: #8A5A00',
-    ]) {
-      expect(css).toContain(token)
+  it('declares each of the eight Instrument-log tokens exactly once (A-I3: a second copy in @layer base used to silently win over @theme)', () => {
+    for (const [name, hex] of [
+      ['--color-paper', '#F3F5F5'],
+      ['--color-card', '#FFFFFF'],
+      ['--color-rule', '#D5DBDA'],
+      ['--color-ink', '#16232B'],
+      ['--color-ink-muted', '#455761'],
+      ['--color-signal', '#0B5F63'],
+      ['--color-attention', '#8A5A00'],
+      ['--color-destructive', '#8C2F1B'],
+    ] as const) {
+      const declarationPattern = new RegExp(`${name}:\\s*${hex};`, 'g')
+      const matches = [...css.matchAll(declarationPattern)]
+      expect(matches, `${name} should be declared exactly once`).toHaveLength(1)
     }
   })
 
@@ -118,12 +121,14 @@ describe('index.css token contract', () => {
     expect(missing).toEqual([])
   })
 
-  it('keeps --accent distinct from --popover so the Select active-option highlight is not white-on-white', () => {
-    const accentMatch = css.match(/--accent:\s*([^;]+);/)
-    const popoverMatch = css.match(/--popover:\s*([^;]+);/)
-    expect(accentMatch).not.toBeNull()
-    expect(popoverMatch).not.toBeNull()
-    expect(accentMatch![1]!.trim()).not.toBe(popoverMatch![1]!.trim())
+  it('makes the Select active-option highlight an ink band with card-white text, not a 1.09:1 tint (A-I4)', () => {
+    // A prior version set --accent to `paper`, which IS a distinct string
+    // from --popover (`card`) but only ~1.09:1 as a fill against it — nowhere
+    // near WCAG 1.4.11's 3:1 for a UI component's state. Asserting the exact
+    // values (rather than mere inequality) pins the contrast, not just the
+    // string difference the old guard could not tell apart from it.
+    expect(css).toMatch(/--accent:\s*var\(--color-ink\);/)
+    expect(css).toMatch(/--accent-foreground:\s*var\(--color-card\);/)
   })
 })
 

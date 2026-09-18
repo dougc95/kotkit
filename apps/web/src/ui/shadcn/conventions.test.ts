@@ -7,8 +7,10 @@ const dir = dirname(fileURLToPath(import.meta.url))
 const files = readdirSync(dir).filter((f) => f.endsWith('.tsx'))
 
 describe('generated shadcn primitives', () => {
-  it('generated at least the eighteen primitives the design calls for', () => {
-    expect(files.length).toBeGreaterThanOrEqual(18)
+  it('generated exactly the sixteen primitives the app actually uses (A-I2: button.tsx and tooltip.tsx were dead, deleted)', () => {
+    // Equality, not >=, so a future dead file (imported by nothing) is
+    // noticed instead of silently raising the floor this guard checks.
+    expect(files.length).toBe(16)
   })
 
   it.each(files)('%s declares no focus-visible styling of its own', (file) => {

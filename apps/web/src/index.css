@@ -24,14 +24,32 @@
 @source not "./**/*.test-d.ts";
 
 @theme {
-  --color-paper: #F3F5F5;
-  --color-card: #FFFFFF;
-  --color-rule: #D5DBDA;
-  --color-ink: #16232B;
-  --color-ink-muted: #455761;
-  --color-signal: #0B5F63;
-  --color-attention: #8A5A00;
+  /* ---- Instrument log tokens. Contrast figures are computed for the exact
+   * hex pairs below, against --color-paper unless stated otherwise. This is
+   * the ONE declaration of each of these eight tokens: Tailwind 4 orders
+   * `@layer theme` before `@layer base`, so a second declaration in
+   * `@layer base` below would win silently and make these comments lies
+   * (A-I3). If a value ever needs re-tuning, this is the block to edit. ---- */
+
+  /* Ground and surface. */
+  --color-paper: #F3F5F5;   /* page ground, cool-neutral off-white */
+  --color-card: #FFFFFF;    /* raised surfaces only */
+  --color-rule: #D5DBDA;    /* hairlines and field slots — never text */
+
+  /* Text, and recorded data. */
+  --color-ink: #16232B;       /* ~14.7:1 */
+  --color-ink-muted: #455761; /* ~6.9:1 */
+
+  /* State. Both fills below also feed --accent* / --destructive* aliases
+   * further down; the black focus ring (--color-focus-ring, in :root) does
+   * NOT clear 3:1 against either — ~2.8:1 on signal, ~2.5:1 on destructive —
+   * see the Focus ring comment in :root for the full note. */
+  --color-signal: #0B5F63;    /* white on this fill is ~7.4:1 */
+  --color-attention: #8A5A00; /* ~5.4:1 as text, white on it ~5.9:1 */
+
+  /* Destructive ACTIONS only — never a measurement outcome. */
   --color-destructive: #8C2F1B;
+
   --radius-DEFAULT: 0.375rem;
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -107,25 +125,14 @@
   }
 
   :root {
-    /* ---- Instrument log tokens. Contrast figures are computed for the exact
-     * hex pairs below, against --color-paper unless stated otherwise. ---- */
-
-    /* Ground and surface. */
-    --color-paper: #F3F5F5;   /* page ground, cool-neutral off-white */
-    --color-card: #FFFFFF;    /* raised surfaces only */
-    --color-rule: #D5DBDA;    /* hairlines and field slots — never text */
-
-    /* Text, and recorded data. */
-    --color-ink: #16232B;       /* ~14.7:1 */
-    --color-ink-muted: #455761; /* ~6.9:1 */
-
-    /* State. */
-    --color-signal: #0B5F63;    /* white on this fill is ~7.4:1 */
+    /* The eight Instrument-log tokens (--color-paper/-card/-rule/-ink/
+     * -ink-muted/-signal/-attention/-destructive) are declared exactly once,
+     * in the @theme block above (A-I3) — they used to be repeated here too,
+     * and the @layer base copy silently won over @theme's, which made
+     * @theme's values a lie. --color-signal-text and --color-destructive-text
+     * below are NOT theme keys (no utility is generated from them), so they
+     * have exactly one home either way: here. */
     --color-signal-text: #FFFFFF;
-    --color-attention: #8A5A00; /* ~5.4:1 as text, white on it ~5.9:1 */
-
-    /* Destructive ACTIONS only — never a measurement outcome. */
-    --color-destructive: #8C2F1B;
     --color-destructive-text: #FFFFFF;
 
     /*
@@ -136,11 +143,11 @@
      * --color-paper and 21:1 on --color-card.
      *
      * Recorded limitation: black does NOT clear 3:1 against two of this
-     * palette's fills — ~2.8:1 on --color-signal and ~2.5:1 on
-     * --color-destructive. That only bites if a focusable control is ever
-     * nested inside a signal- or destructive-filled surface, which no screen
-     * in this app does today. If one is ever introduced, that surface needs
-     * its own ring colour; do not assume this token covers it.
+     * palette's fills (see the @theme block's --color-signal / -destructive
+     * comments for the exact ratios). That only bites if a focusable control
+     * is ever nested inside a signal- or destructive-filled surface, which no
+     * screen in this app does today. If one is ever introduced, that surface
+     * needs its own ring colour; do not assume this token covers it.
      */
     --color-focus-ring: #000000;
 
@@ -150,8 +157,12 @@
      * these; they are aliases, not a second palette. `accent` is the
      * active-option highlight painted inside white popovers (Select), so it
      * must differ from `popover` itself — otherwise `data-[highlighted]:bg-accent`
-     * is white on white. Using `paper` gives ink-on-paper contrast (~14:1)
-     * instead. ---- */
+     * is white on white. It used to be `paper`, which IS distinct from
+     * `popover` as a string but only ~1.09:1 as a fill against it — WCAG
+     * 1.4.11 wants 3:1 for a UI component's state, and the highlight was the
+     * only cue an option is active (A-I4). `accent` is now an ink band with
+     * card-white text: ~14.7:1 of its own, and unmistakably >= 3:1 against
+     * the white popover it sits on. ---- */
     --background: var(--color-paper);
     --foreground: var(--color-ink);
     --card: var(--color-card);
@@ -164,8 +175,8 @@
     --secondary-foreground: var(--color-ink);
     --muted: var(--color-card);
     --muted-foreground: var(--color-ink-muted);
-    --accent: var(--color-paper);
-    --accent-foreground: var(--color-ink);
+    --accent: var(--color-ink);
+    --accent-foreground: var(--color-card);
     --destructive: var(--color-destructive);
     --destructive-foreground: var(--color-destructive-text);
     --border: var(--color-rule);
