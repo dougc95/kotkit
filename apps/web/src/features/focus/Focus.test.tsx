@@ -110,6 +110,16 @@ describe('Focus', () => {
     expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
   })
 
+  it('session query pending keeps an accessible "Loading" label inside the aria-busy region', async () => {
+    mockApi.sessions.get.mockImplementation(() => new Promise(() => {}))
+
+    renderFocus('session-loading')
+
+    await waitFor(() => expect(mockApi.sessions.get).toHaveBeenCalled())
+    const label = screen.getByText('Loading')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
+  })
+
   it('no navigation landmarks are rendered', async () => {
     const session = makeSession({ id: 'session-nav' })
     respond('sessions.get', session)

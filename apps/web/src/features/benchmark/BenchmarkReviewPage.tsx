@@ -41,7 +41,8 @@ import type {
 
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
-import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { BLANK_COUNT_FIELDS_VALUE, CountFields, type CountFieldsValue } from './CountFields.js'
 import { ConditionsFields } from './ConditionsFields.js'
 import { DisruptionField, type DisruptionAnswer } from './DisruptionField.js'
@@ -145,25 +146,20 @@ export function BenchmarkReviewPage() {
 
   if (sessionQuery.isError) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-6 space-y-4">
-        <p>The review could not be loaded.</p>
-        <Button
-          onClick={() => {
+      <div className="mx-auto max-w-xl px-4 py-6">
+        <ErrorState
+          onRetry={() => {
             void sessionQuery.refetch()
           }}
         >
-          Retry
-        </Button>
+          The review could not be loaded.
+        </ErrorState>
       </div>
     )
   }
 
   if (sessionQuery.isPending || sessionQuery.data === undefined) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading review
-      </div>
-    )
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading review</LoadingState>
   }
 
   const session = sessionQuery.data

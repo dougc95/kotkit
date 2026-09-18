@@ -211,6 +211,25 @@ describe('FinalizeSection / FinalizeBar / EligibilitySummary', () => {
     expect(retry).toHaveBeenCalledTimes(1)
   })
 
+  it('Retry is disabled with Finalize once a failed finalize is followed by a withdrawn attestation (D-I5)', async () => {
+    const { retry } = mockHook({ status: 'error' })
+    const { user, rerender } = renderSection({ conditionsConfirmed: false })
+
+    const finalizeButton = screen.getByRole('button', { name: 'Finalize' })
+    const retryButton = screen.getByRole('button', { name: 'Retry' })
+    expect(finalizeButton).toBeDisabled()
+    expect(retryButton).toBeDisabled()
+
+    await user.click(retryButton)
+    expect(retry).not.toHaveBeenCalled()
+
+    // Re-holding the attestation re-enables both controls and an ordinary
+    // retry still resends the stored body unchanged.
+    rerender(<FinalizeSection {...READY_PROPS} />)
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(retry).toHaveBeenCalledTimes(1)
+  })
+
   it('status unsaved_entries after three mismatches shows Retry and never reports completion', () => {
     mockHook({ status: 'unsaved_entries', mismatchAttempts: 3 })
     renderSection()

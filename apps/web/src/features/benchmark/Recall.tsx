@@ -79,6 +79,8 @@ import { newIdempotencyKey } from '../../lib/api/newIdempotencyKey.js'
 import { serverNowMs, type ClockAnchor } from '../../lib/clock/remaining.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { useField } from '../../ui/field.js'
 import { Badge } from '../../ui/shadcn/badge.js'
 import { Label } from '../../ui/shadcn/label.js'
@@ -298,27 +300,22 @@ export function Recall() {
     return <p>Session not found</p>
   }
 
-  if (sessionQuery.isPending || session === undefined) {
+  if (sessionQuery.isError) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading recall
+      <div className="mx-auto max-w-xl px-4 py-6">
+        <ErrorState
+          onRetry={() => {
+            void sessionQuery.refetch()
+          }}
+        >
+          The recall could not be loaded.
+        </ErrorState>
       </div>
     )
   }
 
-  if (sessionQuery.isError) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6 space-y-4">
-        <p>The recall could not be loaded.</p>
-        <Button
-          onClick={() => {
-            void sessionQuery.refetch()
-          }}
-        >
-          Retry
-        </Button>
-      </div>
-    )
+  if (sessionQuery.isPending || session === undefined) {
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading recall</LoadingState>
   }
 
   if (session.review.recallLockedAt !== null) {

@@ -67,6 +67,7 @@ import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
 import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { Reported } from '../../ui/Reported.js'
 import { ActiveSessionCard } from '../session/ActiveSessionCard.js'
 import { AgentPanel } from './AgentPanel.js'
@@ -220,11 +221,7 @@ export function Focus() {
   }
 
   if (sessionQuery.isPending) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading
-      </div>
-    )
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading</LoadingState>
   }
 
   if (notFound) {

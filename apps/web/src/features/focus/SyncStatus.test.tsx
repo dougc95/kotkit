@@ -50,7 +50,8 @@ describe('SyncStatus', () => {
 
     render(<SyncStatus sessionId={sessionId} />)
 
-    await screen.findByText('Pending')
+    const label = await screen.findByText('Pending')
+    expect(label).not.toHaveClass('text-attention')
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
 
@@ -86,7 +87,8 @@ describe('SyncStatus', () => {
 
     render(<SyncStatus sessionId={sessionId} />)
 
-    await screen.findByText('Saved')
+    const label = await screen.findByText('Saved')
+    expect(label).not.toHaveClass('text-attention')
     await waitFor(async () => expect(await listUnsent(sessionId)).toHaveLength(0))
   })
 
@@ -97,7 +99,8 @@ describe('SyncStatus', () => {
 
     render(<SyncStatus sessionId={sessionId} />)
 
-    await screen.findByText('Entries could not be saved on this device')
+    const label = await screen.findByText('Entries could not be saved on this device')
+    expect(label).toHaveClass('text-attention')
     expect(screen.getByRole('button', { name: 'Keep trying the server directly' })).toBeInTheDocument()
   })
 
@@ -138,7 +141,8 @@ describe('SyncStatus', () => {
 
     render(<SyncStatus sessionId={sessionId} />)
 
-    await screen.findByText('One entry was rejected and will not be retried')
+    const rejectedNotice = await screen.findByText('One entry was rejected and will not be retried')
+    expect(rejectedNotice).toHaveClass('text-attention')
     expect(mockApi.sessions.postEvents).toHaveBeenCalledTimes(1)
 
     const remaining = await listUnsent(sessionId)

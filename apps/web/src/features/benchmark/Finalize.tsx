@@ -125,7 +125,7 @@ export function FinalizeBar({ canFinalize, missing, onFinalize, status }: Finali
       {message !== null ? (
         <div role="status" className="flex items-center gap-3 text-sm text-attention">
           <p>{message}</p>
-          <Button type="button" variant="secondary" onClick={onFinalize}>
+          <Button type="button" variant="secondary" disabled={primaryDisabled} onClick={onFinalize}>
             Retry
           </Button>
         </div>
