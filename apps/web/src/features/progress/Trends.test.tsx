@@ -494,6 +494,43 @@ describe('PracticeTrend / DailyTrend / ExactValuesTable', () => {
     expect(bars).toEqual(['bar-completedMinutes', 'bar-plannedMinutes'])
   })
 
+  it('the practice bar keeps its historical width for a short fixture (F3)', () => {
+    const rows = [
+      makePracticeRow({ sessionId: 's1', day: 1, localDate: '2026-09-01', targetSeconds: 600, completedSeconds: 600 }),
+      makePracticeRow({ sessionId: 's2', day: 2, localDate: '2026-09-02', targetSeconds: 600, completedSeconds: 600 }),
+    ]
+    renderWithProviders(<PracticeTrend practice={rows} />)
+
+    const captured = getCaptured()
+    expect(captured.barChartBarSize).toBe(24)
+    expect(captured.barChartBarGap).toBe(-24)
+  })
+
+  it('the practice bar shrinks below its cap for a full 14-day, two-block programme so bands never overlap (F3)', () => {
+    // 28 blocks (14 days x 2 blocks/day) — the programme's end state that a
+    // fixed 24px bar would overrun (F1 re-review Minor).
+    const rows = Array.from({ length: 28 }, (_, i) =>
+      makePracticeRow({
+        sessionId: `s${i + 1}`,
+        day: Math.floor(i / 2) + 1,
+        localDate: `2026-09-${String(Math.floor(i / 2) + 1).padStart(2, '0')}`,
+        targetSeconds: 600,
+        completedSeconds: 600,
+      }),
+    )
+    renderWithProviders(<PracticeTrend practice={rows} />)
+
+    const captured = getCaptured()
+    const barSize = captured.barChartBarSize as number
+    // plotWidth = CHART_WIDTH (640) - Recharts' own default left/right margin
+    // (5 + 5, since PracticeTrend's <BarChart> passes no `margin`) = 630;
+    // floor((630 / 28) * 0.7) = floor(15.75) = 15.
+    expect(barSize).toBe(15)
+    expect(barSize).toBeLessThan(24)
+    expect(barSize).toBeGreaterThanOrEqual(4)
+    expect(captured.barChartBarGap).toBe(-barSize)
+  })
+
   it('the daily chart tooltip paints item and label text in ink, never a series colour (C-I2)', () => {
     const days = [makeDayRow({ localDate: '2026-09-01', day: 1 })]
     renderWithProviders(<DailyTrend days={days} />)

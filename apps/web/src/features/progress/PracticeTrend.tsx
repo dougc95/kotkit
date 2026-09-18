@@ -27,9 +27,13 @@
  * `ink` (completed) occupying the SAME x-slot — the same metaphor as the
  * not-a-value ruled slot, arriving independently at the other end of the app
  * (the rework spec §7, decision U12). Recharts groups same-category `<Bar>`s
- * side by side by default; a fixed `barSize` and an equal-and-opposite
- * `barGap` on `<BarChart>` (C-I1) collapse that gap to zero so the two bars
- * occupy the identical rectangle instead of sitting beside each other. The
+ * side by side by default; a `barSize` derived from the plot band — so it
+ * shrinks as more blocks are plotted, capped at `MAX_BAR_SIZE` — and an
+ * equal-and-opposite `barGap` on `<BarChart>` (C-I1) collapse that gap to
+ * zero so the two bars occupy the identical rectangle instead of sitting
+ * beside each other (F1 re-review Minor: a bar fixed at `MAX_BAR_SIZE`
+ * overran its band and neighbouring frames overlapped once a full 14-day,
+ * two-block programme's 28 blocks divided up the same fixed-width chart). The
  * completed (filled) `<Bar>` renders FIRST and the planned (frame) `<Bar>`
  * renders SECOND — SVG paints in document order, so the frame's stroke sits
  * on top of the fill and stays visible even when completed minutes meet or
@@ -87,10 +91,22 @@ const GRIDLINE = '#D5DBDA' // rule
 const CHART_WIDTH = 640
 const CHART_HEIGHT = 240
 
-// A fixed bar width plus an equal-and-opposite `barGap` on `<BarChart>`
-// overlays the two same-category bars instead of Recharts' default
-// side-by-side grouping (C-I1) — see this file's header comment.
-const BAR_SIZE = 24
+// `<BarChart>` below passes no `margin`, so Recharts falls back to its own
+// default (`defaultCartesianChartProps` in `recharts/chart/CartesianChart`):
+// `{ top: 5, right: 5, bottom: 5, left: 5 }`. Named here so the plot-band
+// width derived below (F1 re-review Minor) uses the same numbers Recharts
+// itself will actually lay out with.
+const LEFT_MARGIN = 5
+const RIGHT_MARGIN = 5
+
+// The bar's width shrinks with the plot band so it never overruns its own
+// band and overlaps a neighbour (F1 re-review Minor): a bar fixed at 24px fit
+// the ~81px bands of the seven-block demo fixture, but a full 14-day,
+// two-block programme divides the same fixed-width chart into 28 bands of
+// ~20px, and a 24px bar overran that. `MAX_BAR_SIZE` keeps its role as the
+// cap for a short fixture; see the per-render derivation below and this
+// file's header comment for the equal-and-opposite `barGap` this pairs with.
+const MAX_BAR_SIZE = 24
 
 const COLUMNS = [
   'Day',
@@ -167,6 +183,16 @@ export function PracticeTrend({ practice }: PracticeTrendProps) {
     completedMinutes: row.completedSeconds == null ? null : secondsToWholeMinutes(row.completedSeconds),
   }))
 
+  // Derive the bar width from the plot band rather than a fixed pixel size
+  // (F1 re-review Minor — see MAX_BAR_SIZE's comment above): the band
+  // available for `n` blocks is the fixed plot width split evenly across
+  // them, at 70% fill so neighbouring bands keep a visible gap, capped at
+  // MAX_BAR_SIZE for a short fixture and floored at 4px so it never
+  // vanishes for a very long one. `barGap`'s exact negative keeps collapsing
+  // the two same-category bars into the same rectangle (C-I1).
+  const plotWidth = CHART_WIDTH - LEFT_MARGIN - RIGHT_MARGIN
+  const barSize = Math.max(4, Math.min(MAX_BAR_SIZE, Math.floor((plotWidth / chartData.length) * 0.7)))
+
   const tableRows: ExactValuesTableRow[] = practice.map((row) => ({
     key: row.sessionId,
     cells: [
@@ -220,8 +246,8 @@ export function PracticeTrend({ practice }: PracticeTrendProps) {
             height={CHART_HEIGHT}
             data={chartData}
             tabIndex={-1}
-            barSize={BAR_SIZE}
-            barGap={-BAR_SIZE}
+            barSize={barSize}
+            barGap={-barSize}
           >
             <CartesianGrid stroke={GRIDLINE} strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="label" tick={{ fill: AXIS_INK, fontSize: 11 }} />
