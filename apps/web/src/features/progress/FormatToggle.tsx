@@ -15,6 +15,13 @@ const OPTIONS: ReadonlyArray<{ value: ExportFormat; label: string }> = [
   { value: 'markdown', label: 'Markdown' },
 ]
 
+const EXPORT_FORMATS: readonly ExportFormat[] = OPTIONS.map((option) => option.value)
+
+/** Guards `RadioGroup`'s `onValueChange` (typed `(value: string) => void`) without an `as` cast (C-I4). */
+function isExportFormat(value: string): value is ExportFormat {
+  return (EXPORT_FORMATS as readonly string[]).includes(value)
+}
+
 export interface FormatToggleProps {
   readonly value: ExportFormat
   readonly onChange: (format: ExportFormat) => void
@@ -25,7 +32,9 @@ export function FormatToggle({ value, onChange }: FormatToggleProps) {
     <RadioGroup
       className="flex gap-4"
       value={value}
-      onValueChange={(next) => onChange(next as ExportFormat)}
+      onValueChange={(next) => {
+        if (isExportFormat(next)) onChange(next)
+      }}
       aria-label="Export format"
     >
       {OPTIONS.map((option) => {

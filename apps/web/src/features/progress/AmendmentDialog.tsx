@@ -302,7 +302,11 @@ export function AmendmentDialog({ sessionId, amendments }: AmendmentDialogProps)
       </Dialog>
 
       {notice !== null ? (
-        <p role="status" className="mt-1 text-xs text-ink-muted">
+        // C-I3: matches this file's other three error notices (text-sm
+        // text-attention) — a rejected write is not a not-a-value cell.
+        // role="status" is kept exactly as on master; the behaviour freeze
+        // covers it and nothing here is retrying, just informing.
+        <p role="status" className="mt-1 text-sm text-attention">
           {notice}
         </p>
       ) : null}

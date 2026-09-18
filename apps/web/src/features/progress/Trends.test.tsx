@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { URL as NodeURL, fileURLToPath } from 'node:url'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen, within } from '@testing-library/react'
 import type { DayRowValue, PracticeRowValue } from '@attention-lab/shared'
@@ -34,15 +34,31 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 interface RechartsCaptured {
   barChartData?: unknown
+  barChartBarSize?: number | undefined
+  barChartBarGap?: number | undefined
   lineChartData?: unknown
   dailyLegendFormatter?: (value: string) => ReactNode
+  tooltipItemStyle?: CSSProperties | undefined
+  tooltipLabelStyle?: CSSProperties | undefined
 }
 
 vi.mock('recharts', () => {
   const captured: RechartsCaptured = {}
 
-  function BarChart({ data, children }: { data?: unknown; children?: ReactNode }) {
+  function BarChart({
+    data,
+    barSize,
+    barGap,
+    children,
+  }: {
+    data?: unknown
+    barSize?: number
+    barGap?: number
+    children?: ReactNode
+  }) {
     captured.barChartData = data
+    captured.barChartBarSize = barSize
+    captured.barChartBarGap = barGap
     return <div data-testid="mock-barchart">{children}</div>
   }
   function LineChart({ data, children }: { data?: unknown; children?: ReactNode }) {
@@ -70,6 +86,15 @@ vi.mock('recharts', () => {
     )
   }
   const Noop = () => null
+
+  // Captures the props PracticeTrend/DailyTrend pass to `<Tooltip>`, since
+  // real Recharts' `DefaultTooltipContent` colours each item by series
+  // unless `itemStyle`/`labelStyle` override it (C-I2).
+  function Tooltip({ itemStyle, labelStyle }: { itemStyle?: CSSProperties; labelStyle?: CSSProperties }) {
+    captured.tooltipItemStyle = itemStyle
+    captured.tooltipLabelStyle = labelStyle
+    return null
+  }
 
   // Real Recharts computes a Bar's legend entry from `fill` alone, so a
   // frame-only ("fill=none") planned bar gets a blank swatch (fix round 1,
@@ -106,7 +131,7 @@ vi.mock('recharts', () => {
     CartesianGrid: Noop,
     XAxis: Noop,
     YAxis: Noop,
-    Tooltip: Noop,
+    Tooltip,
     Legend,
   }
 })
@@ -445,6 +470,37 @@ describe('PracticeTrend / DailyTrend / ExactValuesTable', () => {
     const completedSwatch = screen.getByTestId('legend-swatch-completedMinutes')
     expect(completedSwatch.style.backgroundColor).not.toBe('transparent')
     expect(completedSwatch.style.backgroundColor).not.toBe('')
+  })
+
+  it('the completed bar paints inside the planned frame, in the same x-slot (C-I1)', () => {
+    const rows = [
+      makePracticeRow({ sessionId: 's1', day: 1, localDate: '2026-09-01', targetSeconds: 600, completedSeconds: 600 }),
+    ]
+    renderWithProviders(<PracticeTrend practice={rows} />)
+
+    // A fixed barSize with an equal-and-opposite barGap collapses Recharts'
+    // default side-by-side grouping to zero, so the two same-category bars
+    // occupy the identical rectangle instead of sitting beside each other.
+    const captured = getCaptured()
+    expect(captured.barChartBarSize).toBeDefined()
+    expect(captured.barChartBarGap).toBe(-(captured.barChartBarSize as number))
+
+    // Completed (filled) must render FIRST and planned (frame) SECOND, so the
+    // frame's stroke paints on top of the fill and stays visible even when
+    // completed minutes meet or exceed planned minutes.
+    const bars = [...screen.getByTestId('mock-barchart').querySelectorAll('[data-testid^="bar-"]')].map((bar) =>
+      bar.getAttribute('data-testid'),
+    )
+    expect(bars).toEqual(['bar-completedMinutes', 'bar-plannedMinutes'])
+  })
+
+  it('the daily chart tooltip paints item and label text in ink, never a series colour (C-I2)', () => {
+    const days = [makeDayRow({ localDate: '2026-09-01', day: 1 })]
+    renderWithProviders(<DailyTrend days={days} />)
+
+    const captured = getCaptured()
+    expect(captured.tooltipItemStyle).toEqual({ color: '#16232B' })
+    expect(captured.tooltipLabelStyle).toEqual({ color: '#16232B' })
   })
 
   it('daily trend legend renders label text in ink, never the series colour (Task V4)', () => {

@@ -42,7 +42,10 @@
  * old tablet yellow in particular sat right beside `attention`'s amber,
  * which would have meant "uncertain" in the interface and "tablet" in a
  * chart three inches away. Grid moves to the `rule` token, axis ticks to
- * `ink-muted`.
+ * `ink-muted`. The tooltip's `itemStyle`/`labelStyle` force `ink` too (C-I2):
+ * Recharts' default tooltip colours each item's text by its series, and three
+ * of the five feed/sleep hues fall below 4.5:1 as TEXT on the tooltip's white
+ * ground (U22 already fixed the identical problem for the legend).
  */
 import { CartesianGrid, Legend, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts'
 import type { DayRowValue, FeedDevice } from '@attention-lab/shared'
@@ -67,6 +70,7 @@ const DEVICE_COLOR: Record<FeedDevice, string> = {
   unspecified: '#C85480',
 }
 const AXIS_INK = '#455761' // ink-muted
+const INK = '#16232B' // ink
 const GRIDLINE = '#D5DBDA' // rule
 
 const CHART_WIDTH = 640
@@ -175,7 +179,7 @@ export function DailyTrend({ days }: DailyTrendProps) {
               tick={{ fill: AXIS_INK, fontSize: 11 }}
               label={{ value: 'Minutes', angle: -90, position: 'insideLeft', fill: AXIS_INK }}
             />
-            <Tooltip />
+            <Tooltip itemStyle={{ color: INK }} labelStyle={{ color: INK }} />
             <Legend formatter={(value: string) => <span className="text-ink">{value}</span>} />
             <Line
               type="monotone"

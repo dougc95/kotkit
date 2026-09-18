@@ -23,14 +23,21 @@
  * time source, which are recorded WORDS, not figures (fix round 1, finding 2).
  *
  * The chart re-encodes planned-vs-completed as an unfilled ruled FRAME
- * (planned, stroke only, the `rule` hairline colour) filled with `ink`
- * (completed) — the same metaphor as the not-a-value ruled slot, arriving
- * independently at the other end of the app (the rework spec §7). Both `<Bar>`
- * elements keep their `dataKey`s (`plannedMinutes`/`completedMinutes`)
- * exactly, since `Trends.test.tsx`'s own recharts mock keys its
- * `bar-<dataKey>` test IDs off them. `completedMinutes` stays `null` (never
- * `0`) for a block that has not ended yet, so an unfinished block draws an
- * empty frame, never a zero-height bar.
+ * (planned, stroke only, the `rule` hairline colour) drawn OVER a fill of
+ * `ink` (completed) occupying the SAME x-slot — the same metaphor as the
+ * not-a-value ruled slot, arriving independently at the other end of the app
+ * (the rework spec §7, decision U12). Recharts groups same-category `<Bar>`s
+ * side by side by default; a fixed `barSize` and an equal-and-opposite
+ * `barGap` on `<BarChart>` (C-I1) collapse that gap to zero so the two bars
+ * occupy the identical rectangle instead of sitting beside each other. The
+ * completed (filled) `<Bar>` renders FIRST and the planned (frame) `<Bar>`
+ * renders SECOND — SVG paints in document order, so the frame's stroke sits
+ * on top of the fill and stays visible even when completed minutes meet or
+ * exceed planned minutes. Both `<Bar>` elements keep their `dataKey`s
+ * (`plannedMinutes`/`completedMinutes`) exactly, since `Trends.test.tsx`'s
+ * own recharts mock keys its `bar-<dataKey>` test IDs off them.
+ * `completedMinutes` stays `null` (never `0`) for a block that has not ended
+ * yet, so an unfinished block draws an empty frame, never a zero-height bar.
  *
  * Recharts 3.10.1 builds a Bar's legend swatch from `fill` alone
  * (`cartesian/Bar.js`'s `computeLegendPayloadFromBarData`), so the planned
@@ -79,6 +86,11 @@ const GRIDLINE = '#D5DBDA' // rule
 
 const CHART_WIDTH = 640
 const CHART_HEIGHT = 240
+
+// A fixed bar width plus an equal-and-opposite `barGap` on `<BarChart>`
+// overlays the two same-category bars instead of Recharts' default
+// side-by-side grouping (C-I1) — see this file's header comment.
+const BAR_SIZE = 24
 
 const COLUMNS = [
   'Day',
@@ -203,7 +215,14 @@ export function PracticeTrend({ practice }: PracticeTrendProps) {
               defaults to `tabindex="0"`, which — inside this
               `aria-hidden="true"` wrapper — is a Tab stop with no announced
               content (axe's "aria-hidden-focus", WCAG 4.1.2). */}
-          <BarChart width={CHART_WIDTH} height={CHART_HEIGHT} data={chartData} tabIndex={-1}>
+          <BarChart
+            width={CHART_WIDTH}
+            height={CHART_HEIGHT}
+            data={chartData}
+            tabIndex={-1}
+            barSize={BAR_SIZE}
+            barGap={-BAR_SIZE}
+          >
             <CartesianGrid stroke={GRIDLINE} strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="label" tick={{ fill: AXIS_INK, fontSize: 11 }} />
             <YAxis
@@ -212,19 +231,22 @@ export function PracticeTrend({ practice }: PracticeTrendProps) {
             />
             <Tooltip />
             <Legend content={renderPracticeLegend} />
+            {/* Completed (filled) renders FIRST, planned (frame) SECOND: SVG
+                paints in document order, so the frame's stroke stays visible
+                on top of the fill even when completed >= planned. */}
+            <Bar
+              dataKey="completedMinutes"
+              name="Completed minutes"
+              fill={FILL_COLOR}
+              radius={0}
+              isAnimationActive={!reducedMotion}
+            />
             <Bar
               dataKey="plannedMinutes"
               name="Planned minutes"
               fill="none"
               stroke={FRAME_COLOR}
               strokeWidth={1.5}
-              radius={0}
-              isAnimationActive={!reducedMotion}
-            />
-            <Bar
-              dataKey="completedMinutes"
-              name="Completed minutes"
-              fill={FILL_COLOR}
               radius={0}
               isAnimationActive={!reducedMotion}
             />

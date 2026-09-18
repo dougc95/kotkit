@@ -208,9 +208,13 @@ describe('AmendmentDialog', () => {
     await user.type(screen.getByLabelText('Reason'), 'second tab finalized this differently')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    await screen.findByText('This attempt is no longer finalized')
+    const notice = await screen.findByText('This attempt is no longer finalized')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(mockApi.sessions.amend).toHaveBeenCalledTimes(1)
+    // C-I3: matches the file's other three error/notice messages
+    // (text-sm text-attention), not the smallest, greyest text on the screen.
+    expect(notice).toHaveClass('text-sm', 'text-attention')
+    expect(notice).not.toHaveClass('text-xs', 'text-ink-muted')
   })
 
   it('network error keeps the typed reason and checkbox and shows Retry, colored for attention (U15a)', async () => {
