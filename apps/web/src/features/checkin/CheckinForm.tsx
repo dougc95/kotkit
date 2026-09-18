@@ -49,6 +49,7 @@ import {
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
 import { LoadingState } from '../../ui/LoadingState.js'
 import { CheckinStatus } from './CheckinStatus.js'
 import { DeviceMinutesField, type HeadlineDevice } from './DeviceMinutesField.js'
@@ -437,16 +438,13 @@ export function CheckinForm() {
 
   if (programQuery.isError || programQuery.data === undefined) {
     return (
-      <div>
-        <p>Could not load your program. Retry.</p>
-        <Button
-          onClick={() => {
-            void programQuery.refetch()
-          }}
-        >
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        onRetry={() => {
+          void programQuery.refetch()
+        }}
+      >
+        Could not load your program. Retry.
+      </ErrorState>
     )
   }
 
@@ -468,16 +466,13 @@ export function CheckinForm() {
 
   if (dayQuery.isError) {
     return (
-      <div>
-        <p>Could not load check-in. Retry.</p>
-        <Button
-          onClick={() => {
-            void dayQuery.refetch()
-          }}
-        >
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        onRetry={() => {
+          void dayQuery.refetch()
+        }}
+      >
+        Could not load check-in. Retry.
+      </ErrorState>
     )
   }
 
@@ -487,7 +482,9 @@ export function CheckinForm() {
 
       {staleNotice !== null ? (
         <Alert className="flex flex-col gap-2">
-          <AlertDescription>This check-in was updated elsewhere; showing the current values</AlertDescription>
+          <AlertDescription className="text-attention">
+            This check-in was updated elsewhere; showing the current values
+          </AlertDescription>
           <Button type="button" variant="secondary" onClick={handleReapplyMyValues}>
             Re-apply my values
           </Button>

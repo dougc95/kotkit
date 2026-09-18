@@ -306,6 +306,11 @@ describe('CheckinForm', () => {
 
     await screen.findByText('This check-in was updated elsewhere; showing the current values')
     expect(screen.getByRole('alert')).toHaveTextContent('This check-in was updated elsewhere; showing the current values')
+    // B-I2: the 409 conflict notice takes `attention`, not the AlertDescription
+    // default `text-muted-foreground` (spec §3/U15a; matches Progress.tsx:86).
+    expect(
+      screen.getByText('This check-in was updated elsewhere; showing the current values'),
+    ).toHaveClass('text-attention')
     expect(screen.getByLabelText('Sleep minutes')).toHaveValue(300)
 
     await user.click(screen.getByRole('button', { name: 'Re-apply my values' }))
@@ -389,6 +394,42 @@ describe('CheckinForm', () => {
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Sleep minutes')).not.toBeInTheDocument()
     expect(mockApi.days.get).not.toHaveBeenCalled()
+  })
+
+  it('a failed programs.current fetch renders through the shared ErrorState: role alert, attention, exactly one Retry that refetches (B-I1)', async () => {
+    reject('programs.current', { status: 500, code: 'server_error' })
+
+    const { user } = renderWithProviders(<></>, { route: `/checkin/${DATE}`, routes: ROUTES })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Could not load your program. Retry.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+    expect(mockApi.programs.current).toHaveBeenCalledTimes(1)
+
+    respond('programs.current', OPEN_PROGRAM)
+    respond('days.get', EMPTY_DAY)
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    await screen.findByLabelText('Sleep minutes')
+    expect(mockApi.programs.current).toHaveBeenCalledTimes(2)
+  })
+
+  it('a failed days.get fetch renders through the shared ErrorState: role alert, attention, exactly one Retry that refetches (B-I1)', async () => {
+    respond('programs.current', OPEN_PROGRAM)
+    reject('days.get', { status: 500, code: 'server_error' })
+
+    const { user } = renderWithProviders(<></>, { route: `/checkin/${DATE}`, routes: ROUTES })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Could not load check-in. Retry.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+    expect(mockApi.days.get).toHaveBeenCalledTimes(1)
+
+    respond('days.get', EMPTY_DAY)
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    await screen.findByLabelText('Sleep minutes')
+    expect(mockApi.days.get).toHaveBeenCalledTimes(2)
   })
 
   it('while programs.current is pending, an aria-busy region shows the visible label Loading (guard: bare placeholder already carried both)', () => {
