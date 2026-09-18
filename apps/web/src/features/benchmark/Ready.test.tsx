@@ -282,6 +282,38 @@ describe('Ready', () => {
     expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
   })
 
+  it('GET /programs/current pending keeps an accessible "Loading" label inside the aria-busy region', () => {
+    mockApi.programs.current.mockImplementation(() => new Promise(() => {}))
+    respond('programs.today', makeToday())
+    respond('sessions.active', null)
+
+    renderWithProviders(<Ready />, { route: `/benchmark/${SLOT_ID}`, routes: routes() })
+
+    expect(screen.getByText('Loading').closest('[aria-busy="true"]')).not.toBeNull()
+  })
+
+  it('GET /programs/today pending keeps an accessible "Loading" label inside the aria-busy region', async () => {
+    respond('programs.current', makeCurrent(makeSlot()))
+    mockApi.programs.today.mockImplementation(() => new Promise(() => {}))
+    respond('sessions.active', null)
+
+    renderWithProviders(<Ready />, { route: `/benchmark/${SLOT_ID}`, routes: routes() })
+
+    const label = await screen.findByText('Loading')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
+  })
+
+  it('GET /sessions/active pending keeps an accessible "Loading" label inside the aria-busy region', async () => {
+    respond('programs.current', makeCurrent(makeSlot()))
+    respond('programs.today', makeToday())
+    mockApi.sessions.active.mockImplementation(() => new Promise(() => {}))
+
+    renderWithProviders(<Ready />, { route: `/benchmark/${SLOT_ID}`, routes: routes() })
+
+    const label = await screen.findByText('Loading')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
+  })
+
   it('an existing active session renders ActiveSessionCard instead of every Start control', async () => {
     renderReady(makeSlot(), { active: makeSession() })
 

@@ -108,7 +108,9 @@ describe('BenchmarkReviewPage', () => {
 
     renderPage()
 
-    expect(screen.getByText('Loading review')).toBeInTheDocument()
+    const label = screen.getByText('Loading review')
+    expect(label).toBeInTheDocument()
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
   })
 
   it('mounts the Scoring section with the fetched session and review', async () => {
@@ -141,7 +143,8 @@ describe('BenchmarkReviewPage', () => {
 
     const { user } = renderPage()
 
-    expect(await screen.findByText('The review could not be loaded.')).toBeInTheDocument()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The review could not be loaded.')
     await user.click(screen.getByRole('button', { name: 'Retry' }))
 
     await waitFor(() => expect(screen.getByText('Recall must be saved first')).toBeInTheDocument())

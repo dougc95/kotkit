@@ -7,7 +7,7 @@ import type { MeResponseValue, SessionResponseValue } from '@attention-lab/share
 // deliberately (matches TimerDisplay.test.tsx/EventButtons.test.tsx): it is
 // the module that calls `vi.mock('@/lib/api/client', ...)`, and ES module
 // imports evaluate in declaration order.
-import { mockApi, respond } from '../../test/mockClient.js'
+import { mockApi, reject, respond } from '../../test/mockClient.js'
 import { expectNoIdentifiers } from '../../test/expectNoIdentifiers.js'
 import { renderWithProviders } from '../../test/renderWithProviders.js'
 import { AppBootstrap } from '../../app/AppBootstrap.js'
@@ -420,6 +420,30 @@ describe('Recall', () => {
     const message = await screen.findByText('The recall could not be saved. Retry.')
     expect(message.className).toContain('text-attention')
     expect(message.textContent).toBe('The recall could not be saved. Retry.')
+  })
+
+  it('session query pending keeps an accessible "Loading recall" label inside the aria-busy region', async () => {
+    mockApi.sessions.get.mockImplementation(() => new Promise(() => {}))
+
+    renderRecall()
+
+    const label = await screen.findByText('Loading recall')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
+  })
+
+  it('session load failure renders through the shared ErrorState with a working Retry', async () => {
+    reject('sessions.get', { status: 500, code: 'server_error' })
+
+    const { user } = renderRecall()
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The recall could not be loaded.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+
+    respond('sessions.get', makeSession())
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    await waitForConfirmStep()
   })
 
   it('no leftover --color-* custom property reference remains in the rendered recall screen', async () => {

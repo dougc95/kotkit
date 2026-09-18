@@ -24,7 +24,7 @@ export function SyncStatus({ sessionId }: SyncStatusProps) {
 
   return (
     <div role="status" aria-live="polite" className="flex flex-wrap items-center gap-2 text-sm">
-      <span>{stateLabel}</span>
+      <span className={state === 'could_not_save' ? 'text-attention' : undefined}>{stateLabel}</span>
 
       {state === 'pending' && (
         <Button
@@ -48,7 +48,7 @@ export function SyncStatus({ sessionId }: SyncStatusProps) {
         </Button>
       )}
 
-      {rejectedNotice !== null && <span>{rejectedNotice}</span>}
+      {rejectedNotice !== null && <span className="text-attention">{rejectedNotice}</span>}
     </div>
   )
 }

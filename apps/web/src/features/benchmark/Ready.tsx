@@ -80,6 +80,7 @@ import { useActiveSession } from '../../lib/query/hooks.js'
 import { useStartSession } from '../../lib/query/useStartSession.js'
 import { Button } from '../../ui/Button.js'
 import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { useField } from '../../ui/field.js'
 import { Label } from '../../ui/shadcn/label.js'
 import { Textarea } from '../../ui/shadcn/textarea.js'
@@ -265,11 +266,7 @@ export function Ready() {
   }
 
   if (currentQuery.isPending) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading
-      </div>
-    )
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading</LoadingState>
   }
   if (currentQuery.isError || current === undefined) {
     return <RetryNotice message="The benchmark could not be loaded." onRetry={retryAll} />
@@ -282,21 +279,13 @@ export function Ready() {
     return <RetryNotice message="The benchmark could not be loaded." onRetry={retryAll} />
   }
   if (todayQuery.isPending) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading
-      </div>
-    )
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading</LoadingState>
   }
   if (todayQuery.isError || todayQuery.data === undefined) {
     return <RetryNotice message="The benchmark could not be loaded." onRetry={retryAll} />
   }
   if (activeQuery.isPending) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading
-      </div>
-    )
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading</LoadingState>
   }
 
   const today = todayQuery.data
