@@ -7,9 +7,13 @@ import { renderWithProviders } from '../../test/renderWithProviders.js'
 import { Settings } from './Settings.js'
 
 // Mirrors DemoControls.test.tsx's own rationale: jsdom has no
-// ResizeObserver/hasPointerCapture/scrollIntoView, and Radix's Select
-// (reached here through DemoControls -> ScenarioLoader in local-demo mode)
-// needs all three whenever it measures itself.
+// ResizeObserver/hasPointerCapture/setPointerCapture/releasePointerCapture/
+// scrollIntoView, and Radix's Select (reached here through DemoControls ->
+// ScenarioLoader in local-demo mode) needs all of them whenever it measures
+// or positions itself. Keep this block identical to DemoControls.test.tsx's
+// copy (C-I5/task-F1 item 12) - if one gains a stub the other needs, copy it
+// here too, so a test that opens the scenario Select does not fail on a
+// missing polyfill with an error that points at Radix instead of at this gap.
 if (typeof globalThis.ResizeObserver === 'undefined') {
   class ResizeObserverStub {
     observe(): void {}
@@ -21,6 +25,12 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 if (typeof window !== 'undefined') {
   if (typeof window.HTMLElement.prototype.hasPointerCapture !== 'function') {
     window.HTMLElement.prototype.hasPointerCapture = () => false
+  }
+  if (typeof window.HTMLElement.prototype.setPointerCapture !== 'function') {
+    window.HTMLElement.prototype.setPointerCapture = () => {}
+  }
+  if (typeof window.HTMLElement.prototype.releasePointerCapture !== 'function') {
+    window.HTMLElement.prototype.releasePointerCapture = () => {}
   }
   if (typeof window.HTMLElement.prototype.scrollIntoView !== 'function') {
     window.HTMLElement.prototype.scrollIntoView = () => {}

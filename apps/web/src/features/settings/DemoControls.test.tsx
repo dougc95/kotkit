@@ -29,6 +29,10 @@ import { DemoControls } from './DemoControls.js'
  * so both are stubbed as plain functions (not `vi.fn()`, so `setup.ts`'s
  * global `vi.resetAllMocks()` afterEach never wipes them, mirroring
  * `setup.ts`'s own `matchMedia` stub).
+ *
+ * `Settings.test.tsx` carries an identical copy of this block (both mount
+ * `ScenarioLoader`'s Radix Select) — keep the two in step (C-I5/task-F1
+ * item 12).
  */
 if (typeof globalThis.ResizeObserver === 'undefined') {
   class ResizeObserverStub {
