@@ -1,14 +1,15 @@
 # Attention Lab — UI rework on shadcn/ui
 
 **Status:** implemented. Designed and approved section by section on 2026-09-09; built 2026-09-16 to
-2026-09-17 on branch `worktree-shadcn-rework`, forked from `fb6ea47` (the plan commit), 97 non-merge
-commits ending at the Wave 2 gate `6cbdddc` (Wave 0 gate `f38dd70`, Wave 1 gate `ac66dfc`). Verified
-at that commit from a fresh database container: `db:push`, typecheck, the three unit suites, the
-production build and the 166-test Playwright run, with `e2e/` byte-identical to `master`. One
-caveat, recorded in §12: `npm run verify:all` itself stopped at its test stage on 13 failures in
+2026-09-18 on branch `worktree-shadcn-rework`, forked from `fb6ea47` (the plan commit): Wave 0 gate
+`f38dd70`, Wave 1 gate `ac66dfc`, Wave 2 gate `6cbdddc`, then a four-reviewer whole-branch review
+whose fixes land in `f93edea`…`684dbfb`. Verified at `684dbfb` from a fresh database container:
+`db:push`, typecheck, the shared and web unit suites, the production build and the 166-test
+Playwright run, with `e2e/` byte-identical to `master`. One caveat, recorded in §12:
+`npm run verify:all` itself stops at its test stage on 13 failures in
 `apps/api/test/sessions/finalize-eligibility.test.ts`, which fail identically on `master` during
 the evening hours when this machine's local date and the UTC date differ; the stages after it were
-run individually. The visual-pass and verification notes are at the end of §12.
+run individually. The visual-pass, verification and final-review notes are at the end of §12.
 **Scope:** `apps/web` only. No API, schema, or contract changes. No OpenSpec spec revisions.
 **Supersedes:** nothing. This is additive to the P0 implementation described in `README.md`.
 
@@ -516,6 +517,48 @@ worth.
   (a gating rule, not a styling matter). "Day 15 of 14" appears when the demo clock runs past the
   programme.
 
+**Final whole-branch review, 2026-09-18.** Four reviewers, each owning a disjoint file set
+(foundation and shell; Today, Setup and check-in; Settings, Research and Progress; benchmark, Focus,
+review and session), found no Critical and sixteen Important issues, every one a pattern this change
+started and did not finish rather than a regression. All sixteen, and five deferred Minors the
+reviewers escalated, are fixed in `f93edea`, `ddf6a34`, `44448a4`, `ea95dd2`, `d244f69`, `f92581c`,
+`2b75682` and `684dbfb`, each re-reviewed. The ones that change what a reader of this document should
+expect:
+
+- *The practice chart now draws what §7 describes.* Until this review it drew planned and completed
+  as side-by-side bars; the Wave 1 visual check accepted that against the text above. It now draws
+  the completed fill inside the planned frame (a fixed-width pair collapsed onto one x-slot, the bar
+  width shrinking with the band so a full 14-day programme never overlaps). The daily chart's
+  tooltip text is ink, as its legend already was (U22).
+- *The palette has one source.* `index.css` had declared the eight palette tokens in both `@theme`
+  and the base layer; the base copy won, so an edit to `@theme` changed nothing. Only `@theme`
+  declares them now, and the guard asserts each exactly once.
+- *The Select's keyboard-active option is an ink band with white text* (U25). `--accent` had been
+  paper on the white popover, 1.09:1 — invisible, and inherited from before this change.
+- *The last hand-rolled surfaces are gone:* the check-in, Recall and benchmark-review load errors
+  use `ErrorState`; the six remaining bare `aria-busy` placeholders use `LoadingState`; the disruption
+  attestation and the conditions block use the shared radio and checkbox primitives; `EmptyState`
+  is finally used by the one empty state; two dead generated primitives (`button`, `tooltip`) and the
+  unreachable `AlertDialogAction`/`AlertDialogCancel` exports are deleted.
+- *Two behaviour guards closed on the evidence:* the finalize bar's Retry is now disabled under the
+  same condition as Finalize, so a withdrawn attestation cannot be resent; and Recall's load-error
+  branch was unreachable on an initial failure (the pending guard caught `data === undefined` first)
+  and now renders.
+
+**Left open after the final review, for the owner.** The charts still animate on mount
+(`isAnimationActive={!reducedMotion}`, carried from `master` by the plan) — a second authored motion
+against §4; the fix is `isAnimationActive={false}` on the four series plus two test expectations.
+The "one expressive motion beat" itself does not exist in the built CSS (no `@keyframes`, no
+`animation:`): the pending-to-recorded settle was never authored, so today nothing animates by
+intent except those charts. Both radius tokens are dead: `--radius` is unreferenced and
+`--radius-DEFAULT` generates nothing in Tailwind 4 (bare `rounded` is a fixed 0.25rem), so §4's
+radius decision is enforced only where a call site names a step. `ui/Button.tsx` keeps a hand-written
+variant map rather than shadcn's `cva` mapping that §6 describes (ruled out at the end of the branch
+as risk without visible benefit). The dialog close button's open state is `bg-accent` and would now
+read ink-on-ink-muted, latent because the one `DialogContent` passes `showCloseButton={false}`. Two
+per-file jsdom Radix polyfills remain in the settings tests (made identical; the app-wide home is
+`src/test/setup.ts`). And the API test-fixture wall-clock defect above.
+
 ## 13. Decision log
 
 | # | Date | Decision |
@@ -545,3 +588,5 @@ worth.
 | U22 | 2026-09-17 | Chart legend text wears ink; only the swatch carries the series colour. The palette clears 3:1 as marks and was never validated as text (three of five fall below 4.5:1). Found by the Wave 2 contrast re-check. |
 | U23 | 2026-09-17 | A statement that names what the user still owes is amber wherever it appears: "Incomplete — missing: sleep, feed" on the check-in page is the same statement as Today's "Still needed" and takes the same `attention`. A terminal state with nothing to do stays ink. Applies U15a; found by the Wave 2 visual pass. |
 | U24 | 2026-09-17 | The last native checkboxes (the benchmark conditions block) become the shadcn `Checkbox` with 44 px label rows. Playwright's `check()` and label locators resolve on the Radix button exactly as they do for "Confirm timezone", so the suites stay unmodified. |
+| U25 | 2026-09-18 | The Select's keyboard-active option is an ink band with card-white text (`--accent: var(--color-ink)`, `--accent-foreground: var(--color-card)`). The palette has no light tint, paper on the white popover was 1.09:1, and an inverted row is the native listbox convention. Found by the final review. |
+| U26 | 2026-09-18 | The palette tokens are declared once, in `@theme`; the base layer only aliases them. A second declaration in a later layer silently wins over the one an editor reaches for. Found by the final review. |
