@@ -171,14 +171,17 @@ describe('ReviewAttestation', () => {
   })
 
   it('radios sit in a legend-named radiogroup, guard onChange to literal yes/no, and #materially-disrupted-no is the No radio', async () => {
-    // The Yes/No radios stay on the direct radix-ui RadioGroup (unconverted,
-    // see DisruptionField's own comment), so unlike the shadcn-wrapped
-    // groups elsewhere it needs its own aria-labelledby or an anonymous
-    // role="radiogroup" sits between the radios and their named fieldset.
-    // This also proves the onValueChange guard reports the literal
-    // 'yes'/'no' strings (no `as` cast covering an untyped string), and
-    // pins the literal #materially-disrupted-no id that
-    // e2e/benchmark-review.spec.ts and e2e/recovery.spec.ts click directly.
+    // DisruptionField's Yes/No radios now use the same shared shadcn
+    // RadioGroup/RadioGroupItem every other group in the app does (D-I2), but
+    // this one still carries its own explicit aria-labelledby pointing at the
+    // fieldset's legend — unlike Scoring.tsx's PointRow, no Playwright label
+    // locator here collides with a name containing "Was this session
+    // materially disrupted?", so the explicit association was kept rather
+    // than left to the anonymous role="radiogroup"/legend pairing. This test
+    // also proves the onValueChange guard reports the literal 'yes'/'no'
+    // strings (no `as` cast covering an untyped string), and pins the
+    // literal #materially-disrupted-no id that e2e/benchmark-review.spec.ts
+    // and e2e/recovery.spec.ts click directly.
     const onChange = vi.fn()
 
     function Wrapper() {
