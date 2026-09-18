@@ -1,5 +1,4 @@
 import { useRef } from 'react'
-import { AlertDialog } from 'radix-ui'
 import { useBlocker } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import type { SessionResponseValue } from '@attention-lab/shared'
@@ -7,6 +6,12 @@ import type { SessionResponseValue } from '@attention-lab/shared'
 import { queryKeys } from '../lib/query/keys.js'
 import { isActiveLifecycle } from '../lib/query/sessionMode.js'
 import { Button } from '../ui/Button.js'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '../ui/shadcn/alert-dialog.js'
 
 /**
  * Route-leave guard (task 7.4.3; design.md D38; specs/app-shell: "Navigation
@@ -68,7 +73,7 @@ export function SessionLeaveGuard() {
   const actionsRef = useRef<HTMLDivElement | null>(null)
 
   return (
-    <AlertDialog.Root
+    <AlertDialog
       open={isBlocked}
       onOpenChange={(nextOpen) => {
         // The only way `onOpenChange(false)` fires here is Escape —
@@ -82,45 +87,40 @@ export function SessionLeaveGuard() {
         }
       }}
     >
-      <AlertDialog.Portal>
-        <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        <AlertDialog.Content
-          className="fixed left-1/2 top-1/2 z-50 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-lg"
-          onOpenAutoFocus={(event) => {
-            event.preventDefault()
-            actionsRef.current?.querySelector('button')?.focus()
-          }}
-        >
-          <AlertDialog.Title className="text-base font-semibold text-[var(--color-text)]">
-            A session is in progress
-          </AlertDialog.Title>
-          <AlertDialog.Description className="mt-2 text-sm text-[var(--color-text-muted)]">
-            Your session keeps running on the server. Leaving this page does not end or change it.
-          </AlertDialog.Description>
-          <div ref={actionsRef} className="mt-6 flex justify-end gap-3">
-            <Button
-              variant="primary"
-              onClick={() => {
-                if (blocker.state === 'blocked') {
-                  blocker.reset()
-                }
-              }}
-            >
-              Return to session
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                if (blocker.state === 'blocked') {
-                  blocker.proceed()
-                }
-              }}
-            >
-              Leave anyway
-            </Button>
-          </div>
-        </AlertDialog.Content>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+      <AlertDialogContent
+        className="w-[min(24rem,calc(100vw-2rem))]"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          actionsRef.current?.querySelector('button')?.focus()
+        }}
+      >
+        <AlertDialogTitle>A session is in progress</AlertDialogTitle>
+        <AlertDialogDescription>
+          Your session keeps running on the server. Leaving this page does not end or change it.
+        </AlertDialogDescription>
+        <div ref={actionsRef} className="mt-6 flex justify-end gap-3">
+          <Button
+            variant="primary"
+            onClick={() => {
+              if (blocker.state === 'blocked') {
+                blocker.reset()
+              }
+            }}
+          >
+            Return to session
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (blocker.state === 'blocked') {
+                blocker.proceed()
+              }
+            }}
+          >
+            Leave anyway
+          </Button>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

@@ -42,6 +42,26 @@ export function formatMinutes(seconds: ReportedCount | undefined): string {
   return String(secondsToWholeMinutes(seconds))
 }
 
+/**
+ * A `ReportedCount` that is ALREADY IN MINUTES (never seconds) -> its exact
+ * digits, or 'Not reported' for `null`/`undefined`. Exists beside
+ * `formatMinutes` (which divides a seconds count by 60) because not every
+ * "minutes" field on the wire is a duration counted in seconds: `DayRowValue`
+ * (`report.ts`)'s `sleepMinutes`, `mindfulnessMinutes`, `feedByDevice.*` and
+ * `feedDeviceMinutes` are all already whole minutes (`domain/feed.ts`'s
+ * `feedAggregates` sums raw `FeedRowInput.minutes`, `unitLabel:
+ * 'device-minutes'`) — passing one of those through `formatMinutes` silently
+ * divided a real measurement by 60 (task V1: a recorded 420 rendered as '7',
+ * 15 as '0'). No rounding, no division, and never `?? 0`: an explicit 0
+ * stays '0' (CLAUDE.md: unknown != zero).
+ */
+export function formatWholeMinutes(minutes: ReportedCount | undefined): string {
+  if (minutes === null || minutes === undefined) {
+    return NOT_REPORTED
+  }
+  return String(minutes)
+}
+
 const OUTPUT_QUALITY_LABEL: Record<OutputQuality, string> = {
   yes: 'Yes',
   partly: 'Partly',
@@ -111,6 +131,11 @@ const CHECKIN_STATUS_LABEL: Record<CheckinStatus, string> = {
 
 export function formatCheckinStatus(status: CheckinStatus): string {
   return CHECKIN_STATUS_LABEL[status]
+}
+
+/** Self-reported stress 1–10, or 'Not reported' for `null` — never coerced to '0' (CLAUDE.md: unknown != zero). Always a string, so it can pass through <Reported> like every other cell in this table. Moved here from `DailyTrend.tsx`'s own inline ternary (the rework spec §9, defect 5). */
+export function formatStress(stress: number | null): string {
+  return stress === null ? NOT_REPORTED : String(stress)
 }
 
 /**

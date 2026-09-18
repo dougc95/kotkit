@@ -108,7 +108,9 @@ describe('BenchmarkReviewPage', () => {
 
     renderPage()
 
-    expect(screen.getByText('Loading review')).toBeInTheDocument()
+    const label = screen.getByText('Loading review')
+    expect(label).toBeInTheDocument()
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
   })
 
   it('mounts the Scoring section with the fetched session and review', async () => {
@@ -120,6 +122,19 @@ describe('BenchmarkReviewPage', () => {
     expect(screen.getByRole('link', { name: /recall/i })).toHaveAttribute('href', `/benchmark/${SESSION_ID}/recall`)
   })
 
+  it('groups the review into Recall, Counts, Disruption and conditions, and Finalize sections', async () => {
+    respond('sessions.get', makeSession())
+
+    renderPage()
+
+    await screen.findByText('Recall must be saved first')
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Recall' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Counts' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Disruption and conditions' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Finalize' })).toBeInTheDocument()
+  })
+
   it('error state offers Retry that refetches the session', async () => {
     mockApi.sessions.get.mockRejectedValueOnce(
       Object.assign(new Error('boom'), { status: 500, code: 'server_error', retryable: true, requestId: 'r1' }),
@@ -128,7 +143,8 @@ describe('BenchmarkReviewPage', () => {
 
     const { user } = renderPage()
 
-    expect(await screen.findByText('The review could not be loaded.')).toBeInTheDocument()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The review could not be loaded.')
     await user.click(screen.getByRole('button', { name: 'Retry' }))
 
     await waitFor(() => expect(screen.getByText('Recall must be saved first')).toBeInTheDocument())

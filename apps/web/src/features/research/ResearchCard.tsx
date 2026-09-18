@@ -1,10 +1,12 @@
 import type { ResearchCardValue } from '@attention-lab/shared'
 
 /**
- * One curated evidence card (task 8.9.1; research-cards: "Three finite
- * curated cards" — every card SHALL show title, authors and year, study
- * design, provenance, one finding, one limitation, one relevance note, and
- * the original source link).
+ * One curated evidence card (research-cards: every card SHALL show title,
+ * authors and year, study design, provenance, one finding, one limitation,
+ * one relevance note, and the original source link). Finding and
+ * Limitation share the same `dt`/`dd` treatment deliberately — a study's
+ * limitation carries the same visual weight as its finding, never demoted
+ * to fine print.
  */
 export interface ResearchCardProps {
   readonly card: ResearchCardValue
@@ -40,32 +42,32 @@ export function ResearchCard({ card }: ResearchCardProps) {
   const sourceIsHttp = isHttpUrl(card.sourceUrl)
 
   return (
-    <article className="flex flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+    <article className="flex flex-col gap-3">
       <div>
-        <h2 className="text-base font-semibold text-[var(--color-text)]">{card.title}</h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {card.authors} · {card.year}
+        <h2 className="text-base font-semibold text-ink">{card.title}</h2>
+        <p className="text-sm text-ink-muted">
+          {card.authors}, {card.year}
         </p>
       </div>
 
-      <p className="text-sm text-[var(--color-text-muted)]">{card.studyDesign}</p>
+      <p className="text-sm text-ink-muted">{card.studyDesign}</p>
 
-      <p className="text-sm text-[var(--color-text-muted)]">
-        {PEER_REVIEW_LABEL[card.provenance.peerReview]} · {REVIEWED_LABEL[card.provenance.reviewed]}
+      <p className="text-sm text-ink-muted">
+        {PEER_REVIEW_LABEL[card.provenance.peerReview]}, {REVIEWED_LABEL[card.provenance.reviewed]}
       </p>
 
       <dl className="flex flex-col gap-2 text-sm">
         <div>
-          <dt className="font-medium text-[var(--color-text)]">Finding</dt>
-          <dd className="text-[var(--color-text-muted)]">{card.finding}</dd>
+          <dt className="font-medium text-ink">Finding</dt>
+          <dd className="text-ink-muted">{card.finding}</dd>
         </div>
         <div>
-          <dt className="font-medium text-[var(--color-text)]">Limitation</dt>
-          <dd className="text-[var(--color-text-muted)]">{card.limitation}</dd>
+          <dt className="font-medium text-ink">Limitation</dt>
+          <dd className="text-ink-muted">{card.limitation}</dd>
         </div>
         <div>
-          <dt className="font-medium text-[var(--color-text)]">Relevance here</dt>
-          <dd className="text-[var(--color-text-muted)]">{card.relevance}</dd>
+          <dt className="font-medium text-ink">Relevance here</dt>
+          <dd className="text-ink-muted">{card.relevance}</dd>
         </div>
       </dl>
 
@@ -74,12 +76,12 @@ export function ResearchCard({ card }: ResearchCardProps) {
           href={card.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="self-start text-sm font-medium text-[var(--color-primary)] underline underline-offset-2"
+          className="self-start text-sm font-medium text-signal underline underline-offset-2"
         >
           Read source
         </a>
       ) : (
-        <span className="text-sm text-[var(--color-text-muted)]">Source link unavailable</span>
+        <span className="text-sm text-ink-muted">Source link unavailable</span>
       )}
     </article>
   )

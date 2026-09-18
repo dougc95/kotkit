@@ -111,6 +111,17 @@ describe('Progress', () => {
     expect(screen.getByText(EXCLUSION_REASON_COPY.count_unknown)).toBeInTheDocument()
   })
 
+  it('attempts table wrapper is relative so the sr-only Actions header cannot escape the scroll clip (task V5 check 1)', async () => {
+    const attempt = makeAttempt({ attemptId: 'attempt-relative', label: 'A' })
+    mount(makeReport({ attempts: [attempt] }))
+
+    const table = await screen.findByRole('table', { name: 'Benchmark attempts' })
+    const wrapper = table.parentElement
+    expect(wrapper).not.toBeNull()
+    expect(wrapper?.className).toContain('relative')
+    expect(wrapper?.className).toContain('overflow-x-auto')
+  })
+
   it('null S renders Not reported and the S cell never contains 0', async () => {
     const attempt = makeAttempt({
       attemptId: 'attempt-null-s',
@@ -125,6 +136,7 @@ describe('Progress', () => {
     const cell = await screen.findByTestId('s-attempt-null-s')
     expect(cell).toHaveTextContent('Not reported')
     expect(cell.textContent).not.toBe('0')
+    expect(cell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'absent')
   })
 
   it('T none_capped renders 20+, capped; known 370 s renders 6:10; unknown renders Unknown and never 20+', async () => {
@@ -145,18 +157,30 @@ describe('Progress', () => {
     })
     mount(makeReport({ attempts: [capped, known, unknown] }))
 
-    expect(await screen.findByTestId('t-attempt-capped')).toHaveTextContent('20+, capped')
-    expect(screen.getByTestId('t-attempt-known')).toHaveTextContent('6:10')
+    const cappedCell = await screen.findByTestId('t-attempt-capped')
+    expect(cappedCell).toHaveTextContent('20+, capped')
+    // '20+, capped' is a measurement (twenty minutes elapsed, no switch) —
+    // named RECORDED explicitly here rather than trusted to a default; this
+    // is the value the three-tier taxonomy exists to protect (the rework spec §5).
+    expect(cappedCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'recorded')
+
+    const knownCell = screen.getByTestId('t-attempt-known')
+    expect(knownCell).toHaveTextContent('6:10')
+    expect(knownCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'recorded')
+
     const unknownCell = screen.getByTestId('t-attempt-unknown')
     expect(unknownCell).toHaveTextContent('Unknown')
     expect(unknownCell.textContent).not.toContain('20+')
+    expect(unknownCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'uncertain')
   })
 
   it('null recall renders Not reported', async () => {
     const attempt = makeAttempt({ attemptId: 'attempt-recall', label: 'A', recallScore: null })
     mount(makeReport({ attempts: [attempt] }))
 
-    expect(await screen.findByTestId('recall-attempt-recall')).toHaveTextContent('Not reported')
+    const cell = await screen.findByTestId('recall-attempt-recall')
+    expect(cell).toHaveTextContent('Not reported')
+    expect(cell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'absent')
   })
 
   it('All counts are self-reported is present', async () => {
@@ -208,6 +232,11 @@ describe('Progress', () => {
 
     const setupLink = await screen.findByRole('link', { name: /setup/i })
     expect(setupLink).toHaveAttribute('href', '/setup')
+    // `Button asChild` must render the Radix Slot's CHILD element (the real
+    // `<a>`), never a `<button>` wrapping an anchor — the rework spec §12
+    // ("Open questions and risks") calls this the highest-risk single change.
+    expect(setupLink.tagName).toBe('A')
+    expect(setupLink.closest('button')).toBeNull()
     expect(screen.queryByText(/of 2/)).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
@@ -271,9 +300,129 @@ describe('Progress', () => {
 
     const scoredTestIds = ['s', 't', 'recall', 'e', 'm', 'disruption', 'eligibility']
     for (const id of scoredTestIds) {
-      expect(screen.getByTestId(`${id}-attempt-running`)).toHaveTextContent('Not finalized')
+      const cell = screen.getByTestId(`${id}-attempt-running`)
+      expect(cell).toHaveTextContent('Not finalized')
+      expect(cell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'absent')
     }
 
     expect(within(container).queryByText('Explain or exclude')).not.toBeInTheDocument()
+  })
+
+  it('eligibility, exclusion reasons and protocol revision are tiered: Eligible/a reason list are recorded, the — dash is absent', async () => {
+    const eligible = makeAttempt({ attemptId: 'attempt-eligible', label: 'A' })
+    const ineligible = makeAttempt({
+      attemptId: 'attempt-ineligible',
+      label: 'B',
+      eligible: false,
+      exclusionReasons: ['count_unknown'],
+      revisionId: 'rev-missing',
+    })
+    mount(makeReport({ attempts: [eligible, ineligible] }))
+
+    const eligibleCell = await screen.findByTestId('eligibility-attempt-eligible')
+    expect(eligibleCell).toHaveTextContent('Eligible')
+    expect(eligibleCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'recorded')
+
+    const ineligibleCell = screen.getByTestId('eligibility-attempt-ineligible')
+    expect(ineligibleCell).toHaveTextContent('Not eligible')
+    expect(ineligibleCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'recorded')
+
+    const noExclusionCell = screen.getByTestId('exclusion-attempt-eligible')
+    expect(noExclusionCell).toHaveTextContent('—')
+    expect(noExclusionCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'absent')
+
+    const withExclusionCell = screen.getByTestId('exclusion-attempt-ineligible')
+    expect(withExclusionCell).toHaveTextContent(EXCLUSION_REASON_COPY.count_unknown)
+    expect(withExclusionCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'recorded')
+
+    // attempt-ineligible's revisionId ('rev-missing') matches no revision in
+    // the mounted report's `revisions: [REVISION]` (id 'rev-1'), so
+    // `withRevisionNumbers` (Progress.tsx) maps it to `revisionNumber: null`
+    // — rendered as the dash, same as an unreported count.
+    const revisionCell = screen.getByTestId('revision-attempt-ineligible')
+    expect(revisionCell).toHaveTextContent('—')
+    expect(revisionCell.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'absent')
+  })
+
+  it('the Conditions and Exclusion-reasons cells wrap prose, numeric cells stay nowrap, and body cells align to top', async () => {
+    const attempt = makeAttempt({
+      attemptId: 'attempt-wrap',
+      label: 'A',
+      eligible: false,
+      exclusionReasons: ['count_unknown'],
+    })
+    mount(makeReport({ attempts: [attempt] }))
+
+    const exclusionCell = await screen.findByTestId('exclusion-attempt-wrap')
+    expect(exclusionCell.className).toContain('whitespace-normal')
+    expect(exclusionCell.className).toContain('align-top')
+
+    const conditionsCell = screen.getByTestId('conditions-attempt-wrap')
+    expect(conditionsCell.className).toContain('whitespace-normal')
+
+    const sCell = screen.getByTestId('s-attempt-wrap')
+    expect(sCell.className).not.toContain('whitespace-normal')
+    expect(sCell.className).toContain('align-top')
+  })
+
+  it('column headers can wrap on a narrow screen, not forced onto one unbreakable line', async () => {
+    const attempt = makeAttempt({ attemptId: 'attempt-header-wrap', label: 'A' })
+    mount(makeReport({ attempts: [attempt] }))
+
+    const header = await screen.findByRole('columnheader', { name: 'Exclusion reasons' })
+    expect(header.className).toContain('whitespace-normal')
+
+    const actionsHeader = screen.getByRole('columnheader', { name: 'Actions' })
+    expect(actionsHeader.className).toContain('whitespace-normal')
+  })
+
+  it('the Date cell renders the local date in the mono face with tabular figures, matching the app\'s other dense tables', async () => {
+    const attempt = makeAttempt({ attemptId: 'attempt-date-mono', label: 'A', localDate: '2026-09-06' })
+    mount(makeReport({ attempts: [attempt] }))
+
+    const row = (await screen.findByText('2026-09-06')).closest('td')
+    expect(row).not.toBeNull()
+    expect(row!.className).toContain('font-mono')
+    expect(row!.className).toContain('tabular-nums')
+  })
+
+  it('GET /programs/current failure renders through the shared ErrorState: role alert, message unchanged, exactly one Retry (guard: already an Alert)', async () => {
+    mockApi.programs.current.mockRejectedValue(new Error('network exploded'))
+
+    renderWithProviders(<Progress />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Report unavailable. Retry.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
+  it('the report query failure renders through the shared ErrorState: role alert, message unchanged, exactly one Retry (guard: already an Alert)', async () => {
+    respond('programs.current', PROGRAM)
+    mockApi.report.get.mockRejectedValue(new Error('network exploded'))
+
+    renderWithProviders(<Progress />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Report unavailable. Retry.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
+  it('while programs.current is pending, an aria-busy region shows the visible label Loading', () => {
+    mockApi.programs.current.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<Progress />)
+
+    const region = screen.getByText('Loading').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+  })
+
+  it('while the report query is pending, an aria-busy region shows the visible label Loading report', async () => {
+    respond('programs.current', PROGRAM)
+    mockApi.report.get.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<Progress />)
+
+    const label = await screen.findByText('Loading report')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
   })
 })

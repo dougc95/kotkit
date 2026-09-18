@@ -165,7 +165,7 @@ export function Preferences({ me }: PreferencesProps) {
         {...(timezoneError !== undefined ? { error: timezoneError } : {})}
       />
 
-      <div className="flex flex-col divide-y divide-[var(--color-border)]">
+      <div className="flex flex-col divide-y divide-rule">
         <PreferenceSwitch
           label="Hide timer by default"
           description="Starts sessions with the countdown hidden. You can still reveal it any time."
@@ -203,7 +203,7 @@ export function Preferences({ me }: PreferencesProps) {
       <EditMaterialsLink programStatus={programStatus} />
 
       {saveFailed ? (
-        <p role="alert" className="text-sm">
+        <p role="alert" className="text-sm text-attention">
           Could not save. Retry.
         </p>
       ) : null}

@@ -1,7 +1,15 @@
 # Attention Lab — UI rework on shadcn/ui
 
-**Status:** design, approved section by section on 2026-09-09. Not implemented. No application code
-has been written against it.
+**Status:** implemented. Designed and approved section by section on 2026-09-09; built 2026-09-16 to
+2026-09-18 on branch `worktree-shadcn-rework`, forked from `fb6ea47` (the plan commit): Wave 0 gate
+`f38dd70`, Wave 1 gate `ac66dfc`, Wave 2 gate `6cbdddc`, then a four-reviewer whole-branch review
+whose fixes land in `f93edea`…`684dbfb`. Verified at `684dbfb` from a fresh database container:
+`db:push`, typecheck, the shared and web unit suites, the production build and the 166-test
+Playwright run, with `e2e/` byte-identical to `master`. One caveat, recorded in §12:
+`npm run verify:all` itself stops at its test stage on 13 failures in
+`apps/api/test/sessions/finalize-eligibility.test.ts`, which fail identically on `master` during
+the evening hours when this machine's local date and the UTC date differ; the stages after it were
+run individually. The visual-pass, verification and final-review notes are at the end of §12.
 **Scope:** `apps/web` only. No API, schema, or contract changes. No OpenSpec spec revisions.
 **Supersedes:** nothing. This is additive to the P0 implementation described in `README.md`.
 
@@ -73,7 +81,7 @@ follows.
 | `card` | `#FFFFFF` | Raised surfaces only. | — |
 | `rule` | `#D5DBDA` | Hairlines and field slots. Never text. | decorative only |
 | `ink` | `#16232B` | All text, and all recorded data. | ~14.7:1 on paper |
-| `ink-muted` | `#455761` | Secondary text; the "not a value" mark. | ~6.6:1 on paper |
+| `ink-muted` | `#455761` | Secondary text; the "not a value" mark. | ~6.9:1 on paper |
 | `signal` | `#0B5F63` | Petrol. Primary actions, and anything live or being measured. | white on it ~7.4:1 |
 | `attention` | `#8A5A00` | Amber. Needs-you, and uncertainty. | ~5.4:1 text, ~5.9:1 as fill |
 
@@ -112,7 +120,10 @@ connotation this direction is built on.
 **Mono is restricted to three contexts and no others:** timer digits, the dense data tables
 (`AttemptTable` and `ExactValuesTable` alike — digits must not shift in either), and tabular figures
 in comparisons. Never for labels, metadata, status words, or prose containing a number, including an
-inline preview line such as `First switch, preview: 6:10 (event)`.
+inline preview line such as `First switch, preview: 6:10 (event)`. Inside a dense table the rule
+still holds cell by cell: a `Not reported` or `Unknown` cell is a status word and stays sans.
+`<Reported>` enforces this rather than leaving it to each call site — `mono` takes effect only on a
+recorded value (U18).
 
 Two drafting rounds both misread this rule, in opposite directions — four screen designs applied
 mono to prose, and a plan reviewer read "the exact-values tables" as excluding `AttemptTable`
@@ -157,7 +168,7 @@ strings already in the codebase, and they are not all the same kind of thing.
 | Tier | Treatment | Strings |
 |---|---|---|
 | **Recorded** | ink, tabular figures | any number *including* an explicit `0`; and **`20+, capped`** |
-| **Not a value** | `ink-muted` on a thin ruled underline — the blank line in a paper ledger | `Not reported`, `not yet reported`, `Not finalized`, `—`, `Percentage: not applicable` |
+| **Not a value** | `ink-muted` on a thin ruled underline — the blank line in a paper ledger | `Not reported`, `not yet reported`, `Not finalized`, `—`, `Percentage: not applicable`, `No intended output recorded` (U19) |
 | **Uncertain** | an `attention` amber mark | `Unknown`, `Timing uncertain` |
 
 The critical boundary is between the first two rows. **`20+, capped` is a measurement, not an
@@ -432,6 +443,13 @@ Every wave is Sonnet-driven, as is the survey and design work that produced this
 
 ## 12. Open questions and risks
 
+- **The focus ring does not clear 3:1 against two of this palette's own fills** — pure black measures
+  ~2.8:1 on `signal` and ~2.5:1 on `destructive`, against 19.2:1 on paper and 21:1 on card. It does
+  not bite today, because `outline-offset: 2px` paints the ring entirely outside a control's border
+  box, so it renders on what surrounds the control and never on the control's own fill, and no
+  screen nests a focusable control inside a signal- or destructive-filled surface. Introducing such
+  a surface means giving it its own ring colour. This was found by the Task 2 review recomputing the
+  figures rather than trusting them; §3 originally asserted the opposite.
 - **The single motion beat is asserted by nothing.** Reduced motion is tested; "only one animation
   exists" is not. If that rule matters beyond this change, it needs a test — a grep for animation
   utilities outside the approved site would do.
@@ -439,8 +457,107 @@ Every wave is Sonnet-driven, as is the survey and design work that produced this
   visually broken with everything green. The Wave 2 visual pass is manual and therefore fallible.
 - **`Button asChild` is the highest-risk single change**, because it touches every call site and can
   fail by producing invalid nested-interactive markup that tests may not catch in every position.
-- **Font loading is new to this app.** Self-hosted `@fontsource` avoids a network dependency, but adds
-  bundle weight that has not been measured.
+- **Font loading is new to this app.** Self-hosted `@fontsource` avoids a network dependency, and the
+  weight it adds is now measured (Task 3): CSS +6.06 kB raw / +0.91 kB gzip, JS unchanged; 34 font
+  files, about 417.5 kB on disk across every Unicode subset, of which an English-language browser
+  downloads about 61.5 kB (three latin woff2 files), because `@fontsource` gates each subset behind
+  `unicode-range`.
+- **A Tailwind utility beats the global focus rule whatever its specificity.** Tailwind 4 declares
+  `@layer theme, base, components, utilities`, the global `:focus-visible` outline lives in
+  `@layer base`, and `outline-none` / `outline-hidden` are utilities, so one stray suppressor silently
+  removes a control's only focus indicator. Task 4 shipped eight such components before its review
+  caught it (U17). `conventions.test.ts` now guards `src/ui/shadcn/`, but nothing guards the rest of
+  `src/`: `PreferenceSwitch.tsx`, `ScenarioLoader.tsx` and `AgentPanel.tsx` still carry `outline-none`
+  from before this change and are converted in Wave 1. The guard's patterns also miss arbitrary
+  variants such as `has-[:focus-visible]:` and the `outline-0` utility.
+
+**Verification notes, 2026-09-17 (Wave 2).** Recorded so the next reader knows what each step was
+worth.
+
+- *What the suites proved.* Typecheck, 2,020 unit tests (shared 233, api 1033, web 754 before the
+  Wave 2 fixes; web 772 after), the production build and the 166-test Playwright run all passed at
+  every gate, with `e2e/` untouched since `b7409ea`. The final `verify:all` from a fresh container
+  passed bring-up, `db:push` and typecheck, then stopped at the test stage: 13 of the 21 cases in
+  `apps/api/test/sessions/finalize-eligibility.test.ts` received an unexpected `timing_deviation`.
+  The same 13 fail on `master` at the same hour, and the file had passed four hours earlier; the
+  fixtures anchor dates with `localDateAt(new Date(), 'UTC')`, and the failure window is the four
+  evening hours in which this machine's local date (UTC−4) and the UTC date disagree. Setting
+  `TZ=UTC` on the process does not clear it, so the disagreement is not the Node timezone alone.
+  It is an `apps/api` test defect outside this change's scope, left for its owner; the web suite
+  (772) passed in the same run, and build and Playwright were then run individually and passed. The contrast figures in §3 recomputed within
+  0.05 of the shipped CSS; the chart palette re-validated `ALL CHECKS PASS` with the same worst pairs
+  the table above records. The primitive layer's cost, measured against the Wave 0 post-font build:
+  JS +49.85 kB raw / +17.41 kB gzip (1,112.58 kB / 325.30 kB), CSS +21.81 kB raw / +3.40 kB gzip
+  (52.43 kB / 9.78 kB).
+- *What only the visual pass caught.* Thirteen defects, none of which any suite could see, walked
+  at 1440, 375 and 320 px across every screen in the plan's list. Four predate this rework and
+  were on `master`: the Progress page scrolled sideways at every width (an `sr-only` table header
+  escaping an unpositioned scroll container); the demo banner rendered as a 431 px left column beside
+  the desktop rail (`RailLayout`'s `md:flex` made it a flex item); the benchmark count placeholder
+  "leave blank if unknown" was cut to "leave blank" in a 112 px input, inverting the instruction; and
+  the practice-review register misaligned at 320 px. Nine were this rework's own: the floating
+  "Abandon session" control lost its opaque ground when it became `quiet`; Readiness kept an unstyled
+  page header and a raw error branch; the daily chart's legend text wore the series colours (three
+  below 4.5:1 as text — the palette was validated as marks, never as text); three native selects sat
+  on card white; eight native checkboxes remained in the conditions block, browser-blue when checked;
+  the check-in's "Incomplete — missing" statement was ink while Today painted the same statement
+  amber; two Settings triggers were stretched; a quiet button had no hover on the white dialog; one
+  live token was written as an arbitrary value. All thirteen are fixed in commits `67d2eb2`,
+  `70b2a23`, `abd4806`, `f71b0f4` and `850a77e`, each re-measured in Chromium afterwards.
+- *What the pass confirmed.* Exactly one petrol-filled control on every surface (a dialog counts as
+  its own surface); no running animation on any screen; every absent value in the ruled slot, none
+  rendered as `0` or an empty cell; the first Tab stop is "Skip to content" and every stop settles on
+  one 2 px black outline; `prefers-reduced-motion` collapses every transition to effectively zero.
+- *Left open, on purpose.* `font-medium` (61 uses, including every `Label` and `Button`) renders at
+  400 because only Plex 400 and 600 are loaded — the approved look; loading 500 would re-weight every
+  label. Button `transition-colors` includes `outline-color`, so a focus ring fades from the text
+  colour to black over 150 ms. Primary `Save`/`Start` are full-width on Setup, check-in, Settings and
+  Today but compact on Readiness and the practice review. With a practice session from the previous
+  day still awaiting review, Today shows both the pending-review card and the new day's Start form
+  (a gating rule, not a styling matter). "Day 15 of 14" appears when the demo clock runs past the
+  programme.
+
+**Final whole-branch review, 2026-09-18.** Four reviewers, each owning a disjoint file set
+(foundation and shell; Today, Setup and check-in; Settings, Research and Progress; benchmark, Focus,
+review and session), found no Critical and sixteen Important issues, every one a pattern this change
+started and did not finish rather than a regression. All sixteen, and five deferred Minors the
+reviewers escalated, are fixed in `f93edea`, `ddf6a34`, `44448a4`, `ea95dd2`, `d244f69`, `f92581c`,
+`2b75682` and `684dbfb`, each re-reviewed. The ones that change what a reader of this document should
+expect:
+
+- *The practice chart now draws what §7 describes.* Until this review it drew planned and completed
+  as side-by-side bars; the Wave 1 visual check accepted that against the text above. It now draws
+  the completed fill inside the planned frame (a fixed-width pair collapsed onto one x-slot, the bar
+  width shrinking with the band so a full 14-day programme never overlaps). The daily chart's
+  tooltip text is ink, as its legend already was (U22).
+- *The palette has one source.* `index.css` had declared the eight palette tokens in both `@theme`
+  and the base layer; the base copy won, so an edit to `@theme` changed nothing. Only `@theme`
+  declares them now, and the guard asserts each exactly once.
+- *The Select's keyboard-active option is an ink band with white text* (U25). `--accent` had been
+  paper on the white popover, 1.09:1 — invisible, and inherited from before this change.
+- *The last hand-rolled surfaces are gone:* the check-in, Recall and benchmark-review load errors
+  use `ErrorState`; the six remaining bare `aria-busy` placeholders use `LoadingState`; the disruption
+  attestation and the conditions block use the shared radio and checkbox primitives; `EmptyState`
+  is finally used by the one empty state; two dead generated primitives (`button`, `tooltip`) and the
+  unreachable `AlertDialogAction`/`AlertDialogCancel` exports are deleted.
+- *Two behaviour guards closed on the evidence:* the finalize bar's Retry is now disabled under the
+  same condition as Finalize, so a withdrawn attestation cannot be resent; and Recall's load-error
+  branch was unreachable on an initial failure (the pending guard caught `data === undefined` first)
+  and now renders.
+
+**Left open after the final review, for the owner.** The charts still animate on mount
+(`isAnimationActive={!reducedMotion}`, carried from `master` by the plan) — a second authored motion
+against §4; the fix is `isAnimationActive={false}` on the four series plus two test expectations.
+The "one expressive motion beat" itself does not exist in the built CSS (no `@keyframes`, no
+`animation:`): the pending-to-recorded settle was never authored, so today nothing animates by
+intent except those charts. Both radius tokens are dead: `--radius` is unreferenced and
+`--radius-DEFAULT` generates nothing in Tailwind 4 (bare `rounded` is a fixed 0.25rem), so §4's
+radius decision is enforced only where a call site names a step. `ui/Button.tsx` keeps a hand-written
+variant map rather than shadcn's `cva` mapping that §6 describes (ruled out at the end of the branch
+as risk without visible benefit). The dialog close button's open state is `bg-accent` and would now
+read ink-on-ink-muted, latent because the one `DialogContent` passes `showCloseButton={false}`. Two
+per-file jsdom Radix polyfills remain in the settings tests (made identical; the app-wide home is
+`src/test/setup.ts`). And the API test-fixture wall-clock defect above.
 
 ## 13. Decision log
 
@@ -463,3 +580,13 @@ Every wave is Sonnet-driven, as is the survey and design work that produced this
 | U15 | 2026-09-09 | An error never takes the destructive treatment. Red marks a thing about to be destroyed and nothing else. Clarifies §3 after a plan draft used `variant="destructive"` on a 422 banner. |
 | U15a | 2026-09-09 | Correction to U15 as first written: errors take `attention`, not neutral ink. U15's first wording banned amber alongside red, which contradicted the token's own stated "needs-you" job. Amber marks an unsure *value* and a *message* you must act on; ink is for recorded and informational content. |
 | U16 | 2026-09-09 | Tests never assert on shadcn internals (`data-slot`, generated class names, primitive DOM shape). They assert visible text, role, accessible name, or the `data-tier` attribute `<Reported>` emits. |
+| U17 | 2026-09-16 | Stripping focus rings also strips every `outline-none` / `outline-hidden` and every other `focus*:` variant from the generated components, because a utilities-layer outline suppressor cancels the base-layer global rule. `SelectItem` keeps a highlight on `data-[highlighted]`, the listbox's active-option state. Found by the Task 4 review. |
+| U18 | 2026-09-17 | `<Reported mono>` takes effect only on a recorded value; absent and uncertain values always render sans, even under an ancestor's `font-mono`. Makes §4's "never for status words" hold inside the dense tables, which is where those cells live. Found by the Task 6 review. |
+| U19 | 2026-09-17 | `No intended output recorded` joins the not-a-value tier, an eighth string. It is the null branch of a field the user never filled in, and the Focus header drew it in full ink. `None recorded` is not added, because Wave 1 replaces it with `Not reported`. |
+| U20 | 2026-09-17 | The taxonomy predicate lives in `src/ui/valueTier.ts`. `reported.ts` beside `Reported.tsx` differs only in case, and on a case-insensitive filesystem `./Reported.js` resolves to the wrong file (TS1149, TS2305). |
+| U21 | 2026-09-17 | Native `<select>` stays where a Playwright suite reads it natively (`selectOption`, `inputValue`: the check-in device field, the plan and settings timezones), because the suites pass unmodified. It sits on the page ground like every other field; card white is for raised surfaces only. Found by the Wave 2 visual pass. |
+| U22 | 2026-09-17 | Chart legend text wears ink; only the swatch carries the series colour. The palette clears 3:1 as marks and was never validated as text (three of five fall below 4.5:1). Found by the Wave 2 contrast re-check. |
+| U23 | 2026-09-17 | A statement that names what the user still owes is amber wherever it appears: "Incomplete — missing: sleep, feed" on the check-in page is the same statement as Today's "Still needed" and takes the same `attention`. A terminal state with nothing to do stays ink. Applies U15a; found by the Wave 2 visual pass. |
+| U24 | 2026-09-17 | The last native checkboxes (the benchmark conditions block) become the shadcn `Checkbox` with 44 px label rows. Playwright's `check()` and label locators resolve on the Radix button exactly as they do for "Confirm timezone", so the suites stay unmodified. |
+| U25 | 2026-09-18 | The Select's keyboard-active option is an ink band with card-white text (`--accent: var(--color-ink)`, `--accent-foreground: var(--color-card)`). The palette has no light tint, paper on the white popover was 1.09:1, and an inverted row is the native listbox convention. Found by the final review. |
+| U26 | 2026-09-18 | The palette tokens are declared once, in `@theme`; the base layer only aliases them. A second declaration in a later layer silently wins over the one an editor reaches for. Found by the final review. |

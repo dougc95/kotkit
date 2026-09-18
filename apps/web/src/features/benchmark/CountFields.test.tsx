@@ -140,6 +140,22 @@ describe('CountFields', () => {
     expect(readDebugValue()).toEqual(BLANK_COUNT_FIELDS_VALUE)
   })
 
+  it('S, E and M inputs are wide enough to show their full leave-blank-if-unknown placeholder (pre-existing)', () => {
+    const session = makeSession({ events: [] })
+
+    renderHarness(session)
+
+    const sInput = screen.getByLabelText('Off-task episodes (S)')
+    const eInput = screen.getByLabelText('External interruptions (E)')
+    const mInput = screen.getByLabelText('Noticed mind-wandering (M)')
+
+    for (const input of [sInput, eInput, mInput]) {
+      expect(input.className).toContain('w-52')
+      expect(input.className).not.toContain('w-28')
+      expect(input).toHaveAttribute('placeholder', 'leave blank if unknown')
+    }
+  })
+
   it('events -> S prefilled 2 with method event', () => {
     const session = makeSession({
       events: [
@@ -159,6 +175,19 @@ describe('CountFields', () => {
     expect(screen.getAllByText('from recorded events (method: event)')).toHaveLength(2)
     expect(readDebugValue().countMethod).toBe('event')
     expect(screen.getByLabelText('External interruptions (E)')).toHaveValue('1')
+  })
+
+  it('S event-locked keeps full ink: disabled:opacity-100 overrides the primitive default, never disabled:opacity-50', () => {
+    const session = makeSession({
+      events: [makeEvent({ clientEventId: 'e1', type: 'off_task', elapsedMs: 60_000 })],
+    })
+
+    renderHarness(session)
+
+    const sInput = screen.getByLabelText('Off-task episodes (S)')
+    expect(sInput).toBeDisabled()
+    expect(sInput.className).toContain('disabled:opacity-100')
+    expect(sInput.className).not.toContain('disabled:opacity-50')
   })
 
   it('voided off_task events are excluded from the prefilled S', () => {
@@ -196,7 +225,7 @@ describe('CountFields', () => {
     expect(value.countMethod).toBe('retrospective')
   })
 
-  it('explicit 0 -> episodeCount 0 and preview 20+, capped', async () => {
+  it('explicit 0 -> episodeCount 0 and preview 20+, capped, rendered recorded not absent', async () => {
     const session = makeSession({ events: [] })
 
     const { user } = renderHarness(session)
@@ -204,10 +233,12 @@ describe('CountFields', () => {
     await user.type(screen.getByLabelText('Off-task episodes (S)'), '0')
 
     expect(readDebugValue().episodeCount).toBe('0')
-    expect(screen.getByText(/First switch, preview: 20\+, capped/)).toBeInTheDocument()
+    const value = screen.getByText('20+, capped')
+    expect(value).toHaveAttribute('data-tier', 'recorded')
+    expect(value.closest('p')).toHaveTextContent('First switch, preview: 20+, capped')
   })
 
-  it('retrospective 3 without estimate -> Unknown and no 20+ text anywhere', async () => {
+  it('retrospective 3 without estimate -> Unknown rendered uncertain, and no 20+ text anywhere', async () => {
     const session = makeSession({ events: [] })
 
     const { user } = renderHarness(session)
@@ -215,11 +246,13 @@ describe('CountFields', () => {
     await user.type(screen.getByLabelText('Off-task episodes (S)'), '3')
 
     expect(readDebugValue().countMethod).toBe('retrospective')
-    expect(screen.getByText(/First switch, preview: Unknown/)).toBeInTheDocument()
+    const value = screen.getByText('Unknown')
+    expect(value).toHaveAttribute('data-tier', 'uncertain')
+    expect(value.closest('p')).toHaveTextContent('First switch, preview: Unknown')
     expect(screen.queryByText(/20\+/)).not.toBeInTheDocument()
   })
 
-  it('estimate 6 -> ≈ 6 min (estimate) preview label', async () => {
+  it('estimate 6 -> ≈ 6 min (estimate) preview label, rendered recorded', async () => {
     const session = makeSession({ events: [] })
 
     const { user } = renderHarness(session)
@@ -228,17 +261,19 @@ describe('CountFields', () => {
     await user.type(screen.getByLabelText('Estimated minute of first switch'), '6')
 
     expect(readDebugValue().estimateMinutes).toBe('6')
-    expect(screen.getByText(/First switch, preview: ≈ 6 min \(estimate\)/)).toBeInTheDocument()
+    const value = screen.getByText('≈ 6 min (estimate)')
+    expect(value).toHaveAttribute('data-tier', 'recorded')
   })
 
-  it('first off_task event at 370000 ms -> 6:10 (event)', () => {
+  it('first off_task event at 370000 ms -> 6:10 (event), rendered recorded', () => {
     const session = makeSession({
       events: [makeEvent({ clientEventId: 'e1', type: 'off_task', elapsedMs: 370_000 })],
     })
 
     renderHarness(session)
 
-    expect(screen.getByText(/First switch, preview: 6:10 \(event\)/)).toBeInTheDocument()
+    const value = screen.getByText('6:10 (event)')
+    expect(value).toHaveAttribute('data-tier', 'recorded')
   })
 
   it('M is labeled descriptive only', () => {

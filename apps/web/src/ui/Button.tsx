@@ -1,4 +1,7 @@
-import type { ButtonHTMLAttributes, Ref } from 'react'
+import type { ButtonHTMLAttributes, ReactElement, Ref } from 'react'
+import { Slot } from 'radix-ui'
+
+import { cn } from '../lib/cn.js'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'quiet'
 
@@ -9,6 +12,14 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
    * dominant action per screen").
    */
   variant?: ButtonVariant
+  /**
+   * Render the single child element instead of a <button>, forwarding every
+   * class and prop onto it. Used for links that look like buttons, which
+   * previously duplicated a LINK_CLASSES constant across four features.
+   * Renders the child itself — never a <button> wrapping an <a>, which would
+   * be invalid nested-interactive markup and would change the element's role.
+   */
+  asChild?: boolean
   /**
    * Forwarded to the underlying `<button>` (React 19's ref-as-prop, no
    * `forwardRef` needed). Required by Radix's `asChild` composition
@@ -25,23 +36,38 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  primary: 'bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:brightness-95 active:brightness-90',
-  secondary:
-    'bg-[var(--color-bg)] text-[var(--color-text)] border border-[var(--color-border)] hover:bg-[var(--color-surface)]',
-  quiet: 'bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]',
+  primary: 'bg-signal text-white hover:brightness-95 active:brightness-90',
+  secondary: 'bg-card text-ink border border-rule hover:bg-paper',
+  quiet: 'bg-transparent text-ink hover:bg-card',
 }
 
 /**
- * The one button primitive every screen builds on. `type="button"` by
- * default (a form's submit button opts in explicitly with `type="submit"`)
+ * The one button primitive every screen builds on. `type="button"` is
+ * applied only when actually rendering a `<button>` (a form's submit button
+ * opts in explicitly with `type="submit"`), never onto an `asChild` child,
  * so a stray Button never submits a form it happens to sit inside. Focus
  * styling comes entirely from index.css's global `:focus-visible` rule —
  * this component does not suppress or duplicate it.
  */
-export function Button({ variant = 'primary', type = 'button', className, ref, ...buttonProps }: ButtonProps) {
-  const classes = ['inline-flex items-center justify-center gap-2', 'min-h-11 min-w-11 rounded-md px-4', 'text-sm font-medium', 'transition-colors', 'disabled:opacity-50 disabled:pointer-events-none', VARIANT_CLASS[variant], className]
-    .filter(Boolean)
-    .join(' ')
+export function Button({ variant = 'primary', type, asChild = false, className, ref, ...buttonProps }: ButtonProps): ReactElement {
+  const Component = asChild ? Slot.Root : 'button'
+  const classes = cn(
+    'inline-flex items-center justify-center gap-2',
+    'min-h-11 min-w-11 rounded-md px-4',
+    'text-sm font-medium',
+    'transition-colors',
+    'disabled:opacity-50 disabled:pointer-events-none',
+    VARIANT_CLASS[variant],
+    className,
+  )
 
-  return <button ref={ref} type={type} data-variant={variant} className={classes} {...buttonProps} />
+  return (
+    <Component
+      ref={ref}
+      {...(asChild ? {} : { type: type ?? 'button' })}
+      data-variant={variant}
+      className={classes}
+      {...buttonProps}
+    />
+  )
 }

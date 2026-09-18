@@ -10,7 +10,7 @@ import {
 } from '@attention-lab/shared'
 
 import { queryKeys } from '../../lib/query/keys.js'
-import { respond } from '../../test/mockClient.js'
+import { reject, respond } from '../../test/mockClient.js'
 import { renderWithProviders } from '../../test/renderWithProviders.js'
 import { ResearchCards } from './ResearchCards.js'
 
@@ -71,8 +71,27 @@ describe('ResearchCards', () => {
     mount()
 
     await screen.findAllByRole('article')
-    expect(screen.getByText(`Curated demonstration content · curated ${RESEARCH_CURATED_ON}`)).toBeInTheDocument()
+    expect(screen.getByText(`Curated demonstration content, curated ${RESEARCH_CURATED_ON}`)).toBeInTheDocument()
     expect(screen.getByText('Automated discovery not enabled')).toBeInTheDocument()
+  })
+
+  it('never renders a middle-dot meta string anywhere on the screen', async () => {
+    const { container } = mount()
+
+    await screen.findAllByRole('article')
+    expect(container.textContent ?? '').not.toContain('·')
+  })
+
+  it('on load failure, shows Cards unavailable in attention, never destructive or red', async () => {
+    reject('research.cards', { status: 500, code: 'server_error' })
+
+    const { container } = renderWithProviders(<ResearchCards />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Cards unavailable')
+    expect(alert).toHaveClass('text-attention')
+    expect(alert.className).not.toMatch(/destructive|red-/)
+    expect(container.textContent ?? '').not.toContain('·')
   })
 
   it('shows the Up to three reviewed updates note', async () => {

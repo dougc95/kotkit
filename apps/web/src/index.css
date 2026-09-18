@@ -1,42 +1,195 @@
 @import "tailwindcss";
 
 /*
+ * This app is light-only. The generated shadcn primitives carry `dark:` utilities, and Tailwind 4's
+ * default `dark` variant is the prefers-color-scheme media query, so without this line a user whose
+ * OS is in dark mode would get dark-theme tints on individual controls on an otherwise light page.
+ * Scoping the variant to a `.dark` class that this app never sets makes every `dark:` utility inert.
+ * If a dark theme is ever designed, it starts by setting that class and defining its palette.
+ */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Tailwind's source scanner is not language-aware: a class name inside a test's string literal or
+ * comment is emitted as real CSS even though no component uses it (proved with a real build:
+ * `ui/shadcn/conventions.test.ts` merely MENTIONS `min-h-9`, `file:h-9` and `data-[size=default]:h-9`
+ * to explain what a guard must NOT match, and all three used to ship as dead CSS). Excluding test
+ * files from the scan fixes this once, at the source, instead of contorting every guard test that
+ * names a forbidden class. The same reasoning excludes the `test/` support directory (harnesses and
+ * fixtures that are never shipped, e.g. `mockClient.ts`) and `.test-d.ts` type-test files.
+ */
+@source not "./**/*.test.ts";
+@source not "./**/*.test.tsx";
+@source not "./test/**";
+@source not "./**/*.test-d.ts";
+
+@theme {
+  /* ---- Instrument log tokens. Contrast figures are computed for the exact
+   * hex pairs below, against --color-paper unless stated otherwise. This is
+   * the ONE declaration of each of these eight tokens: Tailwind 4 orders
+   * `@layer theme` before `@layer base`, so a second declaration in
+   * `@layer base` below would win silently and make these comments lies
+   * (A-I3). If a value ever needs re-tuning, this is the block to edit. ---- */
+
+  /* Ground and surface. */
+  --color-paper: #F3F5F5;   /* page ground, cool-neutral off-white */
+  --color-card: #FFFFFF;    /* raised surfaces only */
+  --color-rule: #D5DBDA;    /* hairlines and field slots — never text */
+
+  /* Text, and recorded data. */
+  --color-ink: #16232B;       /* ~14.7:1 */
+  --color-ink-muted: #455761; /* ~6.9:1 */
+
+  /* State. Both fills below also feed --accent* / --destructive* aliases
+   * further down; the black focus ring (--color-focus-ring, in :root) does
+   * NOT clear 3:1 against either — ~2.8:1 on signal, ~2.5:1 on destructive —
+   * see the Focus ring comment in :root for the full note. */
+  --color-signal: #0B5F63;    /* white on this fill is ~7.4:1 */
+  --color-attention: #8A5A00; /* ~5.4:1 as text, white on it ~5.9:1 */
+
+  /* Destructive ACTIONS only — never a measurement outcome. */
+  --color-destructive: #8C2F1B;
+
+  --radius-DEFAULT: 0.375rem;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/*
+ * shadcn alias -> Tailwind theme. Tailwind 4 only generates a colour utility
+ * for a literal `--color-*` key declared in `@theme`; the shadcn aliases
+ * below (`--background`, `--popover`, `--accent`, `--primary`, `--input`,
+ * `--muted-foreground` and so on) are plain custom properties inside
+ * `@layer base`, so none of `bg-background`, `bg-popover`, `bg-accent`,
+ * `bg-primary`, `border-input` or `text-muted-foreground` exist without
+ * this block. `@theme inline` makes each generated utility reference the
+ * alias variable directly, so `:root` stays the one place a value is set.
+ *
+ * `--color-primary` and `--color-border` were the names of two RETIRED app
+ * tokens. They return here only as shadcn aliases (of `signal` and `rule`
+ * respectively). No screen may reference `var(--color-primary)` or
+ * `var(--color-border)`; Wave 2's token sweep greps source for them and
+ * must still find none.
+ *
+ * The generated dialog, alert-dialog, select and tooltip primitives carry
+ * `animate-in` / `fade-in-0` / `zoom-in-95` classes. Those stay inert on
+ * purpose: no `tw-animate-css` / `tailwindcss-animate` plugin is installed,
+ * and the design allows exactly one expressive motion beat elsewhere — an
+ * entrance animation on every dialog would be a second. Do not "fix" this
+ * by adding that plugin later.
+ *
+ * Do NOT add `--color-card` or `--color-destructive` here: they are already
+ * literal keys in the `@theme` block above, and a second definition here
+ * would fight it.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+/*
  * Accessibility baseline (7.1.6): color tokens with documented contrast,
  * a global :focus-visible outline for every interactive element, and a
  * prefers-reduced-motion block. Contrast ratios below are WCAG relative-
  * luminance computations for the exact hex pairs used, not estimates.
  */
 @layer base {
+  /*
+   * shadcn's generated primitives draw a bare `border` (Alert,
+   * AlertDialogContent, Card, DialogContent, SelectContent). Tailwind 4's
+   * default border colour is `currentColor`; the design's is the hairline.
+   * An explicit `border-*` colour utility on any element still wins, since
+   * utilities sit in a later layer than this base rule.
+   */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border);
+  }
+
   :root {
-    /* Page and surface. */
-    --color-bg: #ffffff;
-    --color-surface: #f1f5f9;
-    --color-border: #cbd5e1; /* decorative only — never used for text */
-
-    /* Text. Both pairs are checked against --color-bg (#ffffff). */
-    --color-text: #111827; /* ~17.7:1 against --color-bg */
-    --color-text-muted: #475569; /* ~7.6:1 against --color-bg */
-
-    /* Primary control. White text on this fill is ~5.2:1 (>= 4.5:1). */
-    --color-primary: #2563eb;
-    --color-primary-text: #ffffff;
+    /* The eight Instrument-log tokens (--color-paper/-card/-rule/-ink/
+     * -ink-muted/-signal/-attention/-destructive) are declared exactly once,
+     * in the @theme block above (A-I3) — they used to be repeated here too,
+     * and the @layer base copy silently won over @theme's, which made
+     * @theme's values a lie. --color-signal-text and --color-destructive-text
+     * below are NOT theme keys (no utility is generated from them), so they
+     * have exactly one home either way: here. */
+    --color-signal-text: #FFFFFF;
+    --color-destructive-text: #FFFFFF;
 
     /*
-     * Focus ring. Pure black clears >= 3:1 against every background this
-     * palette uses: ~21:1 against --color-bg / --color-surface, and
-     * ~4.1:1 against the darkest control fill (--color-primary). Chosen
-     * deliberately over a colored ring so one token works everywhere,
-     * including directly against --color-primary when an element's own
-     * offset does not clear the fill (e.g. a small control near an edge).
+     * Focus ring. `outline-offset: 2px` paints the ring entirely outside a
+     * control's border box, so it never renders on that control's own fill —
+     * only on whatever surrounds it. Against both surfaces this palette uses
+     * for that, pure black is far clear of any threshold: ~19.2:1 on
+     * --color-paper and 21:1 on --color-card.
+     *
+     * Recorded limitation: black does NOT clear 3:1 against two of this
+     * palette's fills (see the @theme block's --color-signal / -destructive
+     * comments for the exact ratios). That only bites if a focusable control
+     * is ever nested inside a signal- or destructive-filled surface, which no
+     * screen in this app does today. If one is ever introduced, that surface
+     * needs its own ring colour; do not assume this token covers it.
      */
     --color-focus-ring: #000000;
+
+    --radius: 0.375rem;
+
+    /* ---- shadcn alias names. The generated primitives are written against
+     * these; they are aliases, not a second palette. `accent` is the
+     * active-option highlight painted inside white popovers (Select), so it
+     * must differ from `popover` itself — otherwise `data-[highlighted]:bg-accent`
+     * is white on white. It used to be `paper`, which IS distinct from
+     * `popover` as a string but only ~1.09:1 as a fill against it — WCAG
+     * 1.4.11 wants 3:1 for a UI component's state, and the highlight was the
+     * only cue an option is active (A-I4). `accent` is now an ink band with
+     * card-white text: ~14.7:1 of its own, and unmistakably >= 3:1 against
+     * the white popover it sits on. ---- */
+    --background: var(--color-paper);
+    --foreground: var(--color-ink);
+    --card: var(--color-card);
+    --card-foreground: var(--color-ink);
+    --popover: var(--color-card);
+    --popover-foreground: var(--color-ink);
+    --primary: var(--color-signal);
+    --primary-foreground: var(--color-signal-text);
+    --secondary: var(--color-card);
+    --secondary-foreground: var(--color-ink);
+    --muted: var(--color-card);
+    --muted-foreground: var(--color-ink-muted);
+    --accent: var(--color-ink);
+    --accent-foreground: var(--color-card);
+    --destructive: var(--color-destructive);
+    --destructive-foreground: var(--color-destructive-text);
+    --border: var(--color-rule);
+    --input: var(--color-rule);
+    --ring: var(--color-focus-ring);
 
     color-scheme: light;
   }
 
   body {
-    background-color: var(--color-bg);
-    color: var(--color-text);
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   }
 
   /*

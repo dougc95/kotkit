@@ -18,13 +18,16 @@ const FIELD_LABEL: Record<CheckinField, string> = {
 }
 
 export function CheckinStatus({ status, missing }: CheckinStatusProps) {
-  const text =
-    status === 'complete'
-      ? 'Complete'
-      : `Incomplete — missing: ${missing.map((field) => FIELD_LABEL[field]).join(', ')}`
+  const complete = status === 'complete'
+  const text = complete
+    ? 'Complete'
+    : `Incomplete — missing: ${missing.map((field) => FIELD_LABEL[field]).join(', ')}`
 
+  // Task V5 ruling: an incomplete check-in is a needs-you message (spec §3
+  // "Still needed"), so it is text-attention, matching Today's CheckinCard
+  // (Task 16); a complete check-in stays neutral text-ink.
   return (
-    <p role="status" className="text-sm font-medium text-[var(--color-text)]">
+    <p role="status" className={complete ? 'text-sm font-medium text-ink' : 'text-sm font-medium text-attention'}>
       {text}
     </p>
   )

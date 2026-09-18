@@ -31,7 +31,7 @@ export function SessionLayout() {
   return (
     <>
       <DemoBanner />
-      <main id="main">
+      <main id="main" className="pb-20">
         <Outlet />
       </main>
       {activeSession !== null &&

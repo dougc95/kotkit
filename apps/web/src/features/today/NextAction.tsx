@@ -24,9 +24,6 @@ export interface NextActionProps {
   readonly onFocusBlock: (block: 1 | 2) => void
 }
 
-const LINK_CLASSES =
-  'inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-primary-text)] hover:brightness-95'
-
 function slotLabel(slots: readonly SlotResponseValue[], slotId: string): string {
   return slots.find((slot) => slot.id === slotId)?.label ?? ''
 }
@@ -50,28 +47,30 @@ export function NextAction({ nextAction, slots, onFocusBlock }: NextActionProps)
   switch (nextAction.kind) {
     case 'setup':
       return (
-        <Link className={LINK_CLASSES} to="/setup">
-          Set up your program
-        </Link>
+        <Button asChild variant="primary">
+          <Link to="/setup">Set up your program</Link>
+        </Button>
       )
 
     case 'readiness':
       return (
-        <Link className={LINK_CLASSES} to="/setup/readiness">
-          Finish readiness
-        </Link>
+        <Button asChild variant="primary">
+          <Link to="/setup/readiness">Finish readiness</Link>
+        </Button>
       )
 
     case 'benchmark':
       return (
-        <Link className={LINK_CLASSES} to={`/benchmark/${nextAction.slotId}`}>
-          Start with your baseline
-        </Link>
+        <Button asChild variant="primary">
+          <Link to={`/benchmark/${nextAction.slotId}`}>Start with your baseline</Link>
+        </Button>
       )
 
     case 'practice':
       return (
         <Button
+          variant="quiet"
+          className="self-start"
           onClick={() => {
             onFocusBlock(nextAction.block)
           }}
@@ -82,16 +81,16 @@ export function NextAction({ nextAction, slots, onFocusBlock }: NextActionProps)
 
     case 'final':
       return (
-        <Link className={LINK_CLASSES} to={`/benchmark/${nextAction.slotId}`}>
-          {`Final benchmark ${slotLabel(slots, nextAction.slotId)}`}
-        </Link>
+        <Button asChild variant="primary">
+          <Link to={`/benchmark/${nextAction.slotId}`}>{`Final benchmark ${slotLabel(slots, nextAction.slotId)}`}</Link>
+        </Button>
       )
 
     case 'progress':
       return (
-        <Link className={LINK_CLASSES} to="/progress">
-          View your progress
-        </Link>
+        <Button asChild variant="primary">
+          <Link to="/progress">View your progress</Link>
+        </Button>
       )
   }
 }

@@ -7,7 +7,7 @@
  * specs/session-recovery: "Stale writes conflict instead of overwriting").
  *
  * Mounted from Focus.tsx (8.5.3, an earlier wave) as a sibling to
- * TransitionControls (8.5.4) below TimerDisplay — see this task's own
+ * TransitionControls (8.5.4) below EventButtons and a hairline — see this task's own
  * `centralWiringNeeded` report for the exact slot edit; this file does NOT
  * edit Focus.tsx itself. Its own test file mounts AgentPanel directly, and
  * for the screen-free-break case alongside TransitionControls sharing the
@@ -70,12 +70,17 @@
  */
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Collapsible, Select } from 'radix-ui'
 import type { AgentPlanBodyValue, AgentPlanResponseValue, SessionLifecycle } from '@attention-lab/shared'
 
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../ui/shadcn/collapsible.js'
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/shadcn/select.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 import { useTransition } from './TransitionControls.js'
 
 const GENERIC_ERROR_MESSAGE = 'Could not save. Retry.'
@@ -158,85 +163,62 @@ export interface PlanFieldsProps {
 }
 
 export function PlanFields({ value, onChange, disabled = false }: PlanFieldsProps) {
+  const workstream = useField({ name: 'agent-plan-workstream' })
+  const waitingTask = useField({ name: 'agent-plan-waiting-task' })
+  const checkpoint = useField({ name: 'agent-plan-checkpoint' })
+  const resumeNote = useField({ name: 'agent-plan-resume-note' })
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <label htmlFor="agent-plan-workstream" className="text-sm font-medium text-[var(--color-text)]">
-          Workstream
-        </label>
-        <input
-          id="agent-plan-workstream"
+        <Label {...workstream.labelProps}>Workstream</Label>
+        <Input
+          {...workstream.controlProps}
           type="text"
           value={value.workstream}
           maxLength={WORKSTREAM_MAX_LENGTH}
           disabled={disabled}
           onChange={(event) => onChange({ ...value, workstream: event.target.value })}
-          className="min-h-11 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm text-[var(--color-text)] disabled:bg-[var(--color-surface)] disabled:text-[var(--color-text-muted)]"
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="agent-plan-waiting-task" className="text-sm font-medium text-[var(--color-text)]">
-          Useful task while waiting
-        </label>
-        <input
-          id="agent-plan-waiting-task"
+        <Label {...waitingTask.labelProps}>Useful task while waiting</Label>
+        <Input
+          {...waitingTask.controlProps}
           type="text"
           value={value.waitingTask}
           maxLength={WAITING_TASK_MAX_LENGTH}
           disabled={disabled}
           onChange={(event) => onChange({ ...value, waitingTask: event.target.value })}
-          className="min-h-11 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm text-[var(--color-text)] disabled:bg-[var(--color-surface)] disabled:text-[var(--color-text-muted)]"
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="agent-plan-checkpoint" className="text-sm font-medium text-[var(--color-text)]">
-          Next review checkpoint
-        </label>
-        <Select.Root
+        <Label {...checkpoint.labelProps}>Next review checkpoint</Label>
+        <Select
           value={value.reviewCheckpoint}
           onValueChange={(next) => onChange({ ...value, reviewCheckpoint: next as 'end_of_block' })}
           disabled={disabled}
         >
-          <Select.Trigger
-            id="agent-plan-checkpoint"
-            className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm disabled:bg-[var(--color-surface)] disabled:text-[var(--color-text-muted)]"
-          >
-            <Select.Value />
-            <Select.Icon aria-hidden="true">▾</Select.Icon>
-          </Select.Trigger>
-          <Select.Portal>
-            <Select.Content
-              position="popper"
-              sideOffset={4}
-              className="z-50 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] shadow-lg"
-            >
-              <Select.Viewport className="p-1">
-                <Select.Item
-                  value="end_of_block"
-                  className="cursor-pointer rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-[var(--color-surface)]"
-                >
-                  <Select.ItemText>End of this block</Select.ItemText>
-                </Select.Item>
-              </Select.Viewport>
-            </Select.Content>
-          </Select.Portal>
-        </Select.Root>
+          <SelectTrigger {...checkpoint.controlProps} className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="end_of_block">End of this block</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="agent-plan-resume-note" className="text-sm font-medium text-[var(--color-text)]">
-          Resume note
-        </label>
-        <textarea
-          id="agent-plan-resume-note"
+        <Label {...resumeNote.labelProps}>Resume note</Label>
+        <Textarea
+          {...resumeNote.controlProps}
           value={value.resumeNote}
           maxLength={RESUME_NOTE_MAX_LENGTH}
           rows={3}
           disabled={disabled}
           onChange={(event) => onChange({ ...value, resumeNote: event.target.value })}
-          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] disabled:bg-[var(--color-surface)] disabled:text-[var(--color-text-muted)]"
         />
       </div>
     </div>
@@ -328,20 +310,17 @@ export function AgentPanel({ sessionId, sessionVersion, plan, lifecycle }: Agent
   const fieldsLocked = staleNotice || saveMutation.isPending
 
   return (
-    <Collapsible.Root open={open} onOpenChange={setOpen} className="flex flex-col gap-3">
-      <Collapsible.Trigger
-        type="button"
-        className="inline-flex min-h-11 items-center gap-2 rounded-md bg-transparent px-4 text-sm font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface)]"
-      >
-        Waiting on an agent?
-      </Collapsible.Trigger>
+    <Collapsible open={open} onOpenChange={setOpen} className="flex flex-col gap-3">
+      <CollapsibleTrigger asChild>
+        <Button variant="quiet">Waiting on an agent?</Button>
+      </CollapsibleTrigger>
 
-      <Collapsible.Content className="flex flex-col gap-4 pt-1">
+      <CollapsibleContent className="flex flex-col gap-4 pt-1">
         <PlanFields value={draft} onChange={setDraft} disabled={fieldsLocked} />
 
         {staleNotice ? (
           <div className="flex flex-wrap items-center gap-3">
-            <p role="alert" className="text-sm text-[var(--color-text-muted)]">
+            <p role="alert" className="text-sm text-ink-muted">
               {STALE_MESSAGE}
             </p>
             <Button variant="secondary" onClick={handleReload}>
@@ -351,7 +330,11 @@ export function AgentPanel({ sessionId, sessionVersion, plan, lifecycle }: Agent
         ) : null}
 
         {saveMessage !== null ? (
-          <p role="alert" className="text-sm text-[var(--color-text-muted)]">
+          // U15a: a validation/retry error message takes `text-attention`,
+          // never neutral ink — unlike STALE_MESSAGE above, this path is
+          // reached only from `onError`'s non-409 branch (a 422 or the
+          // generic "Could not save. Retry."), i.e. a real failure.
+          <p role="alert" className="text-sm text-attention">
             {saveMessage}
           </p>
         ) : null}
@@ -371,11 +354,15 @@ export function AgentPanel({ sessionId, sessionVersion, plan, lifecycle }: Agent
         </div>
 
         {breakMessage !== null ? (
-          <p role="alert" className="text-sm text-[var(--color-text-muted)]">
+          // U15a: `useTransition`'s own `message` is populated only when
+          // `status === 'error'` (TransitionControls.tsx) — always a real
+          // failure, never an informational notice, so it takes
+          // `text-attention` too.
+          <p role="alert" className="text-sm text-attention">
             {breakMessage}
           </p>
         ) : null}
-      </Collapsible.Content>
-    </Collapsible.Root>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }

@@ -22,6 +22,15 @@ export interface TimerDisplayProps {
    */
   hidden?: boolean
   onToggleHidden?: (hidden: boolean) => void
+  /**
+   * 'signal' marks a countdown that IS the live measurement itself (the
+   * fixed 20-minute benchmark) — the petrol distinguishes a benchmark from
+   * a variable-length practice block (the rework spec §8, "Benchmark: ready and
+   * running"). Every caller in this codebase today (Focus's practice block,
+   * Recall's fixed recall window) keeps the default 'ink'; a benchmark
+   * Running screen is the one place a later change opts into 'signal'.
+   */
+  tone?: 'ink' | 'signal'
 }
 
 /**
@@ -32,8 +41,11 @@ export interface TimerDisplayProps {
  * (app-shell: "Screen reader during a timer"). `preferences.endChime` and
  * `preferences.milestoneAnnouncements` come from `GET /me` via
  * `useMeContext()` (7.1.2) rather than a caller-passed flag, per D22/D39.
+ * The 56px mono instrument face belongs to the countdown digits only; the
+ * "Timer hidden" label is ordinary sans text at the same block height, so
+ * toggling hide/show never shifts the layout below it.
  */
-export function TimerDisplay({ remainingSeconds, hidden: hiddenProp, onToggleHidden }: TimerDisplayProps) {
+export function TimerDisplay({ remainingSeconds, hidden: hiddenProp, onToggleHidden, tone = 'ink' }: TimerDisplayProps) {
   const { preferences } = useMeContext()
   const [internalHidden, setInternalHidden] = useState(() => preferences.hideTimerDefault)
   const hidden = hiddenProp ?? internalHidden
@@ -57,12 +69,18 @@ export function TimerDisplay({ remainingSeconds, hidden: hiddenProp, onToggleHid
   }
 
   const transitionClass = prefersReducedMotion ? '' : 'transition-opacity duration-200'
-  const textClass = ['text-4xl font-mono tabular-nums', transitionClass].filter(Boolean).join(' ')
+  const toneClass = tone === 'signal' ? 'text-signal' : 'text-ink'
+  const textClass = ['text-[56px] font-mono tabular-nums leading-none tracking-tight', toneClass, transitionClass]
+    .filter(Boolean)
+    .join(' ')
+  const hiddenLabelClass = ['flex min-h-14 items-center text-lg text-ink-muted', transitionClass]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <div className="flex flex-col items-center gap-3">
       {hidden ? (
-        <p className={textClass} data-testid="timer-hidden-text">
+        <p className={hiddenLabelClass} data-testid="timer-hidden-text">
           Timer hidden
         </p>
       ) : (

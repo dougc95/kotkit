@@ -107,7 +107,7 @@ const PREVIEW_LABEL = 'Preview — the server decides at finalize'
 export function EligibilityPreview({ input }: EligibilityPreviewProps) {
   if (input === null) {
     return (
-      <p className="text-sm text-[var(--color-text-muted)]" aria-busy="true">
+      <p className="text-sm text-ink-muted" aria-busy="true">
         Eligibility preview — loading
       </p>
     )
@@ -117,11 +117,11 @@ export function EligibilityPreview({ input }: EligibilityPreviewProps) {
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-[var(--color-text)]">{PREVIEW_LABEL}</p>
+      <p className="border-l-2 border-signal pl-3 text-sm font-medium text-ink">{PREVIEW_LABEL}</p>
       {result.eligible ? (
-        <p className="text-sm text-[var(--color-text)]">Eligible</p>
+        <p className="text-sm text-ink">Eligible</p>
       ) : (
-        <ul className="space-y-1 text-sm text-[var(--color-text-muted)]">
+        <ul className="space-y-1 text-sm text-ink-muted">
           {result.exclusionReasons.map((reason) => (
             <li key={reason}>{EXCLUSION_REASON_COPY[reason]}</li>
           ))}
@@ -151,10 +151,7 @@ export interface IncompleteBannerProps {
  */
 export function IncompleteBanner({ elapsedSeconds }: IncompleteBannerProps) {
   return (
-    <div
-      role="status"
-      className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm text-[var(--color-text)]"
-    >
+    <div role="status" className="rounded-md border border-rule bg-card p-3 text-sm text-ink">
       <p className="font-medium">Incomplete attempt</p>
       <p>Recorded elapsed time: {formatRemaining(elapsedSeconds)}</p>
     </div>

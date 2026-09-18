@@ -74,14 +74,21 @@ import type {
 } from '@attention-lab/shared'
 
 import { api } from '../../lib/api/client.js'
+import { formatRemaining } from '../../lib/clock/remaining.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { useActiveSession } from '../../lib/query/hooks.js'
 import { useStartSession } from '../../lib/query/useStartSession.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
+import { useField } from '../../ui/field.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 import { ActiveSessionCard } from '../session/ActiveSessionCard.js'
 
 const LEAVING_NOTE = 'Leaving this page to read does not count as distraction.'
 const MAX_REASON_LENGTH = 500
+const FIXED_DURATION_SECONDS = 1200
 
 const PROTOCOL_CHECKLIST_ITEMS: readonly string[] = [
   'Set a fixed 20-minute timer before you begin.',
@@ -100,7 +107,7 @@ export interface ChecklistProps {
 
 export function Checklist({ items }: ChecklistProps) {
   return (
-    <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--color-text)]">
+    <ul className="list-disc space-y-1 pl-5 text-sm text-ink">
       {items.map((item) => (
         <li key={item}>{item}</li>
       ))}
@@ -119,22 +126,29 @@ export interface ReplacementReasonFieldProps {
 }
 
 export function ReplacementReasonField({ value, onChange, required }: ReplacementReasonFieldProps) {
+  const field = useField({
+    name: 'replacement-reason',
+    description: `${value.length}/${MAX_REASON_LENGTH}`,
+    required,
+  })
+
   return (
     <div className="space-y-1">
-      <label htmlFor="replacement-reason" className="block text-sm font-medium text-[var(--color-text)]">
+      <Label {...field.labelProps} className="block text-sm font-medium text-ink">
         Reason for replacement
-      </label>
-      <textarea
-        id="replacement-reason"
+      </Label>
+      <Textarea
+        {...field.controlProps}
         value={value}
         maxLength={MAX_REASON_LENGTH}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
       />
-      <p className="text-xs text-[var(--color-text-muted)]">
-        {value.length}/{MAX_REASON_LENGTH}
-      </p>
+      {field.descriptionProps ? (
+        <p {...field.descriptionProps} className="text-xs text-ink-muted">
+          {value.length}/{MAX_REASON_LENGTH}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -182,9 +196,8 @@ function isApiErrorLike(value: unknown): value is ApiErrorLike {
 
 function RetryNotice({ message, onRetry }: { readonly message: string; readonly onRetry: () => void }) {
   return (
-    <div className="mx-auto max-w-xl px-4 py-6 space-y-4">
-      <p>{message}</p>
-      <Button onClick={onRetry}>Retry</Button>
+    <div className="mx-auto max-w-xl px-4 py-6">
+      <ErrorState onRetry={onRetry}>{message}</ErrorState>
     </div>
   )
 }
@@ -253,11 +266,7 @@ export function Ready() {
   }
 
   if (currentQuery.isPending) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading
-      </div>
-    )
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading</LoadingState>
   }
   if (currentQuery.isError || current === undefined) {
     return <RetryNotice message="The benchmark could not be loaded." onRetry={retryAll} />
@@ -270,21 +279,13 @@ export function Ready() {
     return <RetryNotice message="The benchmark could not be loaded." onRetry={retryAll} />
   }
   if (todayQuery.isPending) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading
-      </div>
-    )
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading</LoadingState>
   }
   if (todayQuery.isError || todayQuery.data === undefined) {
     return <RetryNotice message="The benchmark could not be loaded." onRetry={retryAll} />
   }
   if (activeQuery.isPending) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading
-      </div>
-    )
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading</LoadingState>
   }
 
   const today = todayQuery.data
@@ -306,20 +307,24 @@ export function Ready() {
     priorState === 'none' || (priorState === 'requiresReason' && reasonTrimmed.length >= 1)
 
   return (
-    <div data-mode="benchmark" className="mx-auto max-w-xl px-4 py-6 space-y-6 border-t-4 border-t-amber-500">
+    <div data-mode="benchmark" className="mx-auto max-w-xl px-4 py-6 space-y-6">
       <header className="space-y-1">
-        <h1 className="text-lg font-semibold text-[var(--color-text)]">
+        <h1 className="text-lg font-semibold text-ink">
           {`Fixed 20-minute assessment — ${phaseLabel(slot.phase)} ${slot.label}`}
         </h1>
-        <p className="text-sm text-[var(--color-text)]">{slot.materialRef}</p>
+        <p className="text-sm text-ink">{slot.materialRef}</p>
         {slot.plannedLocalTime !== null ? (
-          <p className="text-sm text-[var(--color-text-muted)]">{`Planned time: ${slot.plannedLocalTime}`}</p>
+          <p className="text-sm text-ink-muted">{`Planned time: ${slot.plannedLocalTime}`}</p>
         ) : null}
       </header>
 
+      <p className="text-4xl text-ink" data-testid="benchmark-fixed-duration">
+        {formatRemaining(FIXED_DURATION_SECONDS)}
+      </p>
+
       <Checklist items={PROTOCOL_CHECKLIST_ITEMS} />
 
-      <p className="text-sm text-[var(--color-text-muted)]">{LEAVING_NOTE}</p>
+      <p className="text-sm text-ink-muted">{LEAVING_NOTE}</p>
 
       {isBeforeDate ? (
         <p>
@@ -349,7 +354,11 @@ export function Ready() {
           >
             Start
           </Button>
-          {startFailed !== null ? <p role="alert">{startFailed}</p> : null}
+          {startFailed !== null ? (
+            <p role="alert" className="text-sm text-attention">
+              {startFailed}
+            </p>
+          ) : null}
         </div>
       )}
     </div>

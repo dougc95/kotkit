@@ -11,7 +11,7 @@ import type { MeResponseValue, SessionResponseValue } from '@attention-lab/share
 import { mockApi, reject, respond } from '../../test/mockClient.js'
 import { AppBootstrap } from '../../app/AppBootstrap.js'
 import { makeSession } from '../../lib/query/testSessionFixture.js'
-import { enqueue } from '../../lib/outbox/store.js'
+import { enqueue, listUnsent } from '../../lib/outbox/store.js'
 import { LiveRegion } from '../../ui/LiveRegion.js'
 import { Running } from './Running.js'
 
@@ -172,6 +172,43 @@ describe('Running', () => {
     await waitFor(() => expect(tallyText('Off-task')).toBe('1'))
   })
 
+  it('a failed Undo of a sent event renders inside an alert, colored for attention (U15a), message unchanged', async () => {
+    mockApi.sessions.postEvents.mockImplementation(
+      async (_id: string, body: { events: Array<{ clientEventId: string }> }) => ({
+        accepted: body.events.map((event) => event.clientEventId),
+        duplicates: [],
+      }),
+    )
+    reject('sessions.void', { status: 500, code: 'server_error' })
+    const session = benchmarkSession({ id: 'session-undo-fail' })
+    await mountReady({ session })
+
+    fireEvent.click(screen.getByText('Record off-task episode'))
+    await waitFor(async () => expect(await listUnsent(session.id)).toHaveLength(0))
+
+    fireEvent.click(screen.getByText('Undo'))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('This entry could not be removed. Try again.')
+    expect(alert).toHaveClass('text-attention')
+  })
+
+  it('a failed end transition renders the attempt-could-not-be-ended notice inside an alert, colored for attention (U15a)', async () => {
+    const session = benchmarkSession({ id: 'session-end-fail', version: 2 })
+    reject('sessions.transition', { status: 500, code: 'server_error' })
+
+    const { router } = await mountReady({ session })
+
+    fireEvent.click(screen.getByText('Stop early'))
+    await screen.findByText('This attempt will be recorded as incomplete.')
+    fireEvent.click(screen.getByText('Stop early'))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The attempt could not be ended. Retry.')
+    expect(alert).toHaveClass('text-attention')
+    expect(router.state.location.pathname).not.toBe(`/benchmark/${session.id}/recall`)
+  })
+
   it('dispatching visibilitychange with hidden=true creates no event and remaining is still derived from server fields', async () => {
     await mountReady({ session: benchmarkSession({ id: 'session-visibility' }) })
     const before = screen.getByTestId('timer-digits').textContent
@@ -309,5 +346,12 @@ describe('Running', () => {
 
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
     await screen.findByText(/Pending|Saved/)
+  })
+
+  it('the live countdown renders its digits in petrol (text-signal)', async () => {
+    await mountReady({ session: benchmarkSession({ id: 'session-petrol' }) })
+
+    const digits = screen.getByTestId('timer-digits')
+    expect(digits.closest('.text-signal')).not.toBeNull()
   })
 })

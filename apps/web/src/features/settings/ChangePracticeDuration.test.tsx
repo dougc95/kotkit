@@ -113,6 +113,13 @@ describe('ChangePracticeDuration', () => {
     expect(screen.getByRole('radio', { name: '5 minutes' })).not.toBeChecked()
   })
 
+  it('the duration options form an ARIA radiogroup labelled by the fieldset legend', async () => {
+    mount(activeProgramResponse())
+
+    await screen.findByRole('radio', { name: '15 minutes' })
+    expect(screen.getByRole('radiogroup', { name: 'New practice duration' })).toBeInTheDocument()
+  })
+
   it('empty reason blocks submit with A reason is required and no request is sent', async () => {
     const { user } = mount(activeProgramResponse())
 
@@ -193,6 +200,24 @@ describe('ChangePracticeDuration', () => {
     ).toBeInTheDocument()
   })
 
+  it('409 program_terminal replaces the panel with This program has ended, left in ink (U15a: a terminal state offers no corrective action)', async () => {
+    reject('programs.createRevision', {
+      status: 409,
+      code: 'program_terminal',
+    })
+    const { user } = mount(activeProgramResponse({ day: 8 }))
+
+    await screen.findByRole('radio', { name: '15 minutes' })
+    await user.click(screen.getByRole('radio', { name: '20 minutes' }))
+    await user.click(screen.getByLabelText('Reason for change'))
+    await user.paste('a typed reason')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('This program has ended.')
+    expect(alert).not.toHaveClass('text-attention')
+  })
+
   it('not rendered when no non-terminal program exists', async () => {
     const { queryClient, container } = mount(NO_PROGRAM)
     await waitFor(() => expect(queryClient.getQueryState(queryKeys.programs.current)?.status).toBe('success'))
@@ -213,5 +238,13 @@ describe('ChangePracticeDuration', () => {
     expect(buttons).toHaveLength(1)
     expect(buttons[0]).toHaveTextContent('Save')
     expect(buttons[0]).toHaveAttribute('data-variant', 'primary')
+  })
+
+  it('renders the demoted Save button when saveVariant is set to secondary', async () => {
+    respond('programs.current', activeProgramResponse())
+    renderWithProviders(<ChangePracticeDuration saveVariant="secondary" />)
+
+    const button = await screen.findByRole('button', { name: 'Save' })
+    expect(button).toHaveAttribute('data-variant', 'secondary')
   })
 })

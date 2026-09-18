@@ -1,9 +1,10 @@
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ReviewResponseValue, SessionResponseValue } from '@attention-lab/shared'
 
 import { renderWithProviders } from '../../test/renderWithProviders.js'
 import { PointRow, Scoring } from './Scoring.js'
+import { POINT_SHELL_CLASSNAME } from './Recall.js'
 
 /**
  * task 8.4.2's verify list: the 10 named Scoring cases. `Scoring` takes
@@ -167,7 +168,8 @@ describe('Scoring', () => {
     }
 
     expect(screen.getByText('Recall score (self-reported, preview): 3/5')).toBeInTheDocument()
-    expect(screen.getAllByText('Scored 0 because blank')).toHaveLength(2)
+    expect(screen.getAllByText('Scored 0')).toHaveLength(2)
+    expect(screen.getAllByText('because blank')).toHaveLength(2)
     expect(screen.getAllByRole('radio')).toHaveLength(6)
   })
 
@@ -238,6 +240,177 @@ describe('Scoring', () => {
       await user.tab()
       expect(document.activeElement).toHaveAttribute('id', `point-${index}-accurate`)
     }
+  })
+
+  it('locked point rows sit inside the same point-shell container as Recall\'s textareas', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: FIVE_POINTS })
+
+    const { container } = renderScoring(session, review)
+
+    const shells = container.querySelectorAll('[data-point-shell="true"]')
+    expect(shells).toHaveLength(5)
+    for (const shell of Array.from(shells)) {
+      expect(shell.className).toBe(POINT_SHELL_CLASSNAME)
+    }
+  })
+
+  it('a blank point splits "Scored 0" (ink) from "because blank" (not-a-value) into two spans', () => {
+    const points: [string, string, string, string, string] = ['p1', 'p2', 'p3', '', '']
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: points })
+
+    const { container } = renderScoring(session, review)
+
+    const shells = Array.from(container.querySelectorAll('[data-point-shell="true"]'))
+    const blankShells = shells.filter((shell) => shell.textContent?.includes('because blank'))
+    expect(blankShells).toHaveLength(2)
+
+    for (const shell of blankShells) {
+      const zero = within(shell as HTMLElement).getByText('Scored 0')
+      const clause = within(shell as HTMLElement).getByText('because blank')
+      expect(zero.tagName).toBe('SPAN')
+      expect(zero.className).toContain('text-ink')
+      expect(zero.className).not.toContain('text-ink-muted')
+      expect(clause.tagName).toBe('SPAN')
+      expect(clause.className).toContain('text-ink-muted')
+    }
+  })
+
+  // e2e/acceptance/baseline-day.spec.ts:242 and
+  // e2e/acceptance/timing-deviation.spec.ts:134 assert
+  // page.getByText('Scored 0 because blank') with an exact element count;
+  // Playwright matches the smallest element whose whitespace-normalised text
+  // contains the string, so the two spans must stay inside exactly one <p>
+  // with exactly one space between them.
+  it('the blank-row sentence is one paragraph of exactly "Scored 0 because blank", drawn by two spans', () => {
+    const points: [string, string, string, string, string] = ['p1', 'p2', 'p3', '', '']
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: points })
+
+    const { container } = renderScoring(session, review)
+
+    const shells = Array.from(container.querySelectorAll('[data-point-shell="true"]'))
+    const blankShells = shells.filter((shell) => shell.textContent?.includes('because blank'))
+    expect(blankShells).toHaveLength(2)
+
+    for (const shell of blankShells) {
+      const paragraphs = shell.querySelectorAll('p')
+      expect(paragraphs).toHaveLength(2)
+      const sentence = paragraphs[1] as HTMLElement
+      expect(sentence.textContent).toBe('Scored 0 because blank')
+      expect(sentence.querySelectorAll('span')).toHaveLength(2)
+    }
+  })
+
+  // e2e/acceptance/baseline-day.spec.ts:241 asserts
+  // page.getByLabel('Point 1') has count 0 on this locked scoring screen.
+  // Playwright's getByLabel is a case-insensitive substring match that also
+  // follows aria-labelledby, so a radiogroup named "Point 1 score" used to
+  // match it; Testing Library's byLabelText follows aria-labelledby the same
+  // way, so this mirrors that contract at the unit level.
+  it('no element on the locked scoring screen is found by label text containing "Point 1"', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: FIVE_POINTS })
+
+    renderScoring(session, review)
+
+    expect(screen.queryAllByLabelText(/Point 1/)).toHaveLength(0)
+  })
+
+  it('each scored point\'s radiogroup carries no accessible name of its own; the fieldset still names the group', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: FIVE_POINTS })
+
+    const { container } = renderScoring(session, review)
+
+    const shells = Array.from(container.querySelectorAll('[data-point-shell="true"]'))
+    expect(shells).toHaveLength(5)
+    shells.forEach((shell, index) => {
+      const radiogroups = within(shell as HTMLElement).getAllByRole('radiogroup')
+      expect(radiogroups).toHaveLength(1)
+      const radiogroup = radiogroups[0] as HTMLElement
+      expect(radiogroup).not.toHaveAttribute('aria-labelledby')
+      expect(radiogroup).not.toHaveAttribute('aria-label')
+      expect(
+        within(shell as HTMLElement).getByRole('group', { name: `Point ${index + 1} score` }),
+      ).toBeInTheDocument()
+    })
+  })
+
+  it('clicking Accurate then Not accurate on the same point calls onChange with exactly those two strings', async () => {
+    const onPointChange = vi.fn()
+    const { user } = renderWithProviders(
+      <PointRow index={0} text={FIVE_POINTS[0]} value={null} onChange={onPointChange} />,
+    )
+
+    await user.click(screen.getByRole('radio', { name: 'Accurate' }))
+    await user.click(screen.getByRole('radio', { name: 'Not accurate' }))
+
+    expect(onPointChange).toHaveBeenNthCalledWith(1, 'accurate')
+    expect(onPointChange).toHaveBeenNthCalledWith(2, 'not_accurate')
+    expect(onPointChange).toHaveBeenCalledTimes(2)
+  })
+
+  // e2e/benchmark-review.spec.ts and e2e/recovery.spec.ts click
+  // #point-0-accurate directly, so the literal id on Point 1's Accurate
+  // radio is an e2e contract, not just internal wiring.
+  it('#point-0-accurate is Point 1\'s Accurate radio', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: FIVE_POINTS })
+
+    renderScoring(session, review)
+
+    const byId = document.getElementById('point-0-accurate')
+    expect(byId).not.toBeNull()
+    expect(byId).toBe(screen.getAllByRole('radio', { name: 'Accurate' })[0])
+  })
+
+  it('the recall-first link uses the signal token, never a bare CSS variable', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: null })
+
+    renderScoring(session, review)
+
+    const link = screen.getByRole('link', { name: /recall/i })
+    expect(link.className).toContain('text-signal')
+    expect(link.className).not.toMatch(/var\(--color-/)
+  })
+
+  it('the preview score line renders in ink, not the muted tier', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: FIVE_POINTS })
+
+    renderScoring(session, review)
+
+    const scoreLine = screen.getByText('Recall score (self-reported, preview): 0/5')
+    expect(scoreLine.className).toContain('text-ink')
+    expect(scoreLine.className).not.toContain('text-ink-muted')
+  })
+
+  it('recall flags are rendered as known facts and never take the attention/amber token', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({
+      recallLockedAt: LOCKED_AT,
+      recallPoints: FIVE_POINTS,
+      recallFlags: ['recall_delayed', 'recall_overrun'],
+    })
+
+    renderScoring(session, review)
+
+    const list = screen.getByText(/Recall started more than 10 minutes/).closest('ul')
+    expect(list).not.toBeNull()
+    expect(list?.className).toContain('text-ink-muted')
+    expect(list?.className).not.toMatch(/text-attention/)
+  })
+
+  it('no leftover --color-* custom property reference remains in the rendered scoring screen', () => {
+    const session = makeSession({ completeInterval: true })
+    const review = makeReview({ recallLockedAt: LOCKED_AT, recallPoints: FIVE_POINTS, recallFlags: ['recall_delayed'] })
+
+    const { container } = renderScoring(session, review)
+
+    expect(container.innerHTML).not.toMatch(/var\(--color-/)
   })
 })
 

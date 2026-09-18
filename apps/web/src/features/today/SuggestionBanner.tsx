@@ -167,18 +167,18 @@ export function SuggestionBanner({ suggestion, day, programId, revision }: Sugge
   return (
     <div
       data-testid="suggestion-banner"
-      className="flex flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col gap-3 border-b border-rule py-4 sm:flex-row sm:items-center sm:justify-between"
     >
-      <p className="text-sm text-[var(--color-text)]">{`Ready for +5 minutes? (to ${suggestedMinutes} min)`}</p>
+      <p className="text-sm text-ink">{`Ready for +5 minutes? (to ${suggestedMinutes} min)`}</p>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         {error !== null ? (
-          <p role="alert" className="text-sm">
+          <p role="alert" className="text-sm text-attention">
             {error}
           </p>
         ) : null}
         <div className="flex gap-3">
           <Button
-            variant="primary"
+            variant="secondary"
             disabled={createRevision.isPending}
             onClick={() => {
               void handleAccept()

@@ -36,6 +36,11 @@ import type {
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { useField } from '../../ui/field.js'
+import { LoadingState } from '../../ui/LoadingState.js'
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
 
 // ---------------------------------------------------------------------------
 // The four required (phase, label) rows this screen edits. The optional
@@ -238,74 +243,87 @@ export interface SlotRowProps {
   readonly onChange: (field: keyof RowFields, value: string) => void
 }
 
+/**
+ * `disabled:opacity-100` on every field below overrides the generated `Input`'s own
+ * `disabled:opacity-50`: a frozen row's material reference and planned time are values the user
+ * RECORDED, not inapplicable ones, so they may not fade just because the row is disabled (same
+ * ruling as `features/checkin/DeviceMinutesField.tsx`).
+ */
 export function SlotRow({ slot, frozen, value, onChange }: SlotRowProps) {
   const idBase = `readiness-${slot.key.replace(':', '-')}`
+  const materialRefField = useField({
+    name: `${idBase}-materialRef`,
+    description: frozen ? FROZEN_EXPLANATION : undefined,
+  })
+  const languageField = useField({ name: `${idBase}-language` })
+  const deviceFormatField = useField({ name: `${idBase}-deviceFormat` })
+  const materialLevelField = useField({ name: `${idBase}-materialLevel` })
+  const plannedLocalTimeField = useField({ name: `${idBase}-plannedLocalTime` })
 
   return (
-    <fieldset
-      disabled={frozen}
-      data-slot-key={slot.key}
-      className="mb-6 rounded-md border border-[var(--color-border)] p-4"
-    >
-      <legend className="px-1 text-base font-semibold">{slot.title}</legend>
-
-      {frozen ? <p className="mb-2 text-sm text-[var(--color-text-muted)]">{FROZEN_EXPLANATION}</p> : null}
+    <fieldset disabled={frozen} data-slot-key={slot.key} className="group/slot pb-6">
+      <legend className="pt-6 pb-3 group-first/slot:pt-0 text-base font-semibold">{slot.title}</legend>
 
       <div className="grid gap-3">
-        <div>
-          <label htmlFor={`${idBase}-materialRef`}>Material reference</label>
-          <input
-            id={`${idBase}-materialRef`}
+        <div className="flex flex-col gap-1">
+          <Label {...materialRefField.labelProps}>Material reference</Label>
+          <Input
             type="text"
             value={value.materialRef}
             onChange={(event) => onChange('materialRef', event.target.value)}
-            className="mt-1 w-full rounded-md border border-[var(--color-border)] px-3 py-2"
+            className="disabled:opacity-100"
+            {...materialRefField.controlProps}
           />
+          {materialRefField.descriptionProps !== undefined ? (
+            <p {...materialRefField.descriptionProps} className="text-sm text-ink-muted">
+              {FROZEN_EXPLANATION}
+            </p>
+          ) : null}
         </div>
 
-        <div>
-          <label htmlFor={`${idBase}-language`}>Language (optional)</label>
-          <input
-            id={`${idBase}-language`}
+        <div className="flex flex-col gap-1">
+          <Label {...languageField.labelProps}>Language (optional)</Label>
+          <Input
             type="text"
             value={value.language}
             onChange={(event) => onChange('language', event.target.value)}
-            className="mt-1 w-full rounded-md border border-[var(--color-border)] px-3 py-2"
+            className="disabled:opacity-100"
+            {...languageField.controlProps}
           />
         </div>
 
-        <div>
-          <label htmlFor={`${idBase}-deviceFormat`}>Device format (optional)</label>
-          <input
-            id={`${idBase}-deviceFormat`}
+        <div className="flex flex-col gap-1">
+          <Label {...deviceFormatField.labelProps}>Device format (optional)</Label>
+          <Input
             type="text"
             value={value.deviceFormat}
             onChange={(event) => onChange('deviceFormat', event.target.value)}
-            className="mt-1 w-full rounded-md border border-[var(--color-border)] px-3 py-2"
+            className="disabled:opacity-100"
+            {...deviceFormatField.controlProps}
           />
         </div>
 
-        <div>
-          <label htmlFor={`${idBase}-materialLevel`}>Material level (optional)</label>
-          <input
-            id={`${idBase}-materialLevel`}
+        <div className="flex flex-col gap-1">
+          <Label {...materialLevelField.labelProps}>Material level (optional)</Label>
+          <Input
             type="text"
             value={value.materialLevel}
             onChange={(event) => onChange('materialLevel', event.target.value)}
-            className="mt-1 w-full rounded-md border border-[var(--color-border)] px-3 py-2"
+            className="disabled:opacity-100"
+            {...materialLevelField.controlProps}
           />
         </div>
 
-        <div>
-          <label htmlFor={`${idBase}-plannedLocalTime`}>{slot.title} planned time</label>
-          <input
-            id={`${idBase}-plannedLocalTime`}
+        <div className="flex flex-col gap-1">
+          <Label {...plannedLocalTimeField.labelProps}>{slot.title} planned time</Label>
+          <Input
             type="text"
             inputMode="numeric"
             placeholder="HH:MM"
             value={value.plannedLocalTime}
             onChange={(event) => onChange('plannedLocalTime', event.target.value)}
-            className="mt-1 w-32 rounded-md border border-[var(--color-border)] px-3 py-2"
+            className="w-32 disabled:opacity-100"
+            {...plannedLocalTimeField.controlProps}
           />
         </div>
       </div>
@@ -327,9 +345,9 @@ export function MissingSlots({ missing }: MissingSlotsProps) {
   }
 
   return (
-    <div className="mb-6 rounded-md border border-[var(--color-border)] p-4">
-      <p>Still needed before this program is ready:</p>
-      <ul aria-label="Missing slots">
+    <div className="mb-6 border-l-2 border-attention py-1 pl-4">
+      <p className="text-sm text-attention">Still needed before this program is ready:</p>
+      <ul aria-label="Missing slots" className="text-sm text-ink">
         {missing.map((key) => (
           <li key={key}>{SLOT_TITLES[key]}</li>
         ))}
@@ -412,21 +430,18 @@ export function ReadinessForm() {
   })
 
   if (query.isPending) {
-    return <div aria-busy="true">Loading</div>
+    return <LoadingState>Loading</LoadingState>
   }
 
   if (query.isError || query.data === undefined) {
     return (
-      <div>
-        <p>Could not reach the server</p>
-        <Button
-          onClick={() => {
-            void query.refetch()
-          }}
-        >
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        onRetry={() => {
+          void query.refetch()
+        }}
+      >
+        Could not reach the server
+      </ErrorState>
     )
   }
 
@@ -442,7 +457,7 @@ export function ReadinessForm() {
     // only once a fetch is not in flight — a genuinely absent program stays
     // absent once settled, but a mid-refetch `null` gets one more chance.
     if (query.isFetching) {
-      return <div aria-busy="true">Loading</div>
+      return <LoadingState>Loading</LoadingState>
     }
     return <Navigate to="/setup" replace />
   }
@@ -506,14 +521,24 @@ export function ReadinessForm() {
   }
 
   return (
-    <div>
-      <h1>Readiness</h1>
-      <p>Reading elsewhere is allowed; tallying on paper is fine.</p>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-lg font-semibold text-ink">Readiness</h1>
+        <p className="text-sm text-ink-muted">Reading elsewhere is allowed; tallying on paper is fine.</p>
+      </div>
 
-      {notice !== null ? <p role="status">{notice}</p> : null}
-      {oneHourMessage !== null ? <p role="alert">{oneHourMessage}</p> : null}
+      {notice !== null ? (
+        <p role="status" className="text-sm text-attention">
+          {notice}
+        </p>
+      ) : null}
+      {oneHourMessage !== null ? (
+        <p role="alert" className="text-sm text-attention">
+          {oneHourMessage}
+        </p>
+      ) : null}
       {fieldErrors !== null ? (
-        <ul role="alert">
+        <ul role="alert" className="text-sm text-attention">
           {Object.entries(fieldErrors).map(([field, value]) => (
             <li key={field}>{formatFieldError(value)}</li>
           ))}
@@ -521,15 +546,17 @@ export function ReadinessForm() {
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        {SLOT_DEFS.map((def) => (
-          <SlotRow
-            key={def.key}
-            slot={def}
-            frozen={frozenKeys.has(def.key)}
-            value={rows[def.key]}
-            onChange={(field, value) => handleFieldChange(def, field, value)}
-          />
-        ))}
+        <div className="divide-y divide-rule">
+          {SLOT_DEFS.map((def) => (
+            <SlotRow
+              key={def.key}
+              slot={def}
+              frozen={frozenKeys.has(def.key)}
+              value={rows[def.key]}
+              onChange={(field, value) => handleFieldChange(def, field, value)}
+            />
+          ))}
+        </div>
 
         <MissingSlots missing={missing} />
 

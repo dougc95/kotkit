@@ -171,6 +171,23 @@ describe('FeedRows', () => {
     expect(mockApi.days.put).not.toHaveBeenCalled()
   })
 
+  it('Add row does not stretch across the column: self-start keeps it a small utility action (task V5)', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    expect(screen.getByRole('button', { name: 'Add row' })).toHaveClass('self-start')
+  })
+
+  it('Remove row does not stretch across the column: self-start keeps it a small utility action (task V5)', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    const group = await addRow(user, 1)
+    expect(within(group).getByRole('button', { name: 'Remove row' })).toHaveClass('self-start')
+  })
+
   it('adding a phone detail row disables the phone headline input; removing it re-enables the field', async () => {
     const { user } = mount(EMPTY_DAY)
     await screen.findByLabelText('Sleep minutes')
@@ -290,6 +307,7 @@ describe('FeedRows', () => {
 
     await user.type(screen.getByLabelText('Stress (0-10)'), '11')
     expect(screen.getByText(STRESS_RANGE_MESSAGE)).toBeInTheDocument()
+    expect(screen.getByLabelText('Stress (0-10)')).toHaveAccessibleDescription(STRESS_RANGE_MESSAGE)
 
     await user.type(screen.getByLabelText('Sleep minutes'), '420')
     await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -306,5 +324,60 @@ describe('FeedRows', () => {
     expect('stress' in body).toBe(false)
     expect('mindfulnessMinutes' in body).toBe(false)
     expect('note' in body).toBe(false)
+  })
+
+  it('the partial notice reads as a plain clause, not a middle-dot fragment', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    const group = await addRow(user, 1)
+    await user.type(within(group).getByLabelText('Platform'), 'Instagram')
+    await user.type(within(group).getByLabelText('Minutes'), '25')
+
+    expect(screen.getByText(/partial/i)).toBeInTheDocument()
+    expect(document.body.textContent ?? '').not.toContain('·')
+  })
+
+  // Pins the contract fix round 1 restored: e2e/checkin.spec.ts drives this
+  // control with Playwright's `selectOption`, which only works on a native
+  // `<select>` — never convert this back to a Radix Select.
+  it('the Device control stays a native select for e2e/checkin.spec.ts to drive with selectOption', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    const group = await addRow(user, 1)
+    const deviceControl = within(group).getByLabelText('Device')
+    expect(deviceControl.tagName).toBe('SELECT')
+  })
+
+  it('the Device select sits on the page ground like every other field, not raised card white (task V5)', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    const group = await addRow(user, 1)
+    const deviceControl = within(group).getByLabelText('Device')
+    expect(deviceControl.className).toContain('bg-transparent')
+    expect(deviceControl.className).not.toContain('bg-card')
+    expect(deviceControl.className).toContain('text-base')
+    expect(deviceControl.className).toContain('md:text-sm')
+  })
+
+  it('each row renders its own named Measurement scope radiogroup', async () => {
+    const { user } = mount(EMPTY_DAY)
+    await screen.findByLabelText('Sleep minutes')
+    await openMoreDetail(user)
+
+    const group1 = await addRow(user, 1)
+    const group2 = await addRow(user, 2)
+
+    const radiogroup1 = within(group1).getByRole('radiogroup', { name: 'Measurement scope' })
+    const radiogroup2 = within(group2).getByRole('radiogroup', { name: 'Measurement scope' })
+
+    expect(radiogroup1).toBeInTheDocument()
+    expect(radiogroup2).toBeInTheDocument()
+    expect(radiogroup1).not.toBe(radiogroup2)
   })
 })

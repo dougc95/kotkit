@@ -82,6 +82,46 @@ describe('CheckinCard', () => {
     expect(screen.getByText('Desktop feed').nextElementSibling).toHaveTextContent('not yet reported')
   })
 
+  it('still needed row is a needs-you message: text-attention, not text-ink-muted', () => {
+    mountCard(
+      checkinFixture({
+        status: 'incomplete',
+        missing: ['sleep'],
+        values: { sleepMinutes: null, phoneFeedMinutes: 10, desktopFeedMinutes: 20 },
+      }),
+    )
+
+    const stillNeeded = screen.getByText(/Still needed/)
+    expect(stillNeeded).toHaveClass('text-attention')
+    expect(stillNeeded).not.toHaveClass('text-ink-muted')
+    expect(stillNeeded).toHaveTextContent('Still needed: sleep')
+  })
+
+  it('sleep and feed values are wrapped in Reported with the correct data-tier', () => {
+    mountCard(
+      checkinFixture({
+        status: 'incomplete',
+        missing: ['sleep'],
+        values: { sleepMinutes: null, phoneFeedMinutes: 0, desktopFeedMinutes: 25 },
+      }),
+    )
+
+    const sleepValue = screen.getByText('Sleep').nextElementSibling
+    expect(sleepValue?.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'absent')
+
+    const phoneValue = screen.getByText('Phone feed').nextElementSibling
+    expect(phoneValue?.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'recorded')
+
+    const desktopValue = screen.getByText('Desktop feed').nextElementSibling
+    expect(desktopValue?.querySelector('[data-tier]')).toHaveAttribute('data-tier', 'recorded')
+  })
+
+  it('Open check-in link carries data-variant secondary via Button asChild', () => {
+    mountCard(checkinFixture())
+
+    expect(screen.getByRole('link', { name: 'Open check-in' })).toHaveAttribute('data-variant', 'secondary')
+  })
+
   it('card issues no request to GET /programs/{id}/days/{date}', () => {
     mountCard(checkinFixture())
 
@@ -93,5 +133,14 @@ describe('CheckinCard', () => {
 
     const link = screen.getByRole('link', { name: 'Open check-in' })
     expect(link).toHaveAttribute('href', '/checkin/2026-09-09')
+  })
+
+  it('root draws a top rule, not a bottom one: the column should not end on a hairline under nothing (task V4b)', () => {
+    mountCard(checkinFixture())
+
+    const heading = screen.getByRole('heading', { name: 'Check-in' })
+    const root = heading.parentElement
+    expect(root).toHaveClass('border-t')
+    expect(root).not.toHaveClass('border-b')
   })
 })

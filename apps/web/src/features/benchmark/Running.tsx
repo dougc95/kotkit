@@ -167,13 +167,13 @@ export function Running({ session }: RunningProps) {
   const endPending = endMutation.isPending
 
   return (
-    <div data-mode="benchmark" className="mx-auto max-w-xl px-4 py-6 space-y-6 border-t-4 border-t-amber-500">
+    <div data-mode="benchmark" className="mx-auto max-w-xl px-4 py-6 space-y-6">
       <header className="space-y-1">
-        <h1 className="text-lg font-semibold text-[var(--color-text)]">Fixed 20-minute assessment</h1>
-        <p className="text-sm text-[var(--color-text-muted)]">{LEAVING_NOTE}</p>
+        <h1 className="text-lg font-semibold text-ink">Fixed 20-minute assessment</h1>
+        <p className="text-sm text-ink-muted">{LEAVING_NOTE}</p>
       </header>
 
-      <TimerDisplay remainingSeconds={remainingSeconds} />
+      <TimerDisplay remainingSeconds={remainingSeconds} tone="signal" />
 
       {deadlineReached ? (
         <div className="space-y-3">
@@ -196,11 +196,15 @@ export function Running({ session }: RunningProps) {
             }}
             canUndo={canUndo}
           />
-          {undoNotice !== null ? <p role="alert">{undoNotice}</p> : null}
+          {undoNotice !== null ? (
+            <p role="alert" className="text-sm text-attention">
+              {undoNotice}
+            </p>
+          ) : null}
 
           {confirmStopEarly ? (
-            <div role="group" aria-label="Confirm stop early" className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-3">
-              <p className="text-sm text-[var(--color-text)]">This attempt will be recorded as incomplete.</p>
+            <div role="group" aria-label="Confirm stop early" className="flex flex-col gap-2 rounded-md border border-rule p-3">
+              <p className="text-sm text-ink">This attempt will be recorded as incomplete.</p>
               <div className="flex gap-2">
                 <Button
                   variant="secondary"
@@ -225,7 +229,11 @@ export function Running({ session }: RunningProps) {
         </div>
       )}
 
-      {endFailed ? <p role="alert">{END_FAILED_NOTICE}</p> : null}
+      {endFailed ? (
+        <p role="alert" className="text-sm text-attention">
+          {END_FAILED_NOTICE}
+        </p>
+      ) : null}
 
       <SyncStatus sessionId={session.id} />
     </div>

@@ -10,3 +10,7 @@ playwright-report/
 
 # Pitch demo recordings (Playwright video output) — never committed.
 demo-output/
+
+# Subagent-driven-development scratch (ledger, briefs, review packages)
+.superpowers/
+.claude/settings.local.json

@@ -2,7 +2,8 @@ import { createContext, useContext, type ReactNode } from 'react'
 import type { MeResponseValue } from '@attention-lab/shared'
 
 import { useMe } from '../lib/query/hooks.js'
-import { Button } from '../ui/Button.js'
+import { LoadingState } from '../ui/LoadingState.js'
+import { ErrorState } from '../ui/ErrorState.js'
 
 /**
  * The acting principal's identity, realm, timezone and preferences (task
@@ -49,22 +50,19 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
   const { data, isPending, isError, refetch, isRefetching } = useMe()
 
   if (isPending) {
-    return <div aria-busy="true">Loading</div>
+    return <LoadingState>Loading</LoadingState>
   }
 
   if (isError || data === undefined) {
     return (
-      <div>
-        <p>Could not reach the server</p>
-        <Button
-          onClick={() => {
-            void refetch()
-          }}
-          disabled={isRefetching}
-        >
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        onRetry={() => {
+          void refetch()
+        }}
+        retryDisabled={isRefetching}
+      >
+        Could not reach the server
+      </ErrorState>
     )
   }
 

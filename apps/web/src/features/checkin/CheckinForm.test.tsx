@@ -153,7 +153,7 @@ describe('CheckinForm', () => {
     const { user } = mount(OPEN_PROGRAM, EMPTY_DAY)
     await screen.findByLabelText('Sleep minutes')
 
-    expect(screen.getByText('Phone: Not reported')).toBeInTheDocument()
+    expect(screen.getByTestId('phone-feed-summary')).toHaveTextContent('Phone: Not reported')
 
     await user.type(screen.getByLabelText('Sleep minutes'), '420')
     respond('days.put', dayFixture({ sleepMinutes: 420, status: 'incomplete', missing: ['feed'], version: 1 }))
@@ -169,8 +169,8 @@ describe('CheckinForm', () => {
     await screen.findByLabelText('Sleep minutes')
 
     await user.type(screen.getByLabelText('Phone feed minutes'), '0')
-    expect(screen.getByText('Phone: 0 min')).toBeInTheDocument()
-    expect(screen.queryByText('Phone: Not reported')).not.toBeInTheDocument()
+    expect(screen.getByTestId('phone-feed-summary')).toHaveTextContent('Phone: 0 min')
+    expect(screen.getByTestId('phone-feed-summary')).not.toHaveTextContent('Not reported')
 
     respond('days.put', dayFixture({ feed: [{ device: 'phone', platform: 'all', minutes: 0, measurementScope: 'feed', source: 'estimate' }], version: 1 }))
     await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -226,7 +226,31 @@ describe('CheckinForm', () => {
     mount(OPEN_PROGRAM, dayFixture({ sleepMinutes: 420, status: 'incomplete', missing: ['feed'], version: 1 }))
 
     await screen.findByLabelText('Sleep minutes')
-    expect(screen.getByRole('status')).toHaveTextContent('Incomplete — missing: feed')
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Incomplete — missing: feed')
+    // Task V5 ruling: an incomplete check-in is a needs-you message, so it is
+    // text-attention (not neutral ink), matching Today's own CheckinCard.
+    expect(status.className).toContain('text-attention')
+    expect(status.className).not.toContain('text-ink')
+  })
+
+  it('a complete check-in renders its status in ink, never attention (task V5)', async () => {
+    mount(
+      OPEN_PROGRAM,
+      dayFixture({
+        sleepMinutes: 420,
+        feed: [{ device: 'phone', platform: 'all', minutes: 30, measurementScope: 'feed', source: 'estimate' }],
+        status: 'complete',
+        missing: [],
+        version: 1,
+      }),
+    )
+
+    await screen.findByLabelText('Sleep minutes')
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Complete')
+    expect(status.className).toContain('text-ink')
+    expect(status.className).not.toContain('text-attention')
   })
 
   it('adding a desktop detail row disables the desktop headline input and shows the summed total', async () => {
@@ -245,7 +269,10 @@ describe('CheckinForm', () => {
     const desktopInput = screen.getByLabelText('Desktop feed minutes')
     expect(desktopInput).toBeDisabled()
     expect(desktopInput).toHaveValue(20)
-    expect(screen.getByText('Desktop: 20 min')).toBeInTheDocument()
+    expect(screen.getByTestId('desktop-feed-summary')).toHaveTextContent('Desktop: 20 min')
+    expect(desktopInput).toHaveClass('border-b-signal')
+    expect(desktopInput).toHaveClass('disabled:opacity-100')
+    expect(desktopInput).not.toHaveClass('disabled:opacity-50')
   })
 
   it('422 feed_platform_conflict renders on the phone headline field and blocks Save', async () => {
@@ -261,6 +288,9 @@ describe('CheckinForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await screen.findByText('Clear this total or remove the detail rows below')
+    expect(screen.getByLabelText('Phone feed minutes')).toHaveAccessibleDescription(
+      'Clear this total or remove the detail rows below',
+    )
     expect(router.state.location.pathname).toBe(`/checkin/${DATE}`)
   })
 
@@ -275,6 +305,12 @@ describe('CheckinForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await screen.findByText('This check-in was updated elsewhere; showing the current values')
+    expect(screen.getByRole('alert')).toHaveTextContent('This check-in was updated elsewhere; showing the current values')
+    // B-I2: the 409 conflict notice takes `attention`, not the AlertDescription
+    // default `text-muted-foreground` (spec §3/U15a; matches Progress.tsx:86).
+    expect(
+      screen.getByText('This check-in was updated elsewhere; showing the current values'),
+    ).toHaveClass('text-attention')
     expect(screen.getByLabelText('Sleep minutes')).toHaveValue(300)
 
     await user.click(screen.getByRole('button', { name: 'Re-apply my values' }))
@@ -358,5 +394,60 @@ describe('CheckinForm', () => {
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Sleep minutes')).not.toBeInTheDocument()
     expect(mockApi.days.get).not.toHaveBeenCalled()
+  })
+
+  it('a failed programs.current fetch renders through the shared ErrorState: role alert, attention, exactly one Retry that refetches (B-I1)', async () => {
+    reject('programs.current', { status: 500, code: 'server_error' })
+
+    const { user } = renderWithProviders(<></>, { route: `/checkin/${DATE}`, routes: ROUTES })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Could not load your program. Retry.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+    expect(mockApi.programs.current).toHaveBeenCalledTimes(1)
+
+    respond('programs.current', OPEN_PROGRAM)
+    respond('days.get', EMPTY_DAY)
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    await screen.findByLabelText('Sleep minutes')
+    expect(mockApi.programs.current).toHaveBeenCalledTimes(2)
+  })
+
+  it('a failed days.get fetch renders through the shared ErrorState: role alert, attention, exactly one Retry that refetches (B-I1)', async () => {
+    respond('programs.current', OPEN_PROGRAM)
+    reject('days.get', { status: 500, code: 'server_error' })
+
+    const { user } = renderWithProviders(<></>, { route: `/checkin/${DATE}`, routes: ROUTES })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Could not load check-in. Retry.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+    expect(mockApi.days.get).toHaveBeenCalledTimes(1)
+
+    respond('days.get', EMPTY_DAY)
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+
+    await screen.findByLabelText('Sleep minutes')
+    expect(mockApi.days.get).toHaveBeenCalledTimes(2)
+  })
+
+  it('while programs.current is pending, an aria-busy region shows the visible label Loading (guard: bare placeholder already carried both)', () => {
+    mockApi.programs.current.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<></>, { route: `/checkin/${DATE}`, routes: ROUTES })
+
+    const region = screen.getByText('Loading').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+  })
+
+  it('while days.get is pending, an aria-busy region shows the visible label Loading (guard: bare placeholder already carried both)', async () => {
+    respond('programs.current', OPEN_PROGRAM)
+    mockApi.days.get.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<></>, { route: `/checkin/${DATE}`, routes: ROUTES })
+
+    const label = await screen.findByText('Loading')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
   })
 })

@@ -164,6 +164,17 @@ describe('SessionLeaveGuard', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
+  it('dialog markup uses the new design tokens, not the retired --color- custom properties', async () => {
+    const running = makeSession({ id: 's1', lifecycle: 'running' })
+    const { user } = renderTree(running)
+
+    await screen.findByText('Focus screen')
+    await user.click(screen.getByRole('button', { name: 'Go to progress' }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog.innerHTML).not.toMatch(/--color-/)
+  })
+
   it('Tab reaches both dialog buttons and Escape returns to the session', async () => {
     const running = makeSession({ id: 's1', lifecycle: 'running' })
     const { user, router } = renderTree(running)

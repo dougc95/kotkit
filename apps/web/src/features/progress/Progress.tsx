@@ -24,7 +24,9 @@ import type { ReportResponseValue } from '@attention-lab/shared'
 import { api } from '../../lib/api/client.js'
 import { NotFoundError, ValidationError } from '../../lib/api/errors.js'
 import { queryKeys } from '../../lib/query/keys.js'
-import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
+import { Alert, AlertDescription } from '../../ui/shadcn/alert.js'
 import { AttemptTable, type AttemptTableRow } from './AttemptTable.js'
 import { ComparabilityWarnings } from './ComparabilityWarnings.js'
 import { ComparisonFigures } from './ComparisonFigures.js'
@@ -66,30 +68,33 @@ function ReportSections({ programId }: ReportSectionsProps) {
   })
 
   if (reportQuery.isPending) {
-    return <div aria-busy="true">Loading report</div>
+    return <LoadingState rows={2}>Loading report</LoadingState>
   }
 
   if (reportQuery.isError || reportQuery.data === undefined) {
-    // 422 realm mixing: the fixed server message, no partial table (identity-realm:
-    // "Realms are never mixed in a result" — a mixed report is never rendered half-built).
+    // 422 realm mixing: the fixed server message, no partial table
+    // (identity-realm: "Realms are never mixed in a result" — a mixed
+    // report is never rendered half-built). Neutral surface, never
+    // `variant="destructive"`: the rework spec §3 scopes the destructive token
+    // strictly to destructive ACTIONS. The message itself takes
+    // `text-attention` (U15a: an error message is never plain neutral ink,
+    // never red), the same default-variant `Alert` the shared `ErrorState`
+    // (the retry banner just below) itself renders through.
     if (reportQuery.error instanceof ValidationError) {
       return (
-        <div role="alert">
-          <p>{reportQuery.error.message}</p>
-        </div>
+        <Alert role="alert">
+          <AlertDescription className="text-attention">{reportQuery.error.message}</AlertDescription>
+        </Alert>
       )
     }
     return (
-      <div>
-        <p>Report unavailable. Retry.</p>
-        <Button
-          onClick={() => {
-            void reportQuery.refetch()
-          }}
-        >
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        onRetry={() => {
+          void reportQuery.refetch()
+        }}
+      >
+        Report unavailable. Retry.
+      </ErrorState>
     )
   }
 
@@ -97,7 +102,7 @@ function ReportSections({ programId }: ReportSectionsProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-sm text-[var(--color-text-muted)]">{formatRealm(report.realm)}</p>
+      <p className="text-sm text-ink-muted">{formatRealm(report.realm)}</p>
 
       <SamplesLine samples={report.samples} />
 
@@ -122,7 +127,7 @@ export function Progress() {
   })
 
   if (currentQuery.isPending) {
-    return <div aria-busy="true">Loading</div>
+    return <LoadingState>Loading</LoadingState>
   }
 
   if (currentQuery.isError || currentQuery.data === undefined) {
@@ -130,16 +135,13 @@ export function Progress() {
       return <ProgressEmptyState />
     }
     return (
-      <div>
-        <p>Report unavailable. Retry.</p>
-        <Button
-          onClick={() => {
-            void currentQuery.refetch()
-          }}
-        >
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        onRetry={() => {
+          void currentQuery.refetch()
+        }}
+      >
+        Report unavailable. Retry.
+      </ErrorState>
     )
   }
 

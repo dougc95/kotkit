@@ -20,6 +20,8 @@ import { localDateAt } from '@attention-lab/shared'
 
 import { api } from '../../lib/api/client.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
 import { FormatToggle } from './FormatToggle.js'
 import type { ExportFormat } from './FormatToggle.js'
 
@@ -71,24 +73,21 @@ export function ExportPreview({ programId }: ExportPreviewProps) {
 
       <FormatToggle value={format} onChange={setFormat} />
 
-      <p className="text-sm text-[var(--color-text-muted)]">Not-reported values are exported as empty cells.</p>
+      <p className="text-sm text-ink-muted">Not-reported values are exported as empty cells.</p>
 
       {exportQuery.isPending ? (
-        <div aria-busy="true">Loading export preview</div>
+        <LoadingState rows={2}>Loading export preview</LoadingState>
       ) : exportQuery.isError || text === undefined ? (
-        <div>
-          <p>Export unavailable. Retry.</p>
-          <Button
-            onClick={() => {
-              void exportQuery.refetch()
-            }}
-          >
-            Retry
-          </Button>
-        </div>
+        <ErrorState
+          onRetry={() => {
+            void exportQuery.refetch()
+          }}
+        >
+          Export unavailable. Retry.
+        </ErrorState>
       ) : (
         <>
-          <p data-testid="export-label-line" className="text-sm font-medium text-[var(--color-text)]">
+          <p data-testid="export-label-line" className="text-sm font-medium text-ink">
             {firstLine}
           </p>
           {/* See ExactValuesTable.tsx's identical comment: `tabIndex={0}` for
@@ -97,15 +96,21 @@ export function ExportPreview({ programId }: ExportPreviewProps) {
               already this section's own `aria-labelledby` name, and could
               collide the same way the table wrappers' did in practice). */}
           <div
-            className="overflow-x-auto rounded border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
+            className="overflow-x-auto rounded border border-rule bg-card p-3"
             tabIndex={0}
           >
+            {/* Deliberately NOT font-mono: mono is restricted to timer
+                digits, exact-values tables and comparison figures
+                (the rework spec §4, "and no others") — a raw CSV/Markdown text
+                dump is none of those three, however monospace-friendly it
+                looks. */}
             <pre data-testid="export-preview-text" className="whitespace-pre text-xs">
               {text}
             </pre>
           </div>
           <Button
             variant="secondary"
+            className="self-start"
             onClick={() => {
               downloadText(text, format)
             }}

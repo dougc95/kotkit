@@ -32,6 +32,9 @@
 import { Link } from 'react-router'
 import type { SessionResponseValue } from '@attention-lab/shared'
 
+import { Button } from '../../ui/Button.js'
+import { Card } from '../../ui/shadcn/card.js'
+
 export interface ActiveSessionCardProps {
   readonly session: SessionResponseValue
   /**
@@ -109,25 +112,20 @@ function destinationFor(session: SessionResponseValue): Destination {
   }
 }
 
-const CONTAINER_CLASSES =
-  'flex flex-col gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4'
-const LINK_CLASSES =
-  'inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-primary-text)] hover:brightness-95 self-start'
-
 export function ActiveSessionCard({ session, staleNotice = false }: ActiveSessionCardProps) {
   const destination = destinationFor(session)
 
   return (
-    <div className={CONTAINER_CLASSES} data-testid="active-session-card">
+    <Card data-testid="active-session-card" className="flex flex-col gap-2 rounded-lg p-4">
       {staleNotice ? (
-        <p role="status" className="text-sm text-[var(--color-text-muted)]">
+        <p role="status" className="text-sm text-ink-muted">
           This session was updated in another tab
         </p>
       ) : null}
-      <p className="text-sm text-[var(--color-text)]">{destination.description}</p>
-      <Link className={LINK_CLASSES} to={destination.to}>
-        {destination.label}
-      </Link>
-    </div>
+      <p className="text-sm text-ink">{destination.description}</p>
+      <Button asChild className="self-start">
+        <Link to={destination.to}>{destination.label}</Link>
+      </Button>
+    </Card>
   )
 }

@@ -17,7 +17,7 @@ export function SamplesLine({ samples }: SamplesLineProps) {
         {samples.baselineEligible} of 2 baseline samples eligible · {samples.finalEligible} of 2 final
         samples eligible
       </p>
-      <p className="text-sm text-[var(--color-text-muted)]">All counts are self-reported</p>
+      <p className="text-sm text-ink-muted">All counts are self-reported</p>
     </div>
   )
 }

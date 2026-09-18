@@ -86,8 +86,15 @@ async function fillMaterialRef(
 ): Promise<void> {
   const group = screen.getByRole('group', { name: title })
   const input = within(group).getByLabelText('Material reference')
+  // `clear()` focuses `input` as part of selecting-all-and-deleting (user-event's
+  // own clear.js), so `paste` (which targets `document.activeElement`) lands on
+  // the same field. A single paste avoids dispatching one real per-character
+  // timer-scheduled keystroke per letter of a ~20-character reference under
+  // `user.type` — under load that timer-driven sequence, repeated across every
+  // row, is what pushed this file's tests past their 5000 ms bound (see this
+  // file's git history for the reproduction).
   await user.clear(input)
-  await user.type(input, value)
+  await user.paste(value)
 }
 
 async function fillTime(
@@ -96,8 +103,11 @@ async function fillTime(
   value: string,
 ): Promise<void> {
   const input = screen.getByLabelText(`${title} planned time`)
+  // Same reasoning as `fillMaterialRef`: `clear()` leaves focus on `input`, so
+  // `paste` lands there without a separate click, and avoids per-character
+  // real-timer typing for a value nobody asserts on keystroke-by-keystroke.
   await user.clear(input)
-  await user.type(input, value)
+  await user.paste(value)
 }
 
 /** Fills every one of the four rows with valid, mutually-consistent data (baseline A/B two hours apart). */
@@ -117,6 +127,32 @@ afterEach(() => {
 })
 
 describe('ReadinessForm', () => {
+  it('heading and intro match the app rhythm: text-lg font-semibold text-ink and text-sm text-ink-muted (task V5)', async () => {
+    const current = makeCurrent(makeProgram(), fourBlankSlots())
+    mount(current)
+    await screen.findByRole('group', { name: 'Baseline A' })
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Readiness' })
+    expect(heading.className).toContain('text-lg')
+    expect(heading.className).toContain('font-semibold')
+    expect(heading.className).toContain('text-ink')
+
+    const intro = screen.getByText('Reading elsewhere is allowed; tallying on paper is fine.')
+    expect(intro.className).toContain('text-sm')
+    expect(intro.className).toContain('text-ink-muted')
+  })
+
+  it('a failed programs.current load renders the shared ErrorState, colored for attention, with Retry (task V5)', async () => {
+    reject('programs.current', { status: 500, code: 'server_error' })
+
+    renderWithProviders(<></>, { route: '/setup/readiness', routes: buildRoutes() })
+
+    const alert = await screen.findByRole('alert')
+    const message = within(alert).getByText('Could not reach the server')
+    expect(message.className).toContain('text-attention')
+    expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+  })
+
   it('two blank references -> stays on page and lists exactly baseline B and final B as missing', async () => {
     const current = makeCurrent(makeProgram(), fourBlankSlots())
     const { user, router } = mount(current)
@@ -176,19 +212,25 @@ describe('ReadinessForm', () => {
     const baselineATime = screen.getByLabelText('Baseline A planned time')
     const finalATime = screen.getByLabelText('Final A planned time')
 
-    await user.type(baselineATime, '09:00')
+    // This test is about the mirror-until-touched behaviour driven by each
+    // field's final committed value, not about individual keystrokes, so a
+    // single `paste` per edit (after an explicit click/clear to focus the
+    // field, since `paste` targets `document.activeElement`) is equivalent to
+    // `type` here and avoids per-character real-timer scheduling.
+    await user.click(baselineATime)
+    await user.paste('09:00')
     expect(finalATime).toHaveValue('09:00')
 
     await user.clear(baselineATime)
-    await user.type(baselineATime, '10:00')
+    await user.paste('10:00')
     expect(finalATime).toHaveValue('10:00')
 
     await user.clear(finalATime)
-    await user.type(finalATime, '11:00')
+    await user.paste('11:00')
     expect(finalATime).toHaveValue('11:00')
 
     await user.clear(baselineATime)
-    await user.type(baselineATime, '12:00')
+    await user.paste('12:00')
     expect(finalATime).toHaveValue('11:00')
   })
 
@@ -229,6 +271,63 @@ describe('ReadinessForm', () => {
     expect(within(group).getByText('This slot is frozen because it already has an attempt.')).toBeInTheDocument()
     expect(within(group).getByLabelText('Material reference')).toBeDisabled()
     expect(within(group).getByLabelText('Baseline A planned time')).toBeDisabled()
+  })
+
+  it('frozen slot associates the frozen explanation with material reference via aria-describedby', async () => {
+    const current = makeCurrent(makeProgram({ status: 'active' }), [
+      makeSlot('baseline', 'A', {
+        materialRef: 'Ref A',
+        plannedLocalTime: '09:00',
+        frozenAt: '2026-09-06T09:00:00.000Z',
+      }),
+      makeSlot('baseline', 'B'),
+      makeSlot('final', 'A'),
+      makeSlot('final', 'B'),
+    ])
+    mount(current)
+
+    const group = await screen.findByRole('group', { name: 'Baseline A' })
+    const input = within(group).getByLabelText('Material reference')
+    const explanation = within(group).getByText('This slot is frozen because it already has an attempt.')
+
+    expect(input).toHaveAttribute('aria-describedby', explanation.id)
+  })
+
+  it('frozen slot inputs stay at full opacity, never the disabled default fade', async () => {
+    const current = makeCurrent(makeProgram({ status: 'active' }), [
+      makeSlot('baseline', 'A', {
+        materialRef: 'Ref A',
+        plannedLocalTime: '09:00',
+        frozenAt: '2026-09-06T09:00:00.000Z',
+      }),
+      makeSlot('baseline', 'B'),
+      makeSlot('final', 'A'),
+      makeSlot('final', 'B'),
+    ])
+    mount(current)
+
+    const group = await screen.findByRole('group', { name: 'Baseline A' })
+    const inputs = within(group).getAllByRole('textbox')
+    expect(inputs).toHaveLength(5)
+    for (const input of inputs) {
+      expect(input.className).toContain('disabled:opacity-100')
+      expect(input.className).not.toContain('disabled:opacity-50')
+    }
+  })
+
+  // A class assertion is all jsdom can offer for a layout rule — the actual spacing is verified
+  // visually, not here.
+  it('first slot row spaces its legend with legend padding, not the fieldset', async () => {
+    const current = makeCurrent(makeProgram(), fourBlankSlots())
+    mount(current)
+
+    const group = await screen.findByRole('group', { name: 'Baseline A' })
+    expect(group.className).toContain('group')
+    expect(group.className).not.toContain('first:pt-0')
+
+    const legend = group.querySelector('legend')
+    expect(legend).not.toBeNull()
+    expect(legend?.className).toContain('group-first/slot:pt-0')
   })
 
   it('server 409 frozen renders the same explanation and keeps the form', async () => {
@@ -324,5 +423,14 @@ describe('ReadinessForm', () => {
 
     expect(screen.getByText(/reading elsewhere is allowed/i)).toBeInTheDocument()
     expect(screen.getByText(/tallying on paper is fine/i)).toBeInTheDocument()
+  })
+
+  it('while programs.current is pending, an aria-busy region shows the visible label Loading (guard: bare placeholder already carried both)', () => {
+    mockApi.programs.current.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<></>, { route: '/setup/readiness', routes: buildRoutes() })
+
+    const region = screen.getByText('Loading').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
   })
 })

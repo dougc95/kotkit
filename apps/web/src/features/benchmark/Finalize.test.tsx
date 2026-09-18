@@ -174,6 +174,15 @@ describe('FinalizeSection / FinalizeBar / EligibilitySummary', () => {
     expect(screen.getByRole('button', { name: 'Finalize' })).toBeDisabled()
   })
 
+  it('the still-needed list is a needs-you message, not neutral status text', () => {
+    mockHook()
+    renderSection({ conditionsConfirmed: false })
+
+    const list = screen.getByRole('list', { name: 'What is missing before you can finalize' })
+    expect(list).toHaveClass('text-attention')
+    expect(list).not.toHaveClass('text-ink-muted')
+  })
+
   it('Finalize enabled on an incomplete attempt with recall missing once disruption and conditions are set, sending no recallScores', async () => {
     const { finalize } = mockHook()
     const { user } = renderSection({
@@ -199,6 +208,25 @@ describe('FinalizeSection / FinalizeBar / EligibilitySummary', () => {
     expect(screen.getByText('The review could not be saved. Retry.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
 
+    expect(retry).toHaveBeenCalledTimes(1)
+  })
+
+  it('Retry is disabled with Finalize once a failed finalize is followed by a withdrawn attestation (D-I5)', async () => {
+    const { retry } = mockHook({ status: 'error' })
+    const { user, rerender } = renderSection({ conditionsConfirmed: false })
+
+    const finalizeButton = screen.getByRole('button', { name: 'Finalize' })
+    const retryButton = screen.getByRole('button', { name: 'Retry' })
+    expect(finalizeButton).toBeDisabled()
+    expect(retryButton).toBeDisabled()
+
+    await user.click(retryButton)
+    expect(retry).not.toHaveBeenCalled()
+
+    // Re-holding the attestation re-enables both controls and an ordinary
+    // retry still resends the stored body unchanged.
+    rerender(<FinalizeSection {...READY_PROPS} />)
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
     expect(retry).toHaveBeenCalledTimes(1)
   })
 
@@ -260,6 +288,26 @@ describe('FinalizeSection / FinalizeBar / EligibilitySummary', () => {
     expect(within(sRow as HTMLElement).queryByText('0')).not.toBeInTheDocument()
   })
 
+  it('undetermined eligibility (eligible: null) renders Not reported under the absent tier, never Not eligible', () => {
+    mockHook({
+      status: 'success',
+      result: makeFinalizeResult({
+        eligible: null,
+        exclusionReasons: [],
+        review: makeReview({ episodeCount: 2, recallScore: 4, firstSwitch: { kind: 'known', seconds: 90 } }),
+      }),
+    })
+    renderSection()
+
+    // episodeCount/recallScore/firstSwitch are all given real values above so
+    // exactly one "Not reported" renders on the page — the eligibility line —
+    // and getByText stays unambiguous.
+    const heading = screen.getByText('Not reported')
+    expect(heading).toHaveAttribute('data-tier', 'absent')
+    expect(screen.queryByText('Not eligible')).not.toBeInTheDocument()
+    expect(screen.queryByText('Eligible')).not.toBeInTheDocument()
+  })
+
   it('reviewNote included only when non-blank', async () => {
     const blank = mockHook()
     const { user } = renderSection({}, undefined)
@@ -274,6 +322,26 @@ describe('FinalizeSection / FinalizeBar / EligibilitySummary', () => {
     await rendered.user.click(screen.getByRole('button', { name: 'Finalize' }))
     const typedBody = typed.finalize.mock.calls[0]?.[0] as Record<string, unknown>
     expect(typedBody.reviewNote).toBe('Ran a bit long')
+  })
+
+  it('review note counter is linked to the textarea via aria-describedby', () => {
+    mockHook()
+    renderSection()
+
+    const note = screen.getByLabelText('Anything else to note?')
+    const describedById = note.getAttribute('aria-describedby')
+    expect(describedById).not.toBeNull()
+    expect(document.getElementById(describedById ?? '')).toHaveTextContent('0/500')
+  })
+
+  it('failed finalize renders the status row in attention color, not neutral ink (U15a)', () => {
+    mockHook({ status: 'error' })
+    renderSection()
+
+    const statusRow = screen.getByRole('status')
+    expect(statusRow).toHaveClass('text-attention')
+    expect(statusRow).not.toHaveClass('text-ink')
+    expect(within(statusRow).getByText('The review could not be saved. Retry.')).toBeInTheDocument()
   })
 
   it('summary contains no % text', () => {

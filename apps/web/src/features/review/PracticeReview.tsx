@@ -65,6 +65,11 @@ import { flush } from '../../lib/outbox/flush.js'
 import { useFinalizeSession, type FinalizeSessionStatus } from '../../lib/outbox/useFinalizeSession.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
+import { Reported } from '../../ui/Reported.js'
+import { Badge } from '../../ui/shadcn/badge.js'
+import { Separator } from '../../ui/shadcn/separator.js'
 import { CountField } from './CountField.js'
 import { OutputNoteField } from './OutputNoteField.js'
 import { OutputQualityField } from './OutputQualityField.js'
@@ -279,45 +284,48 @@ export function PracticeReview() {
   }, [finalizeHook.status])
 
   if (sessionId === undefined) {
-    return <p>Session not found</p>
+    return <p className="text-ink">Session not found</p>
   }
 
   if (sessionQuery.isError) {
     if (sessionQuery.error instanceof NotFoundError) {
       return (
-        <div className="mx-auto max-w-xl px-4 py-6">
-          <p>Session not found</p>
-          <Link to="/today">Go to Today</Link>
+        <div className="mx-auto max-w-xl px-4 py-6 space-y-2">
+          <p className="text-ink">Session not found</p>
+          <Link to="/today" className="text-sm text-signal underline underline-offset-2">
+            Go to Today
+          </Link>
         </div>
       )
     }
     return (
       <div className="mx-auto max-w-xl px-4 py-6">
-        <p>The review could not be loaded.</p>
-        <Button
-          onClick={() => {
+        <ErrorState
+          onRetry={() => {
             void sessionQuery.refetch()
           }}
         >
-          Retry
-        </Button>
+          The review could not be loaded.
+        </ErrorState>
       </div>
     )
   }
 
   if (sessionQuery.isPending || session === undefined) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
+      <LoadingState rows={3} className="mx-auto max-w-xl px-4 py-6">
         Loading review
-      </div>
+      </LoadingState>
     )
   }
 
   if (session.lifecycle === 'finalized') {
     return (
-      <div className="mx-auto max-w-xl px-4 py-6">
-        <p>This review was already saved</p>
-        <Link to="/today">Go to Today</Link>
+      <div className="mx-auto max-w-xl px-4 py-6 space-y-2">
+        <p className="text-ink">This review was already saved</p>
+        <Link to="/today" className="text-sm text-signal underline underline-offset-2">
+          Go to Today
+        </Link>
       </div>
     )
   }
@@ -341,34 +349,38 @@ export function PracticeReview() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-6 space-y-6">
-      <h1 className="text-lg font-semibold text-[var(--color-text)]">Practice review</h1>
+      <h1 className="text-lg font-semibold text-ink">Practice review</h1>
 
-      <div className="space-y-1 text-sm text-[var(--color-text)]">
-        <p>Planned output: {session.intendedOutput ?? 'None recorded'}</p>
+      <div className="space-y-1 text-sm text-ink">
+        <p>
+          Planned output: {session.intendedOutput ?? <Reported>Not reported</Reported>}
+        </p>
         <p>
           {elapsedMinutes} min recorded of {targetMinutes} min target (pauses excluded)
         </p>
         {session.timerQuality === 'uncertain' ? (
-          <p className="inline-block rounded-full border border-[var(--color-border)] px-2 py-0.5 text-xs text-[var(--color-text-muted)]">
-            Timing uncertain
-          </p>
+          <Badge variant="outline" className="border-attention/40">
+            <Reported>Timing uncertain</Reported>
+          </Badge>
         ) : null}
       </div>
 
-      <dl data-testid="recorded-tallies" className="grid grid-cols-3 gap-3 text-sm text-[var(--color-text)]">
+      <dl data-testid="recorded-tallies" className="grid grid-cols-3 gap-3 text-sm text-ink">
         <div>
-          <dt className="text-[var(--color-text-muted)]">Off-task, recorded</dt>
+          <dt className="text-ink-muted">Off-task, recorded</dt>
           <dd>{session.tallies.offTask}</dd>
         </div>
         <div>
-          <dt className="text-[var(--color-text-muted)]">External, recorded</dt>
+          <dt className="text-ink-muted">External, recorded</dt>
           <dd>{session.tallies.external}</dd>
         </div>
         <div>
-          <dt className="text-[var(--color-text-muted)]">Agent checks, recorded</dt>
+          <dt className="text-ink-muted">Agent checks, recorded</dt>
           <dd>{session.tallies.agentChecks}</dd>
         </div>
       </dl>
+
+      <Separator />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <OutputQualityField
@@ -377,7 +389,7 @@ export function PracticeReview() {
           error={outputQualityErrorShown ? OUTPUT_QUALITY_REQUIRED_MESSAGE : null}
         />
 
-        <div className="flex flex-wrap gap-4">
+        <div data-testid="attested-counts" className="grid grid-cols-3 gap-3">
           <CountField
             id="episode-count"
             label="How many times did you switch away?"
@@ -409,7 +421,7 @@ export function PracticeReview() {
             Save review
           </Button>
           {message !== null ? (
-            <div role="status" className="flex items-center gap-3 text-sm text-[var(--color-text)]">
+            <div role="status" className="flex items-center gap-3 text-sm text-attention">
               <p>{message}</p>
               <Button
                 type="button"

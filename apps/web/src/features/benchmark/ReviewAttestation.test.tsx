@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cleanup, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   EXCLUSION_REASON_COPY,
   type ObservedConditionsValue,
@@ -134,8 +134,21 @@ describe('ReviewAttestation', () => {
   it('disruption starts unanswered and the note is capped at 500', async () => {
     const { user } = renderWithProviders(<Harness />)
 
-    expect(screen.getByRole('radio', { name: 'Yes' })).not.toBeChecked()
-    expect(screen.getByRole('radio', { name: 'No' })).not.toBeChecked()
+    const yesRadio = screen.getByRole('radio', { name: 'Yes' })
+    const noRadio = screen.getByRole('radio', { name: 'No' })
+    expect(yesRadio).not.toBeChecked()
+    expect(noRadio).not.toBeChecked()
+    // The shared radio-group primitive (D-I2) renders each item as a real
+    // <button role="radio">, with its label a min-h-11 target — the same
+    // shape Scoring.tsx's PointRow radios already use.
+    expect(yesRadio.tagName).toBe('BUTTON')
+    expect(noRadio.tagName).toBe('BUTTON')
+    const yesLabel = screen.getByText('Yes')
+    const noLabel = screen.getByText('No')
+    expect(yesLabel.tagName).toBe('LABEL')
+    expect(noLabel.tagName).toBe('LABEL')
+    expect(yesLabel.className).toContain('min-h-11')
+    expect(noLabel.className).toContain('min-h-11')
     expect(screen.getByTestId('can-finalize')).toHaveTextContent('false')
 
     const note = screen.getByLabelText('Disruption note (optional)')
@@ -147,6 +160,60 @@ describe('ReviewAttestation', () => {
     expect(note).toHaveValue('a'.repeat(500))
     expect(screen.getByText('500/500')).toBeInTheDocument()
   }, 15000)
+
+  it('disruption note counter is linked to the textarea via aria-describedby', () => {
+    renderWithProviders(<Harness />)
+
+    const note = screen.getByLabelText('Disruption note (optional)')
+    const describedById = note.getAttribute('aria-describedby')
+    expect(describedById).not.toBeNull()
+    expect(document.getElementById(describedById ?? '')).toHaveTextContent('0/500')
+  })
+
+  it('radios sit in a legend-named radiogroup, guard onChange to literal yes/no, and #materially-disrupted-no is the No radio', async () => {
+    // DisruptionField's Yes/No radios now use the same shared shadcn
+    // RadioGroup/RadioGroupItem every other group in the app does (D-I2), but
+    // this one still carries its own explicit aria-labelledby pointing at the
+    // fieldset's legend — unlike Scoring.tsx's PointRow, no Playwright label
+    // locator here collides with a name containing "Was this session
+    // materially disrupted?", so the explicit association was kept rather
+    // than left to the anonymous role="radiogroup"/legend pairing. This test
+    // also proves the onValueChange guard reports the literal 'yes'/'no'
+    // strings (no `as` cast covering an untyped string), and pins the
+    // literal #materially-disrupted-no id that e2e/benchmark-review.spec.ts
+    // and e2e/recovery.spec.ts click directly.
+    const onChange = vi.fn()
+
+    function Wrapper() {
+      const [value, setValue] = useState<DisruptionAnswer>(null)
+      const [note, setNote] = useState('')
+      return (
+        <DisruptionField
+          value={value}
+          note={note}
+          onChange={(nextValue, nextNote) => {
+            onChange(nextValue, nextNote)
+            setValue(nextValue)
+            setNote(nextNote)
+          }}
+        />
+      )
+    }
+
+    const { user } = renderWithProviders(<Wrapper />)
+
+    const radiogroup = screen.getByRole('radiogroup', { name: 'Was this session materially disrupted?' })
+    const noRadio = screen.getByRole('radio', { name: 'No' })
+    expect(radiogroup).toContainElement(noRadio)
+    expect(document.getElementById('materially-disrupted-no')).toBe(noRadio)
+
+    await user.click(screen.getByRole('radio', { name: 'Yes' }))
+    await user.click(noRadio)
+
+    expect(onChange).toHaveBeenNthCalledWith(1, 'yes', '')
+    expect(onChange).toHaveBeenNthCalledWith(2, 'no', '')
+    expect(noRadio).toBeChecked()
+  })
 
   it('E=2 with disruption No keeps the eligibility preview eligible', async () => {
     // External interruptions (E) never appear in `EligibilityInput` at all
@@ -167,6 +234,46 @@ describe('ReviewAttestation', () => {
 
     expect(screen.getByText(EXCLUSION_REASON_COPY.materially_disrupted)).toBeInTheDocument()
     expect(screen.queryByText('Eligible')).not.toBeInTheDocument()
+  })
+
+  it('all eight checkboxes (seven accommodations plus the confirm) are Radix controls with min-h-11 labels, toggling on click (task V5 item 10)', async () => {
+    const { user } = renderWithProviders(<Harness />)
+
+    const accommodationNames = [
+      'Screen reader',
+      'Magnification',
+      'Increased font size',
+      'High contrast',
+      'Reduced motion',
+      'Extra lighting',
+      'Other',
+    ]
+
+    for (const name of accommodationNames) {
+      const checkbox = screen.getByRole('checkbox', { name })
+      // A native <input type="checkbox"> would report tagName INPUT — the
+      // Radix Checkbox this converts to is a real <button role="checkbox">.
+      expect(checkbox.tagName).toBe('BUTTON')
+      expect(checkbox).not.toBeChecked()
+
+      const label = screen.getByText(name)
+      expect(label.tagName).toBe('LABEL')
+      expect(label.className).toContain('min-h-11')
+
+      await user.click(checkbox)
+      expect(checkbox).toBeChecked()
+      await user.click(checkbox)
+      expect(checkbox).not.toBeChecked()
+    }
+
+    const confirmCheckbox = screen.getByRole('checkbox', { name: 'These conditions are correct' })
+    expect(confirmCheckbox.tagName).toBe('BUTTON')
+    const confirmLabel = screen.getByText('These conditions are correct')
+    expect(confirmLabel.tagName).toBe('LABEL')
+    expect(confirmLabel.className).toContain('min-h-11')
+
+    await user.click(confirmCheckbox)
+    expect(confirmCheckbox).toBeChecked()
   })
 
   it('accommodation checkbox adds increased_font_size to conditions.accommodations', async () => {
@@ -243,9 +350,11 @@ describe('ReviewAttestation', () => {
   it('keyboard-only traversal reaches every field in order with focus visible', async () => {
     const { user } = renderWithProviders(<Harness />)
 
-    const expectedOrder = [
+    const noteField = screen.getByLabelText('Disruption note (optional)')
+
+    const expectedStops: readonly (string | HTMLElement)[] = [
       'materially-disrupted-yes',
-      'disruption-note',
+      noteField,
       'conditions-device-format',
       'conditions-language',
       'conditions-material-level',
@@ -259,12 +368,17 @@ describe('ReviewAttestation', () => {
       'conditions-confirmed',
     ]
 
-    for (const id of expectedOrder) {
+    for (const stop of expectedStops) {
       await user.tab()
-      expect(document.activeElement).toHaveAttribute('id', id)
-      // The app's global `:focus-visible` rule (index.css) styles every
-      // interactive element with no per-component opt-out — every stop here
-      // is a plain native input/textarea/radio, so none suppresses it.
+      if (typeof stop === 'string') {
+        expect(document.activeElement).toHaveAttribute('id', stop)
+      } else {
+        // disruption-note's id now comes from useField (Task 32) rather than
+        // a hand-written string, so this stop is checked by element identity
+        // instead — resolved the same way a screen reader would, through the
+        // label/control pairing, not a guessed id.
+        expect(document.activeElement).toBe(stop)
+      }
       expect(document.activeElement?.tagName).not.toBe('BODY')
     }
   })

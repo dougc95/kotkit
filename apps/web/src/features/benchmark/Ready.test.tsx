@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
@@ -257,14 +259,59 @@ describe('Ready', () => {
     expect(await screen.findByText('This attempt cannot start before the assigned date.')).toBeInTheDocument()
   })
 
-  it('network failure -> could not be started and no countdown rendered', async () => {
+  it('network failure -> could not be started and no countdown rendered, colored for attention (U15a)', async () => {
     reject('sessions.create', { status: 0, code: 'network_error', message: 'The request could not be completed.' })
     const { user } = renderReady(makeSlot())
 
     await user.click(await screen.findByRole('button', { name: 'Start' }))
 
-    expect(await screen.findByText('The benchmark could not be started. Retry.')).toBeInTheDocument()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The benchmark could not be started. Retry.')
+    expect(alert).toHaveClass('text-attention')
     expect(screen.queryByTestId('timer-digits')).not.toBeInTheDocument()
+  })
+
+  it('GET /programs/current failure renders through the shared ErrorState: role alert, message unchanged, exactly one Retry', async () => {
+    reject('programs.current', { status: 500, code: 'server_error' })
+    respond('sessions.active', null)
+
+    renderWithProviders(<Ready />, { route: `/benchmark/${SLOT_ID}`, routes: routes() })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The benchmark could not be loaded.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
+  it('GET /programs/current pending keeps an accessible "Loading" label inside the aria-busy region', () => {
+    mockApi.programs.current.mockImplementation(() => new Promise(() => {}))
+    respond('programs.today', makeToday())
+    respond('sessions.active', null)
+
+    renderWithProviders(<Ready />, { route: `/benchmark/${SLOT_ID}`, routes: routes() })
+
+    expect(screen.getByText('Loading').closest('[aria-busy="true"]')).not.toBeNull()
+  })
+
+  it('GET /programs/today pending keeps an accessible "Loading" label inside the aria-busy region', async () => {
+    respond('programs.current', makeCurrent(makeSlot()))
+    mockApi.programs.today.mockImplementation(() => new Promise(() => {}))
+    respond('sessions.active', null)
+
+    renderWithProviders(<Ready />, { route: `/benchmark/${SLOT_ID}`, routes: routes() })
+
+    const label = await screen.findByText('Loading')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
+  })
+
+  it('GET /sessions/active pending keeps an accessible "Loading" label inside the aria-busy region', async () => {
+    respond('programs.current', makeCurrent(makeSlot()))
+    respond('programs.today', makeToday())
+    mockApi.sessions.active.mockImplementation(() => new Promise(() => {}))
+
+    renderWithProviders(<Ready />, { route: `/benchmark/${SLOT_ID}`, routes: routes() })
+
+    const label = await screen.findByText('Loading')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
   })
 
   it('an existing active session renders ActiveSessionCard instead of every Start control', async () => {
@@ -295,5 +342,51 @@ describe('Ready', () => {
     await screen.findByRole('button', { name: 'Start' })
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
     expectNoIdentifiers(document.body)
+  })
+
+  it('shows the fixed 20:00 duration in ink before the session starts, not mono', async () => {
+    renderReady(makeSlot())
+
+    await screen.findByRole('button', { name: 'Start' })
+    const duration = screen.getByTestId('benchmark-fixed-duration')
+    expect(duration).toHaveTextContent('20:00')
+    expect(duration.className).toMatch(/\btext-ink\b/)
+    expect(duration.className).not.toMatch(/font-mono/)
+  })
+
+  it('replacement reason counter is associated with the textarea via aria-describedby', async () => {
+    const attempts: SlotAttemptValue[] = [
+      { sessionId: 'prior-1', lifecycle: 'finalized', eligible: false, excludedByAmendment: false },
+    ]
+    const { user } = renderReady(makeSlot({ attempts }))
+
+    const textarea = await screen.findByLabelText('Reason for replacement')
+    const describedById = textarea.getAttribute('aria-describedby')
+    expect(describedById).toBeTruthy()
+    expect(document.getElementById(describedById as string)).toHaveTextContent('0/500')
+
+    await user.type(textarea, 'Fire alarm')
+    expect(document.getElementById(describedById as string)).toHaveTextContent('10/500')
+  })
+})
+
+describe('token conversion', () => {
+  it('Ready.tsx and Running.tsx use no legacy --color-* token and no decorative amber class', () => {
+    // The literal two-argument `new URL('<literal>', import.meta.url)` is not
+    // safe here: Vite's asset transform statically rewrites exactly that
+    // pattern, which would resolve to a bundled asset URL rather than this
+    // file's own real path on disk. Wrapping `import.meta.url` in its own
+    // `new URL(...)` first breaks that literal match, so the outer call
+    // resolves the actual file:// path instead. Verified by direct
+    // reproduction on 2026-09-17.
+    const readyPath = fileURLToPath(new URL('./Ready.tsx', new URL(import.meta.url)))
+    const runningPath = fileURLToPath(new URL('./Running.tsx', new URL(import.meta.url)))
+    const readySource = readFileSync(readyPath, 'utf8')
+    const runningSource = readFileSync(runningPath, 'utf8')
+
+    for (const source of [readySource, runningSource]) {
+      expect(source).not.toMatch(/--color-(bg|surface|border|text|primary|focus-ring)/)
+      expect(source).not.toMatch(/amber-/)
+    }
   })
 })

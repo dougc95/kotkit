@@ -8,7 +8,7 @@ import { cleanup, screen, waitFor } from '@testing-library/react'
 // `DemoControls.js`): `vi.mock('@/lib/api/client', ...)` inside this module
 // only intercepts imports of that module requested AFTER it runs, mirroring
 // AbandonSession.test.tsx/DemoBanner.test.tsx's own import ordering.
-import { mockApi, respond } from '../../test/mockClient.js'
+import { mockApi, reject, respond } from '../../test/mockClient.js'
 
 import type { CurrentProgramResponseValue, MeResponseValue, SlotResponseValue } from '@attention-lab/shared'
 import { enqueue, listUnsent } from '../../lib/outbox/store.js'
@@ -29,6 +29,10 @@ import { DemoControls } from './DemoControls.js'
  * so both are stubbed as plain functions (not `vi.fn()`, so `setup.ts`'s
  * global `vi.resetAllMocks()` afterEach never wipes them, mirroring
  * `setup.ts`'s own `matchMedia` stub).
+ *
+ * `Settings.test.tsx` carries an identical copy of this block (both mount
+ * `ScenarioLoader`'s Radix Select) — keep the two in step (C-I5/task-F1
+ * item 12).
  */
 if (typeof globalThis.ResizeObserver === 'undefined') {
   class ResizeObserverStub {
@@ -142,6 +146,13 @@ describe('DemoControls', () => {
 
     expect(screen.queryByText('Demonstration controls')).not.toBeInTheDocument()
     expect(mockApi.programs.current).not.toHaveBeenCalled()
+  })
+
+  it('Load scenario and Reset demo data triggers do not stretch across their column (task V5)', () => {
+    renderWithProviders(<DemoControls me={ME_LOCAL_DEMO} />)
+
+    expect(screen.getByRole('button', { name: 'Load scenario' })).toHaveClass('self-start')
+    expect(screen.getByRole('button', { name: 'Reset demo data' })).toHaveClass('self-start')
   })
 
   it("Skip to Day 14 posts the offset mapping now to the final date at final slot A's planned_local_time in the program timezone", async () => {
@@ -263,5 +274,17 @@ describe('DemoControls', () => {
 
     const heading = await screen.findByRole('heading', { name: 'Demonstration controls' })
     expect(heading.textContent?.toLowerCase()).toContain('demo')
+  })
+
+  it('a failed demo-clock update shows a Retry control built from the app Button primitive', async () => {
+    respond('programs.current', NO_PROGRAM)
+    reject('demo.clock', { status: 500, code: 'internal_error' })
+
+    const { user } = renderWithProviders(<DemoControls me={ME_LOCAL_DEMO} />)
+    await user.click(screen.getByRole('button', { name: 'Reset clock' }))
+
+    const retryButton = await screen.findByRole('button', { name: 'Retry' })
+    expect(retryButton).toHaveAttribute('data-variant')
+    expect(retryButton.tagName).toBe('BUTTON')
   })
 })

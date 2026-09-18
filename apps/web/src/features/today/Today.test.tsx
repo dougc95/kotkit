@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
 import type {
   CurrentProgramResponseValue,
@@ -195,6 +195,48 @@ describe('NextAction', () => {
       cleanup()
     }
   })
+
+  it('practice next action renders as the quiet variant so BlockCard\'s own Start stays the only primary control', () => {
+    renderWithProviders(
+      <NextAction
+        nextAction={{ kind: 'practice', block: 1 }}
+        programId="program-1"
+        slots={ALL_SLOTS}
+        onFocusBlock={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Block 1 is next' })).toHaveAttribute('data-variant', 'quiet')
+  })
+
+  it('practice next action button does not stretch across the column: self-start keeps it a control, not a label (task V4a)', () => {
+    renderWithProviders(
+      <NextAction
+        nextAction={{ kind: 'practice', block: 1 }}
+        programId="program-1"
+        slots={ALL_SLOTS}
+        onFocusBlock={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Block 1 is next' })).toHaveClass('self-start')
+  })
+
+  it('benchmark next action link still carries data-variant primary via Button asChild', () => {
+    renderWithProviders(
+      <NextAction
+        nextAction={{ kind: 'benchmark', slotId: 'slot-baseline-a' }}
+        programId="program-1"
+        slots={ALL_SLOTS}
+        onFocusBlock={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Start with your baseline' })).toHaveAttribute(
+      'data-variant',
+      'primary',
+    )
+  })
 })
 
 describe('Today', () => {
@@ -228,6 +270,25 @@ describe('Today', () => {
     expect(screen.getAllByTestId('block-card-slot')).toHaveLength(2)
   })
 
+  it('draws the hairline between practice blocks on each block-card-slot wrapper, not on BlockCard\'s own root, so last: actually reaches the last block (jsdom applies no CSS, so this is a class-name assertion)', async () => {
+    respond('programs.current', currentFixture({ kind: 'practice', block: 1 }))
+    respond('programs.today', todayFixture({ kind: 'practice', block: 1 }))
+
+    mountToday()
+
+    const slots = await screen.findAllByTestId('block-card-slot')
+    expect(slots).toHaveLength(2)
+    for (const slot of slots) {
+      expect(slot).toHaveClass('border-b')
+      expect(slot).toHaveClass('border-rule')
+
+      const status = slot.querySelector('[data-status]')
+      expect(status).not.toBeNull()
+      expect(status).not.toHaveClass('border-b')
+      expect(status).not.toHaveClass('last:border-b-0')
+    }
+  })
+
   it('Day N of 14 uses the server day field even when the browser date differs', async () => {
     const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2099-01-01T00:00:00.000Z'))
 
@@ -239,6 +300,110 @@ describe('Today', () => {
     await screen.findByRole('heading', { name: 'Day 9 of 14' })
 
     dateNowSpy.mockRestore()
+  })
+
+  it("clicking Block 1 is next moves DOM focus into block 1's own start form (regression: BlockCard's markup must keep the textarea the first focusable descendant of [data-block-index])", async () => {
+    respond('programs.current', currentFixture({ kind: 'practice', block: 1 }))
+    respond('programs.today', todayFixture({ kind: 'practice', block: 1 }))
+
+    mountToday()
+
+    const nextButton = await screen.findByRole('button', { name: 'Block 1 is next' })
+    fireEvent.click(nextButton)
+
+    const outputField = screen.getByRole('textbox', { name: 'What will you produce?' })
+    expect(outputField).toHaveFocus()
+    expect(outputField.closest('[data-block-index="1"]')).not.toBeNull()
+  })
+
+  it('day position track is aria-hidden, shows 14 markers and derives past/today/ahead from today.day alone', async () => {
+    respond('programs.current', currentFixture({ kind: 'progress' }))
+    respond('programs.today', todayFixture({ kind: 'progress' }, { day: 9 }))
+
+    mountToday()
+
+    await screen.findByRole('heading', { name: 'Day 9 of 14' })
+
+    const track = screen.getByTestId('day-position-track')
+    expect(track).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+
+    const markers = track.querySelectorAll('[data-position]')
+    expect(markers).toHaveLength(14)
+    expect(markers[0]).toHaveAttribute('data-position', 'past')
+    expect(markers[7]).toHaveAttribute('data-position', 'past')
+    expect(markers[8]).toHaveAttribute('data-position', 'today')
+    expect(markers[9]).toHaveAttribute('data-position', 'ahead')
+    expect(markers[13]).toHaveAttribute('data-position', 'ahead')
+  })
+
+  it('the today marker differs from past/ahead by shape, not only colour, so greyscale still shows three states (task V4c)', async () => {
+    respond('programs.current', currentFixture({ kind: 'progress' }))
+    respond('programs.today', todayFixture({ kind: 'progress' }, { day: 9 }))
+
+    mountToday()
+
+    await screen.findByRole('heading', { name: 'Day 9 of 14' })
+
+    const track = screen.getByTestId('day-position-track')
+    expect(track.className).toContain('items-center')
+
+    const markers = track.querySelectorAll('[data-position]')
+    const todayMarker = markers[8]
+    expect(todayMarker).toHaveAttribute('data-position', 'today')
+    expect(todayMarker?.className).toContain('data-[position=today]:h-2.5')
+  })
+
+  it('day position track at day 0 (baseline, before Day 1) shows 14 markers, all ahead, none today', async () => {
+    respond('programs.current', currentFixture({ kind: 'benchmark', slotId: 'slot-baseline-a' }))
+    respond('programs.today', todayFixture({ kind: 'benchmark', slotId: 'slot-baseline-a' }, { day: 0 }))
+
+    mountToday()
+
+    await screen.findByRole('heading', { name: 'Day 0 of 14' })
+
+    const track = screen.getByTestId('day-position-track')
+    const markers = track.querySelectorAll('[data-position]')
+    expect(markers).toHaveLength(14)
+    expect(track.querySelectorAll('[data-position="ahead"]')).toHaveLength(14)
+    expect(track.querySelectorAll('[data-position="today"]')).toHaveLength(0)
+    expect(track.querySelectorAll('[data-position="past"]')).toHaveLength(0)
+  })
+
+  it('day position track at day 23 (demo clock past the programme) shows exactly 14 markers, all past, none today', async () => {
+    respond('programs.current', currentFixture({ kind: 'progress' }))
+    respond('programs.today', todayFixture({ kind: 'progress' }, { day: 23 }))
+
+    mountToday()
+
+    await screen.findByRole('heading', { name: 'Day 23 of 14' })
+
+    const track = screen.getByTestId('day-position-track')
+    const markers = track.querySelectorAll('[data-position]')
+    expect(markers).toHaveLength(14)
+    expect(track.querySelectorAll('[data-position="past"]')).toHaveLength(14)
+    expect(track.querySelectorAll('[data-position="today"]')).toHaveLength(0)
+    expect(track.querySelectorAll('[data-position="ahead"]')).toHaveLength(0)
+  })
+
+  it('day position track sits after the Next action region and before Practice blocks (spec §8 reading order: next action -> day position -> block status -> the log)', async () => {
+    respond('programs.current', currentFixture({ kind: 'progress' }))
+    respond('programs.today', todayFixture({ kind: 'progress' }, { day: 9 }))
+
+    mountToday()
+
+    await screen.findByRole('heading', { name: 'Day 9 of 14' })
+
+    const track = screen.getByTestId('day-position-track')
+    const nextActionRegion = screen.getByRole('region', { name: 'Next action' })
+    const practiceBlocksRegion = screen.getByRole('region', { name: 'Practice blocks' })
+
+    expect(
+      nextActionRegion.compareDocumentPosition(track) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(
+      track.compareDocumentPosition(practiceBlocksRegion) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
   })
 
   it('nav exposes four destinations Today/Progress/Research/Settings reachable by Tab', async () => {
@@ -290,5 +455,34 @@ describe('Today', () => {
 
     await screen.findByRole('link', { name: 'Start with your baseline' })
     expect(mockApi.programs.current).toHaveBeenCalledTimes(2)
+  })
+
+  it('fetch failure renders the notice as an alert region', async () => {
+    reject('programs.current', { status: 500, code: 'server_error' })
+
+    mountToday()
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Today could not be loaded')
+    expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+  })
+
+  it('programs.current pending keeps an accessible "Loading" label inside the aria-busy region', () => {
+    mockApi.programs.current.mockImplementation(() => new Promise(() => {}))
+
+    mountToday()
+
+    const region = screen.getByText('Loading').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+  })
+
+  it('programs.today pending keeps an accessible "Loading" label inside the aria-busy region', async () => {
+    respond('programs.current', currentFixture({ kind: 'progress' }))
+    mockApi.programs.today.mockImplementation(() => new Promise(() => {}))
+
+    mountToday()
+
+    const label = await screen.findByText('Loading')
+    expect(label.closest('[aria-busy="true"]')).not.toBeNull()
   })
 })

@@ -23,12 +23,50 @@
  * every keystroke or radio pick reports the COMPLETE next `{value, note}`
  * pair upward in one call, so `BenchmarkReviewPage` never has to reconcile
  * two independent setters racing each other.
+ *
+ * shadcn-ui-rework (2026-09-09): the note now renders through the generated
+ * `Label`/`Textarea` primitives (the rework spec §6/U8's "Label + Input/Textarea/
+ * Select plus one small local Field component" pairing — this unit's scope
+ * note above), and its counter is wired to the textarea through
+ * `@/ui/field.js`'s `useField` (design.md's fix for "character counters not
+ * associated with their fields") — `controlProps` carries `aria-describedby`
+ * pointing at `descriptionProps.id`, and the rendered `n/500` text lives at
+ * that id.
+ *
+ * final-review-D fix (D-I2): the Yes/No radios now use the shared
+ * `RadioGroup`/`RadioGroupItem` (`ui/shadcn/radio-group.js`), the same
+ * primitive `Scoring.tsx`'s `PointRow` uses, instead of a hand-rolled
+ * `radix-ui` `RadioGroup` with its own 20 px classes and `bg-card` well —
+ * this was the app's last direct `radix-ui` import outside `ui/`. The ids
+ * stay the literal `materially-disrupted-yes`/`materially-disrupted-no`
+ * strings they have always been, because `e2e/benchmark-review.spec.ts` and
+ * `e2e/recovery.spec.ts` click `#materially-disrupted-no` directly — passing
+ * a literal `id` straight to `RadioGroupItem` is exactly what `Scoring.tsx`
+ * and `OutputQualityField.tsx` already do, so nothing about the shared
+ * primitive forces generated ids. The radiogroup keeps its own
+ * `aria-labelledby`, pointing at the fieldset's `<legend>` (unlike
+ * `Scoring.tsx`'s `PointRow`, no Playwright label locator collides here, so
+ * the explicit association stays). `value={value ?? null}` still means the
+ * answer is never pre-selected. `onValueChange` stays guarded rather than
+ * cast: Radix's group value is a plain `string`, and `isDisruptionAnswer`
+ * below narrows it to `'yes' | 'no'` before it ever reaches `onChange`,
+ * matching `Scoring.tsx`'s `isPointScore` guard.
  */
-import { RadioGroup } from 'radix-ui'
+import { useField } from '../../ui/field.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { RadioGroup, RadioGroupItem } from '../../ui/shadcn/radio-group.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 
 export type DisruptionAnswer = 'yes' | 'no' | null
 
 const MAX_NOTE_LENGTH = 500
+
+const DISRUPTION_LEGEND_ID = 'materially-disrupted-legend'
+
+/** Guards `RadioGroup`'s `onValueChange` (typed `(value: string) => void`) without an `as` cast. */
+function isDisruptionAnswer(value: string): value is 'yes' | 'no' {
+  return value === 'yes' || value === 'no'
+}
 
 export interface DisruptionFieldProps {
   readonly value: DisruptionAnswer
@@ -37,60 +75,56 @@ export interface DisruptionFieldProps {
 }
 
 export function DisruptionField({ value, note, onChange }: DisruptionFieldProps) {
+  const noteField = useField({ name: 'disruption-note', description: `${note.length}/${MAX_NOTE_LENGTH}` })
+
   return (
     <div className="space-y-4">
       <fieldset className="space-y-2">
-        <legend className="block text-sm font-medium text-[var(--color-text)]">
+        <legend id={DISRUPTION_LEGEND_ID} className="block text-sm font-medium text-ink">
           Was this session materially disrupted?
         </legend>
-        <RadioGroup.Root
+        <RadioGroup
           className="flex gap-4"
           required
           value={value ?? null}
-          onValueChange={(next) => onChange(next as 'yes' | 'no', note)}
+          aria-labelledby={DISRUPTION_LEGEND_ID}
+          onValueChange={(next) => {
+            if (isDisruptionAnswer(next)) {
+              onChange(next, note)
+            }
+          }}
         >
           <div className="flex items-center gap-2">
-            <RadioGroup.Item
-              id="materially-disrupted-yes"
-              value="yes"
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] data-[state=checked]:border-[var(--color-primary)]"
-            >
-              <RadioGroup.Indicator className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)]" />
-            </RadioGroup.Item>
-            <label htmlFor="materially-disrupted-yes" className="text-sm text-[var(--color-text)]">
+            <RadioGroupItem id="materially-disrupted-yes" value="yes" />
+            <Label htmlFor="materially-disrupted-yes" className="flex min-h-11 items-center text-sm font-normal text-ink">
               Yes
-            </label>
+            </Label>
           </div>
           <div className="flex items-center gap-2">
-            <RadioGroup.Item
-              id="materially-disrupted-no"
-              value="no"
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] data-[state=checked]:border-[var(--color-primary)]"
-            >
-              <RadioGroup.Indicator className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)]" />
-            </RadioGroup.Item>
-            <label htmlFor="materially-disrupted-no" className="text-sm text-[var(--color-text)]">
+            <RadioGroupItem id="materially-disrupted-no" value="no" />
+            <Label htmlFor="materially-disrupted-no" className="flex min-h-11 items-center text-sm font-normal text-ink">
               No
-            </label>
+            </Label>
           </div>
-        </RadioGroup.Root>
+        </RadioGroup>
       </fieldset>
 
       <div className="space-y-1">
-        <label htmlFor="disruption-note" className="block text-sm font-medium text-[var(--color-text)]">
+        <Label {...noteField.labelProps} className="text-sm font-medium text-ink">
           Disruption note (optional)
-        </label>
-        <textarea
-          id="disruption-note"
+        </Label>
+        <Textarea
+          {...noteField.controlProps}
           value={note}
           maxLength={MAX_NOTE_LENGTH}
           rows={3}
-          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
           onChange={(event) => onChange(value, event.target.value)}
         />
-        <p className="text-xs text-[var(--color-text-muted)]">
-          {note.length}/{MAX_NOTE_LENGTH}
-        </p>
+        {noteField.descriptionProps ? (
+          <p {...noteField.descriptionProps} className="text-xs text-ink-muted">
+            {note.length}/{MAX_NOTE_LENGTH}
+          </p>
+        ) : null}
       </div>
     </div>
   )

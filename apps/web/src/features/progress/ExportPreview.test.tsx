@@ -175,6 +175,24 @@ describe('ExportPreview', () => {
     expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url')
   })
 
+  it('Download button does not stretch across the column: self-start keeps it a small utility action (task V5)', async () => {
+    mockApi.export.get.mockResolvedValue(csvFixture())
+
+    renderWithProviders(<ExportPreview programId="program-1" />)
+
+    await screen.findByTestId('export-preview-text')
+    expect(screen.getByRole('button', { name: 'Download' })).toHaveClass('self-start')
+  })
+
+  it('while the export query is pending, an aria-busy region shows the visible label Loading export preview', () => {
+    mockApi.export.get.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<ExportPreview programId="program-1" />)
+
+    const region = screen.getByText('Loading export preview').closest('[aria-busy="true"]')
+    expect(region).not.toBeNull()
+  })
+
   it('error renders Export unavailable with Retry', async () => {
     reject('export.get', { status: 500, code: 'server_error' })
 
@@ -183,6 +201,16 @@ describe('ExportPreview', () => {
     expect(await screen.findByText('Export unavailable. Retry.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
     expect(screen.queryByTestId('export-preview-text')).not.toBeInTheDocument()
+  })
+
+  it('error renders through the shared ErrorState: role alert, message unchanged, exactly one Retry (guard: already an Alert)', async () => {
+    reject('export.get', { status: 500, code: 'server_error' })
+
+    renderWithProviders(<ExportPreview programId="program-1" />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Export unavailable. Retry.')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
   })
 
   it('after unmount the query cache holds no export text (gcTime 0)', async () => {

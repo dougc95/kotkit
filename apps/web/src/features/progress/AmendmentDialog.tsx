@@ -20,12 +20,23 @@
  * reason.
  */
 import { useId, useState, type FormEvent } from 'react'
-import { Dialog } from 'radix-ui'
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { AmendmentBodyValue, AmendmentResponseValue } from '@attention-lab/shared'
 
 import { api } from '../../lib/api/client.js'
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Checkbox } from '../../ui/shadcn/checkbox.js'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../../ui/shadcn/dialog.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 
 // ---------------------------------------------------------------------------
 // Error shape — matches both a real `ApiError` instance and mockClient's
@@ -86,21 +97,18 @@ export interface AmendmentListProps {
 /** Renders exactly the amendments it is given, in the order given (creation order) — no sorting, filtering or recomputation. */
 export function AmendmentList({ amendments }: AmendmentListProps) {
   if (amendments.length === 0) {
-    return <p className="text-sm text-[var(--color-text-muted)]">No amendments yet.</p>
+    return <p className="text-sm text-ink-muted">No amendments yet.</p>
   }
 
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col">
       {amendments.map((amendment) => (
-        <li
-          key={amendment.id}
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2 text-sm"
-        >
-          <p className="text-[var(--color-text)]">{amendment.reason}</p>
-          <p className="text-[var(--color-text-muted)]">
+        <li key={amendment.id} className="border-b border-rule py-2 text-sm last:border-b-0">
+          <p className="text-ink">{amendment.reason}</p>
+          <p className="text-ink-muted">
             {amendment.excludeFromReport ? 'Excluded from the comparison' : 'Not excluded'}
           </p>
-          <p className="text-xs text-[var(--color-text-muted)]">{amendment.createdAt}</p>
+          <p className="text-xs text-ink-muted">{amendment.createdAt}</p>
         </li>
       ))}
     </ul>
@@ -118,7 +126,6 @@ export interface AmendmentDialogProps {
 
 export function AmendmentDialog({ sessionId, amendments }: AmendmentDialogProps) {
   const queryClient = useQueryClient()
-  const reasonId = useId()
   const excludeId = useId()
 
   const [open, setOpen] = useState(false)
@@ -195,94 +202,111 @@ export function AmendmentDialog({ sessionId, amendments }: AmendmentDialogProps)
 
   const allAmendments = [...amendments, ...created]
   const isPending = mutation.isPending
+  // `useField` owns id generation and the aria-describedby/aria-invalid
+  // wiring the reason textarea previously lacked entirely (the rework spec §9,
+  // defect 2 — "only OutputQualityField wires its error correctly").
+  // `reasonRequiredError` and `fieldError` are mutually exclusive in
+  // practice (a 400 field error can only arrive from a submit that already
+  // passed the empty-reason check), so a single `useField` call covers both.
+  const reasonError = reasonRequiredError ? REASON_REQUIRED_MESSAGE : fieldError
+  const reasonField = useField({ name: 'amendment-reason', error: reasonError ?? null, required: true })
 
   return (
     <>
-      <Dialog.Root open={open} onOpenChange={handleOpenChange}>
-        <Dialog.Trigger className="inline-flex min-h-11 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-xs font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface)]">
-          Explain or exclude
-        </Dialog.Trigger>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-6 shadow-lg">
-            <Dialog.Title className="text-base font-semibold text-[var(--color-text)]">
-              Explain or exclude this attempt
-            </Dialog.Title>
-            <Dialog.Description className="mt-2 text-sm text-[var(--color-text-muted)]">
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogTrigger asChild>
+          <Button variant="secondary">Explain or exclude</Button>
+        </DialogTrigger>
+        {/* `showCloseButton={false}`: the generated X is a 16 px icon-only
+            target (`absolute top-4 right-4`, a `size-4` icon, no padding),
+            under this project's explicit 24 px hit-area floor
+            (`e2e/a11y/axe-shell.spec.ts`, WCAG 2.2 AA 2.5.8, D40) and its own
+            44 px controls. The labelled `Cancel` button below already does
+            the same job, and Escape still closes the dialog. */}
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Explain or exclude this attempt</DialogTitle>
+            <DialogDescription>
               This attempt&apos;s stored counts, recall and score never change. A reason is kept alongside it,
               optionally excluding it from the comparison.
-            </Dialog.Description>
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="mt-4">
-              <AmendmentList amendments={allAmendments} />
-            </div>
+          <div className="mt-4">
+            <AmendmentList amendments={allAmendments} />
+          </div>
 
-            <form className="mt-4 flex flex-col gap-3" onSubmit={handleSubmit}>
-              <div className="flex flex-col gap-1">
-                <label htmlFor={reasonId} className="text-sm font-medium text-[var(--color-text)]">
-                  Reason
-                </label>
-                <textarea
-                  id={reasonId}
-                  value={reason}
-                  disabled={isPending}
-                  aria-invalid={reasonRequiredError || fieldError !== undefined ? true : undefined}
-                  className="min-h-20 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
-                  onChange={(event) => {
-                    setReason(event.target.value)
-                  }}
-                />
-                {reasonRequiredError ? (
-                  <p role="alert" className="text-sm text-red-700">
-                    {REASON_REQUIRED_MESSAGE}
-                  </p>
-                ) : null}
-                {fieldError !== undefined ? (
-                  <p role="alert" className="text-sm text-red-700">
-                    {fieldError}
-                  </p>
-                ) : null}
-              </div>
-
-              <label className="flex items-center gap-2 text-sm text-[var(--color-text)]">
-                <input
-                  id={excludeId}
-                  type="checkbox"
-                  checked={excludeFromReport}
-                  disabled={isPending}
-                  onChange={(event) => {
-                    setExcludeFromReport(event.target.checked)
-                  }}
-                />
-                Exclude from the comparison
+          <form className="mt-4 flex flex-col gap-3" onSubmit={handleSubmit}>
+            <div className="flex flex-col gap-1">
+              <label {...reasonField.labelProps} className="text-sm font-medium text-ink">
+                Reason
               </label>
-
-              {saveError !== null ? (
-                <p role="alert" className="text-sm text-red-700">
-                  {saveError}
+              <Textarea
+                {...reasonField.controlProps}
+                value={reason}
+                disabled={isPending}
+                className="min-h-20"
+                onChange={(event) => {
+                  setReason(event.target.value)
+                }}
+              />
+              {reasonField.errorProps !== undefined ? (
+                // attention, never red or neutral ink: spec decision U15a says a
+                // validation error message takes `text-attention`, not the
+                // shadcn primitive's own destructive red and not the neutral
+                // ink a data-absence cell uses. This reuses the same amber
+                // `--color-attention` token the three-tier taxonomy's
+                // UNCERTAIN tier renders in (§5: 'Unknown', 'Timing
+                // uncertain'), but for a different reason: there it names an
+                // uncertain data state, here it draws the eye to a form
+                // validation prompt that blocks submission.
+                <p {...reasonField.errorProps} className="text-sm text-attention">
+                  {reasonError}
                 </p>
               ) : null}
+            </div>
 
-              <div className="mt-2 flex justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={isPending}
-                  onClick={() => handleOpenChange(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary" disabled={isPending}>
-                  Save
-                </Button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+            <div className="flex items-center gap-2 text-sm text-ink">
+              <Checkbox
+                id={excludeId}
+                checked={excludeFromReport}
+                disabled={isPending}
+                onCheckedChange={(checked) => {
+                  setExcludeFromReport(checked === true)
+                }}
+              />
+              <label htmlFor={excludeId}>Exclude from the comparison</label>
+            </div>
+
+            {saveError !== null ? (
+              <p role="alert" className="text-sm text-attention">
+                {saveError}
+              </p>
+            ) : null}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isPending}
+                onClick={() => handleOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={isPending}>
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {notice !== null ? (
-        <p role="status" className="mt-1 text-xs text-[var(--color-text-muted)]">
+        // C-I3: matches this file's other three error notices (text-sm
+        // text-attention) — a rejected write is not a not-a-value cell.
+        // role="status" is kept exactly as on master; the behaviour freeze
+        // covers it and nothing here is retrying, just informing.
+        <p role="status" className="mt-1 text-sm text-attention">
           {notice}
         </p>
       ) : null}

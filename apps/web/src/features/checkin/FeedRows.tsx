@@ -19,9 +19,12 @@
  * and never coerces an unfinished row into a zero-value one (CLAUDE.md
  * "Unknown != zero").
  */
+import { useId } from 'react'
+
 import {
   FEED_DEVICES,
   FEED_PLATFORM_ALL,
+  MEASUREMENT_SCOPES,
   type FeedDevice,
   type FeedRowInput,
   type FeedRowValue,
@@ -30,6 +33,12 @@ import {
 } from '@attention-lab/shared'
 
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Checkbox } from '../../ui/shadcn/checkbox.js'
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { RadioGroup, RadioGroupItem } from '../../ui/shadcn/radio-group.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -219,6 +228,16 @@ function parseOptionalNonNegativeInteger(raw: string): number | null | undefined
   return parsed
 }
 
+/** A native `<select>`'s `event.target.value` is a plain string; narrow it before writing to the draft (mirrors ScenarioLoader's `isDemoScenarioName`). */
+function isFeedDevice(value: string): value is FeedDevice {
+  return (FEED_DEVICES as readonly string[]).includes(value)
+}
+
+/** Radix `RadioGroup`'s `onValueChange` delivers a plain string; narrow it the same way as `isFeedDevice` above. */
+function isMeasurementScope(value: string): value is MeasurementScope {
+  return (MEASUREMENT_SCOPES as readonly string[]).includes(value)
+}
+
 interface FeedRowProps {
   readonly index: number
   readonly row: FeedRowDraft
@@ -229,28 +248,38 @@ interface FeedRowProps {
 
 function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
   const idBase = `feedrow-${index}`
+  const scopeLegendId = useId()
 
   function patch(next: Partial<FeedRowDraft>): void {
     onChange({ ...row, ...next })
   }
 
+  const deviceField = useField({ name: `${idBase}-device` })
+  const platformField = useField({ name: `${idBase}-platform`, error: errors?.platform })
+  const minutesField = useField({ name: `${idBase}-minutes` })
+  const shortVideoField = useField({ name: `${idBase}-shortvideo`, error: errors?.shortVideoMinutes })
+
   return (
-    <div role="group" aria-label={`Feed detail row ${index + 1}`} className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-3">
+    <div role="group" aria-label={`Feed detail row ${index + 1}`} className="flex flex-col gap-2 rounded-md border border-rule p-3">
       {errors?.row !== undefined ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-attention">
           {errors.row}
         </p>
       ) : null}
 
+      {/* Stays a native <select>, restyled on the new tokens, rather than the
+          Radix Select the rest of this row moved onto: e2e/checkin.spec.ts
+          drives it with Playwright's selectOption, which only targets a
+          native <select> (mirrors TimezoneSelect.tsx's own rationale). */}
       <div className="flex flex-col gap-1">
-        <label htmlFor={`${idBase}-device`} className="text-sm font-medium text-[var(--color-text)]">
-          Device
-        </label>
+        <Label {...deviceField.labelProps}>Device</Label>
         <select
-          id={`${idBase}-device`}
+          {...deviceField.controlProps}
           value={row.device}
-          onChange={(event) => patch({ device: event.target.value as FeedDevice })}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          onChange={(event) => {
+            if (isFeedDevice(event.target.value)) patch({ device: event.target.value })
+          }}
+          className="min-h-11 w-full max-w-40 rounded-md border border-rule bg-transparent px-3 py-2 text-base text-ink md:text-sm"
         >
           {FEED_DEVICES.map((device) => (
             <option key={device} value={device}>
@@ -261,29 +290,25 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor={`${idBase}-platform`} className="text-sm font-medium text-[var(--color-text)]">
-          Platform
-        </label>
-        <input
-          id={`${idBase}-platform`}
+        <Label {...platformField.labelProps}>Platform</Label>
+        <Input
+          {...platformField.controlProps}
           type="text"
           value={row.platform}
           onChange={(event) => patch({ platform: event.target.value })}
-          className="min-h-11 w-full max-w-60 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-60"
         />
-        {errors?.platform !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
-            {errors.platform}
+        {platformField.errorProps !== undefined ? (
+          <p {...platformField.errorProps} className="text-sm text-attention">
+            {errors?.platform}
           </p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor={`${idBase}-minutes`} className="text-sm font-medium text-[var(--color-text)]">
-          Minutes
-        </label>
-        <input
-          id={`${idBase}-minutes`}
+        <Label {...minutesField.labelProps}>Minutes</Label>
+        <Input
+          {...minutesField.controlProps}
           type="number"
           inputMode="numeric"
           min={0}
@@ -294,16 +319,14 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
             if (next === undefined) return
             patch({ minutes: next })
           }}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-40"
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor={`${idBase}-shortvideo`} className="text-sm font-medium text-[var(--color-text)]">
-          Short-video minutes
-        </label>
-        <input
-          id={`${idBase}-shortvideo`}
+        <Label {...shortVideoField.labelProps}>Short-video minutes</Label>
+        <Input
+          {...shortVideoField.controlProps}
           type="number"
           inputMode="numeric"
           min={0}
@@ -314,58 +337,65 @@ function FeedRow({ index, row, errors, onChange, onRemove }: FeedRowProps) {
             if (next === undefined) return
             patch({ shortVideoMinutes: next })
           }}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-40"
         />
-        {errors?.shortVideoMinutes !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
-            {errors.shortVideoMinutes}
+        {shortVideoField.errorProps !== undefined ? (
+          <p {...shortVideoField.errorProps} className="text-sm text-attention">
+            {errors?.shortVideoMinutes}
           </p>
         ) : null}
       </div>
 
       <fieldset className="flex flex-col gap-1">
-        <legend className="text-sm font-medium text-[var(--color-text)]">Measurement scope</legend>
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2 text-sm text-[var(--color-text)]">
-            <input
-              type="radio"
-              name={`${idBase}-scope`}
-              checked={row.measurementScope === 'feed'}
-              onChange={() => patch({ measurementScope: 'feed' })}
-            />
-            Feed only
-          </label>
-          <label className="flex items-center gap-2 text-sm text-[var(--color-text)]">
-            <input
-              type="radio"
-              name={`${idBase}-scope`}
-              checked={row.measurementScope === 'app_total'}
-              onChange={() => patch({ measurementScope: 'app_total' })}
-            />
-            Whole app
-          </label>
-        </div>
+        <legend id={scopeLegendId} className="text-sm font-medium text-ink">
+          Measurement scope
+        </legend>
+        <RadioGroup
+          aria-labelledby={scopeLegendId}
+          value={row.measurementScope}
+          onValueChange={(value) => {
+            if (isMeasurementScope(value)) patch({ measurementScope: value })
+          }}
+          className="flex gap-4"
+        >
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="feed" id={`${idBase}-scope-feed`} />
+            <Label htmlFor={`${idBase}-scope-feed`} className="flex min-h-11 items-center text-sm font-normal text-ink">
+              Feed only
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="app_total" id={`${idBase}-scope-app`} />
+            <Label htmlFor={`${idBase}-scope-app`} className="flex min-h-11 items-center text-sm font-normal text-ink">
+              Whole app
+            </Label>
+          </div>
+        </RadioGroup>
       </fieldset>
 
-      <label className="flex items-center gap-2 text-sm text-[var(--color-text)]">
-        <input
-          type="checkbox"
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id={`${idBase}-device-report`}
           checked={row.source === 'device_report'}
-          onChange={(event) => patch({ source: event.target.checked ? 'device_report' : 'estimate' })}
+          onCheckedChange={(checked) => patch({ source: checked === true ? 'device_report' : 'estimate' })}
         />
-        From device report
-      </label>
+        <Label htmlFor={`${idBase}-device-report`} className="flex min-h-11 items-center text-sm font-normal text-ink">
+          From device report
+        </Label>
+      </div>
 
-      <label className="flex items-center gap-2 text-sm text-[var(--color-text)]">
-        <input
-          type="checkbox"
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id={`${idBase}-planned-window`}
           checked={row.plannedWindow === true}
-          onChange={(event) => patch({ plannedWindow: event.target.checked ? true : null })}
+          onCheckedChange={(checked) => patch({ plannedWindow: checked === true ? true : null })}
         />
-        Planned window
-      </label>
+        <Label htmlFor={`${idBase}-planned-window`} className="flex min-h-11 items-center text-sm font-normal text-ink">
+          Planned window
+        </Label>
+      </div>
 
-      <Button type="button" variant="secondary" onClick={onRemove}>
+      <Button type="button" variant="secondary" className="self-start" onClick={onRemove}>
         Remove row
       </Button>
     </div>
@@ -387,7 +417,7 @@ export function FeedRows({ rows, onChange, errors }: FeedRowsProps) {
           onRemove={() => onChange(rows.filter((_, i) => i !== index))}
         />
       ))}
-      <Button type="button" variant="secondary" onClick={() => onChange([...rows, emptyDraftRow()])}>
+      <Button type="button" variant="secondary" className="self-start" onClick={() => onChange([...rows, emptyDraftRow()])}>
         Add row
       </Button>
     </div>
@@ -418,15 +448,16 @@ function parseBlankableInteger(raw: string): number | null | undefined {
 export function OptionalFields({ stress, mindfulnessMinutes, note, onChange }: OptionalFieldsProps) {
   const stressMessage = validateStress(stress)
   const mindfulnessMessage = validateMindfulnessMinutes(mindfulnessMinutes)
+  const stressField = useField({ name: 'checkin-stress', error: stressMessage })
+  const mindfulnessField = useField({ name: 'checkin-mindfulness', error: mindfulnessMessage })
+  const noteField = useField({ name: 'checkin-note' })
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <label htmlFor="checkin-stress" className="text-sm font-medium text-[var(--color-text)]">
-          Stress (0-10)
-        </label>
-        <input
-          id="checkin-stress"
+        <Label {...stressField.labelProps}>Stress (0-10)</Label>
+        <Input
+          {...stressField.controlProps}
           type="number"
           inputMode="numeric"
           step={1}
@@ -436,21 +467,19 @@ export function OptionalFields({ stress, mindfulnessMinutes, note, onChange }: O
             if (next === undefined) return
             onChange({ stress: next })
           }}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-40"
         />
-        {stressMessage !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
+        {stressField.errorProps !== undefined ? (
+          <p {...stressField.errorProps} className="text-sm text-attention">
             {stressMessage}
           </p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="checkin-mindfulness" className="text-sm font-medium text-[var(--color-text)]">
-          Mindfulness minutes
-        </label>
-        <input
-          id="checkin-mindfulness"
+        <Label {...mindfulnessField.labelProps}>Mindfulness minutes</Label>
+        <Input
+          {...mindfulnessField.controlProps}
           type="number"
           inputMode="numeric"
           step={1}
@@ -460,24 +489,22 @@ export function OptionalFields({ stress, mindfulnessMinutes, note, onChange }: O
             if (next === undefined) return
             onChange({ mindfulnessMinutes: next })
           }}
-          className="min-h-11 w-full max-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="min-h-11 w-full max-w-40"
         />
-        {mindfulnessMessage !== undefined ? (
-          <p role="alert" className="text-sm text-red-700">
+        {mindfulnessField.errorProps !== undefined ? (
+          <p {...mindfulnessField.errorProps} className="text-sm text-attention">
             {mindfulnessMessage}
           </p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="checkin-note" className="text-sm font-medium text-[var(--color-text)]">
-          Note
-        </label>
-        <textarea
-          id="checkin-note"
+        <Label {...noteField.labelProps}>Note</Label>
+        <Textarea
+          {...noteField.controlProps}
           value={note}
           onChange={(event) => onChange({ note: event.target.value })}
-          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
+          className="w-full"
         />
       </div>
     </div>

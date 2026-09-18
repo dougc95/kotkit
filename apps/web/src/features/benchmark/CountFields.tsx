@@ -54,6 +54,9 @@ import type { CountMethod, DerivedFirstSwitch, EventLike, SessionResponseValue }
 import { FIRST_SWITCH_CAP_SECONDS, deriveFirstSwitch, formatFirstSwitch, prefillCounts } from '@attention-lab/shared'
 
 import { Button } from '../../ui/Button.js'
+import { Reported } from '../../ui/Reported.js'
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
 
 const MAX_ESTIMATE_MINUTES = 20
 
@@ -133,7 +136,12 @@ function estimateSecondsFor(parsedEstimateMinutes: number | null): number | null
 // ---------------------------------------------------------------------------
 // CountField — one S/E numeric field: badge while prefilled-and-untouched,
 // placeholder while blank, optionally disabled while locked to an
-// event-derived S.
+// event-derived S. The disabled S input still shows a RECORDED measurement
+// (the authoritative event-derived count), never an absence, so it must not
+// fade the way the generated `Input` fades a disabled control by default
+// (`disabled:opacity-50`): `disabled:opacity-100` below overrides that,
+// matching the same ruling already made for `DeviceMinutesField`. The badge
+// text and the inert control are the non-colour cues that it is locked.
 // ---------------------------------------------------------------------------
 
 export interface CountFieldProps {
@@ -151,10 +159,10 @@ export function CountField({ label, value, method, onChange, prefilled, disabled
 
   return (
     <div className="space-y-1">
-      <label htmlFor={id} className="block text-sm font-medium text-[var(--color-text)]">
+      <Label htmlFor={id} className="text-sm font-medium text-ink">
         {label}
-      </label>
-      <input
+      </Label>
+      <Input
         id={id}
         type="text"
         inputMode="numeric"
@@ -162,7 +170,7 @@ export function CountField({ label, value, method, onChange, prefilled, disabled
         disabled={disabled}
         placeholder="leave blank if unknown"
         aria-describedby={prefilled ? hintId : undefined}
-        className="min-h-11 w-28 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm text-[var(--color-text)] disabled:opacity-70"
+        className="w-52 disabled:opacity-100"
         onChange={(event) => {
           const raw = event.target.value
           if (!isValidDigitsInput(raw)) {
@@ -172,7 +180,7 @@ export function CountField({ label, value, method, onChange, prefilled, disabled
         }}
       />
       {prefilled ? (
-        <p id={hintId} className="text-xs text-[var(--color-text-muted)]">
+        <p id={hintId} className="text-xs text-ink-muted">
           from recorded events (method: {method ?? 'event'})
         </p>
       ) : null}
@@ -209,7 +217,11 @@ export function FirstSwitchPreview({ firstSwitch, estimateMinutes }: FirstSwitch
     text = `${formatFirstSwitch(result)} (event)`
   }
 
-  return <p className="text-sm text-[var(--color-text)]">First switch, preview: {text}</p>
+  return (
+    <p className="text-sm text-ink">
+      First switch, preview: <Reported>{text}</Reported>
+    </p>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -326,20 +338,20 @@ export function CountFields({ session, value, onChange }: CountFieldsProps) {
       </div>
 
       <div className="space-y-1">
-        <label htmlFor="mind-wandering-count" className="block text-sm font-medium text-[var(--color-text)]">
+        <Label htmlFor="mind-wandering-count" className="text-sm font-medium text-ink">
           Noticed mind-wandering (M)
-        </label>
-        <p id="mind-wandering-count-hint" className="text-xs text-[var(--color-text-muted)]">
+        </Label>
+        <p id="mind-wandering-count-hint" className="text-xs text-ink-muted">
           descriptive only
         </p>
-        <input
+        <Input
           id="mind-wandering-count"
           type="text"
           inputMode="numeric"
           value={value.mindWanderingCount}
           placeholder="leave blank if unknown"
           aria-describedby="mind-wandering-count-hint"
-          className="min-h-11 w-28 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm text-[var(--color-text)]"
+          className="w-52"
           onChange={(event) => {
             if (!isValidDigitsInput(event.target.value)) {
               return
@@ -353,16 +365,16 @@ export function CountFields({ session, value, onChange }: CountFieldsProps) {
 
       {showEstimateInput ? (
         <div className="space-y-1">
-          <label htmlFor="first-switch-estimate" className="block text-sm font-medium text-[var(--color-text)]">
+          <Label htmlFor="first-switch-estimate" className="text-sm font-medium text-ink">
             Estimated minute of first switch
-          </label>
-          <input
+          </Label>
+          <Input
             id="first-switch-estimate"
             type="text"
             inputMode="numeric"
             value={value.estimateMinutes}
             placeholder="leave blank if unknown"
-            className="min-h-11 w-28 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-sm text-[var(--color-text)]"
+            className="w-52"
             onChange={(event) => handleEstimateChange(event.target.value)}
           />
         </div>

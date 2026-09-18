@@ -63,6 +63,9 @@ import type {
 
 import { useFinalizeSession, type FinalizeSessionStatus } from '../../lib/outbox/useFinalizeSession.js'
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 import type { CountFieldsValue } from './CountFields.js'
 import type { DisruptionAnswer } from './DisruptionField.js'
 import { EligibilitySummary } from './EligibilitySummary.js'
@@ -108,7 +111,7 @@ export function FinalizeBar({ canFinalize, missing, onFinalize, status }: Finali
   return (
     <div className="space-y-3">
       {missing.length > 0 ? (
-        <ul className="space-y-1 text-sm text-[var(--color-text-muted)]" aria-label="What is missing before you can finalize">
+        <ul className="space-y-1 text-sm text-attention" aria-label="What is missing before you can finalize">
           {missing.map((item) => (
             <li key={item}>{item}</li>
           ))}
@@ -120,9 +123,9 @@ export function FinalizeBar({ canFinalize, missing, onFinalize, status }: Finali
       </Button>
 
       {message !== null ? (
-        <div role="status" className="flex items-center gap-3 text-sm text-[var(--color-text)]">
+        <div role="status" className="flex items-center gap-3 text-sm text-attention">
           <p>{message}</p>
-          <Button type="button" variant="secondary" onClick={onFinalize}>
+          <Button type="button" variant="secondary" disabled={primaryDisabled} onClick={onFinalize}>
             Retry
           </Button>
         </div>
@@ -213,6 +216,7 @@ export function FinalizeSection({
   nextAction,
 }: FinalizeSectionProps) {
   const [reviewNote, setReviewNote] = useState('')
+  const reviewNoteField = useField({ name: 'review-note', description: `${reviewNote.length}/${MAX_REVIEW_NOTE_LENGTH}` })
   const finalizeHook = useFinalizeSession(session.id)
 
   const missing = computeMissing({ materiallyDisrupted, scoringComplete, conditionsConfirmed })
@@ -254,20 +258,21 @@ export function FinalizeSection({
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <label htmlFor="review-note" className="block text-sm font-medium text-[var(--color-text)]">
+        <Label {...reviewNoteField.labelProps} className="text-sm font-medium text-ink">
           Anything else to note?
-        </label>
-        <textarea
-          id="review-note"
+        </Label>
+        <Textarea
+          {...reviewNoteField.controlProps}
           value={reviewNote}
           maxLength={MAX_REVIEW_NOTE_LENGTH}
           rows={3}
-          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
           onChange={(event) => setReviewNote(event.target.value)}
         />
-        <p className="text-xs text-[var(--color-text-muted)]">
-          {reviewNote.length}/{MAX_REVIEW_NOTE_LENGTH}
-        </p>
+        {reviewNoteField.descriptionProps ? (
+          <p {...reviewNoteField.descriptionProps} className="text-xs text-ink-muted">
+            {reviewNote.length}/{MAX_REVIEW_NOTE_LENGTH}
+          </p>
+        ) : null}
       </div>
 
       <FinalizeBar canFinalize={canFinalize} missing={missing} onFinalize={handleFinalize} status={finalizeHook.status} />

@@ -157,6 +157,45 @@ describe('TimerDisplay', () => {
     expect(await screen.findByText('Timer hidden')).toBeInTheDocument()
     expect(screen.queryByTestId('timer-digits')).not.toBeInTheDocument()
   })
+
+  it('digits render at the 56px instrument size in ink by default, not the old 36px size', async () => {
+    mount({ remainingSeconds: 600, hidden: false })
+
+    const digits = await screen.findByTestId('timer-digits')
+    expect(digits.className).toMatch(/text-\[56px\]/)
+    expect(digits.className).toMatch(/\btext-ink\b/)
+    expect(digits.className).not.toMatch(/text-4xl/)
+  })
+
+  it('tone="signal" renders the digits in the signal token instead of ink; ink stays the default', async () => {
+    const utils = mount({ remainingSeconds: 600, hidden: false, tone: 'signal' })
+    const signalDigits = await screen.findByTestId('timer-digits')
+    expect(signalDigits.className).toMatch(/\btext-signal\b/)
+    expect(signalDigits.classList.contains('text-ink')).toBe(false)
+
+    rerenderWith(utils, { remainingSeconds: 600, hidden: false })
+    const inkDigits = screen.getByTestId('timer-digits')
+    expect(inkDigits.className).toMatch(/\btext-ink\b/)
+  })
+
+  it('the hidden-state label is sans text-ink-muted at a stable block height, not the 56px mono instrument face', async () => {
+    mount({ remainingSeconds: 600, hidden: true })
+
+    const label = await screen.findByTestId('timer-hidden-text')
+    expect(label.classList.contains('text-ink-muted')).toBe(true)
+    expect(label.className).not.toMatch(/font-mono/)
+    expect(label.className).not.toMatch(/text-\[56px\]/)
+    expect(label.className).not.toMatch(/leading-none/)
+    expect(label.className).toMatch(/\bmin-h-14\b/)
+  })
+
+  it('tone="signal" does not color the hidden-state label; it stays text-ink-muted', async () => {
+    mount({ remainingSeconds: 600, hidden: true, tone: 'signal' })
+
+    const label = await screen.findByTestId('timer-hidden-text')
+    expect(label.classList.contains('text-ink-muted')).toBe(true)
+    expect(label.classList.contains('text-signal')).toBe(false)
+  })
 })
 
 describe('useRemaining', () => {

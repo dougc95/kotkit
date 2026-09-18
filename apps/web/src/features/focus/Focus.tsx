@@ -66,6 +66,9 @@ import type { SessionResponseValue, TransitionBodyValue } from '@attention-lab/s
 import { api } from '../../lib/api/client.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
+import { Reported } from '../../ui/Reported.js'
 import { ActiveSessionCard } from '../session/ActiveSessionCard.js'
 import { AgentPanel } from './AgentPanel.js'
 import { EventButtons } from './EventButtons.js'
@@ -93,9 +96,11 @@ export function SessionHeader({ intendedOutput, targetSeconds }: SessionHeaderPr
   const targetMinutes = Math.round(targetSeconds / 60)
   return (
     <header className="space-y-1">
-      <h1 className="text-lg font-semibold text-[var(--color-text)]">Practice block</h1>
-      <p className="text-sm text-[var(--color-text)]">{intendedOutput ?? 'No intended output recorded'}</p>
-      <p className="text-sm text-[var(--color-text-muted)]">{`Target: ${targetMinutes} min`}</p>
+      <h1 className="text-lg font-semibold text-ink">Practice block</h1>
+      <p className="text-sm text-ink">
+        {intendedOutput ?? <Reported>No intended output recorded</Reported>}
+      </p>
+      <p className="text-sm text-ink-muted">{`Target: ${targetMinutes} min`}</p>
     </header>
   )
 }
@@ -143,9 +148,8 @@ function extractCurrentSession(details: Record<string, unknown> | undefined): Se
 
 function RetryNotice({ message, onRetry }: { readonly message: string; readonly onRetry: () => void }) {
   return (
-    <div className="mx-auto max-w-xl px-4 py-6 space-y-4">
-      <p>{message}</p>
-      <Button onClick={onRetry}>Retry</Button>
+    <div className="mx-auto max-w-xl px-4 py-6">
+      <ErrorState onRetry={onRetry}>{message}</ErrorState>
     </div>
   )
 }
@@ -217,11 +221,7 @@ export function Focus() {
   }
 
   if (sessionQuery.isPending) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading
-      </div>
-    )
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading</LoadingState>
   }
 
   if (notFound) {
@@ -257,7 +257,9 @@ export function Focus() {
 
       {deadlineReached ? (
         <div className="space-y-4">
-          <p role="status">{DEADLINE_MESSAGE}</p>
+          <p role="status" className="text-ink">
+            {DEADLINE_MESSAGE}
+          </p>
           <Button
             onClick={handleReview}
             disabled={transitionMutation.isPending}
@@ -266,15 +268,8 @@ export function Focus() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <TimerDisplay remainingSeconds={remaining ?? session.targetSeconds} />
-          <TransitionControls session={session} />
-          <AgentPanel
-            sessionId={session.id}
-            sessionVersion={session.version}
-            plan={session.agentPlan}
-            lifecycle={session.lifecycle}
-          />
           <EventButtons
             sessionId={session.id}
             variant="practice"
@@ -286,12 +281,34 @@ export function Focus() {
             }}
             canUndo={events.canUndo}
           />
-          {events.undoNotice !== null ? <p role="alert">{events.undoNotice}</p> : null}
+          {events.undoNotice !== null ? (
+            // U15a: this is `useSessionEvents`' own undo-failure message
+            // ("This entry could not be removed...") — the same failed-
+            // action content Running.tsx's identical `undoNotice` row
+            // renders (both consume the same hook), not the "stale/updated
+            // elsewhere" kind of notice AgentPanel's STALE_MESSAGE is. A
+            // failed action takes `text-attention`, never neutral ink.
+            <p role="alert" className="text-sm text-attention">
+              {events.undoNotice}
+            </p>
+          ) : null}
+
+          <div className="space-y-4 border-t border-rule pt-4">
+            <TransitionControls session={session} />
+            <AgentPanel
+              sessionId={session.id}
+              sessionVersion={session.version}
+              plan={session.agentPlan}
+              lifecycle={session.lifecycle}
+            />
+          </div>
         </div>
       )}
 
-      <Tallies offTask={events.tallies.offTask} external={events.tallies.external} agentChecks={events.tallies.agentChecks} />
-      <SyncStatus sessionId={session.id} />
+      <div className="space-y-3 border-t border-rule pt-4">
+        <Tallies offTask={events.tallies.offTask} external={events.tallies.external} agentChecks={events.tallies.agentChecks} />
+        <SyncStatus sessionId={session.id} />
+      </div>
     </div>
   )
 }

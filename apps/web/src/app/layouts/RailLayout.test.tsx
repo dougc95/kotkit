@@ -163,4 +163,61 @@ describe('RailLayout', () => {
     expect(mains).toHaveLength(1)
     expect(mains[0]).toHaveAttribute('id', 'main')
   })
+
+  it('rendered rail markup uses the new design tokens, not the retired --color- custom properties', async () => {
+    const { container } = mount('/progress')
+    await screen.findByRole('navigation', { name: 'Main' })
+
+    expect(container.innerHTML).not.toMatch(/--color-/)
+  })
+
+  it('the active link is marked by weight, not colour alone: font-semibold on active, font-medium on inactive', async () => {
+    mount('/progress')
+
+    const activeLink = await screen.findByRole('link', { name: 'Progress' })
+    expect(activeLink.className).toMatch(/font-semibold/)
+    expect(activeLink.className).not.toMatch(/font-medium/)
+
+    const inactiveLink = screen.getByRole('link', { name: 'Today' })
+    expect(inactiveLink.className).toMatch(/font-medium/)
+    expect(inactiveLink.className).not.toMatch(/font-semibold/)
+  })
+
+  it('the active link carries text-signal and an inactive link carries text-ink-muted', async () => {
+    mount('/progress')
+
+    const activeLink = await screen.findByRole('link', { name: 'Progress' })
+    expect(activeLink.className).toMatch(/text-signal/)
+
+    const inactiveLink = screen.getByRole('link', { name: 'Today' })
+    expect(inactiveLink.className).toMatch(/text-ink-muted/)
+  })
+
+  it('at desktop width the banner is a full-width top bar, not a flex sibling of the rail (Task W2a defect 1)', async () => {
+    stubMatchMedia(true)
+    mount()
+
+    const banner = await screen.findByLabelText('Demonstration data notice')
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    const main = screen.getByRole('main')
+
+    // (a) the banner is not a flex sibling of the nav.
+    expect(banner.parentElement).not.toBe(nav.parentElement)
+
+    // (b) nav and main share a parent that is the md:flex row.
+    expect(nav.parentElement).toBe(main.parentElement)
+    expect(nav.parentElement?.className).toMatch(/md:flex/)
+
+    // (c) the banner's own parent is not the md:flex row.
+    expect(banner.parentElement?.className ?? '').not.toMatch(/md:flex/)
+
+    // (d) document order is banner, skip link, nav, main.
+    const skipLink = screen.getByRole('link', { name: 'Skip to content' })
+    // eslint-disable-next-line no-bitwise -- Node.compareDocumentPosition's bitmask is the standard DOM-order check.
+    expect(banner.compareDocumentPosition(skipLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // eslint-disable-next-line no-bitwise -- Node.compareDocumentPosition's bitmask is the standard DOM-order check.
+    expect(skipLink.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // eslint-disable-next-line no-bitwise -- Node.compareDocumentPosition's bitmask is the standard DOM-order check.
+    expect(nav.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })

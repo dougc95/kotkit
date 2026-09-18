@@ -24,7 +24,11 @@ Every task's requirements implicitly include this section.
 - **No all-caps eyebrow labels, no middle-dot meta strings, no arrow appended to button or link text, no single-word accenting in a headline.**
 - **One expressive motion beat:** a value crossing pending → recorded. Skeletons do not pulse. Nothing celebratory at `0:00`.
 - **One `data-variant="primary"` per interactive surface.** A modal is its own surface.
-- **The global `:focus-visible` rule in `index.css` is the only focus indicator.** Strip `focus-visible:*` classes from every generated shadcn component. No component-level focus affordance, including hover-and-focus underlines.
+- **The global `:focus-visible` rule in `index.css` is the only focus indicator.** Strip `focus-visible:*` classes from every generated shadcn component. No component-level focus affordance, including hover-and-focus underlines. That covers every other `focus*:` variant too, and every `outline-none` / `outline-hidden`: Tailwind emits utilities in a later cascade layer than the `@layer base` rule, so an outline suppressor cancels the global ring whatever its specificity (spec U17). `src/ui/shadcn/conventions.test.ts` fails on all three inside `src/ui/shadcn/`; nothing guards the rest of `src/`, so do not add one there either.
+- **A new test file that renders more than once registers `afterEach(cleanup)`.** `apps/web/vitest.config.ts` sets no `globals`, so React Testing Library's auto-cleanup never registers, and a second `render` in the same file leaves the first in the document. Import `cleanup` from `@testing-library/react` and `afterEach` from `vitest`, as `src/ui/Button.test.tsx` does. Test code in this plan that omits it predates this line (added at the Wave 0 gate).
+- **`<Button asChild>` call sites.** Put any class override on `Button`, never on the child: Radix Slot joins the child's own `className` with a plain string join, so `cn()`'s caller-wins merge does not reach it. Never combine `asChild` with `disabled`: `disabled` is meaningless on an anchor and the `disabled:*` utilities cannot match it. Use `aria-disabled` and a guarded handler.
+- **`<Reported>` contracts.** `children` is one string, so convert a number with `String(...)`. `mono` takes effect only on a recorded value; absent and uncertain values always render in the sans face (spec U18). Tests assert `data-tier`, never a tier's classes, because a caller `className` can override those.
+- **`useField` contracts.** `name` is a whitespace-free token, because it is interpolated into a DOM id. Render the description or error row if and only if `descriptionProps` / `errorProps` is present, and pass the hook the same string you render. `required` emits `aria-required` only: keep the native `required` attribute wherever a form relies on it today (`DisruptionField.tsx`, `Ready.tsx`, `Scoring.tsx`).
 - **Node 22.9+**, npm workspaces, all commands run from the repo root.
 
 ### The preserved contract — never change these
@@ -49,7 +53,9 @@ Full detail in the spec §1 and §6. The load-bearing items:
 
 ### Correction to the spec
 
-Spec §5 says `format.ts` and `trendFormat.ts` gain the `absenceTier` predicate. Those files live under `features/progress/`, but the taxonomy is needed by `checkin`, `benchmark`, `review` and `today` as well. `absenceTier` therefore lives in `src/ui/reported.ts` (Task 6). The formatter files are unchanged and keep returning their exact current strings.
+Spec §5 says `format.ts` and `trendFormat.ts` gain the `absenceTier` predicate. Those files live under `features/progress/`, but the taxonomy is needed by `checkin`, `benchmark`, `review` and `today` as well. `absenceTier` therefore lives in `src/ui/valueTier.ts` (Task 6). The formatter files are unchanged and keep returning their exact current strings.
+
+The module is named `valueTier.ts`, not `reported.ts` as first drafted: `reported.ts` beside `Reported.tsx` differs from it only in case, and on a case-insensitive filesystem (this repository is developed on Windows) `./Reported.js` resolves to `reported.ts` before `Reported.tsx` is tried — TypeScript reports TS1149 and TS2305 under `forceConsistentCasingInFileNames`. Verified with a two-file reproduction on 2026-09-17, before Task 6 was dispatched.
 
 ---
 
@@ -63,10 +69,10 @@ Spec §5 says `format.ts` and `trendFormat.ts` gain the `absenceTier` predicate.
 | `apps/web/src/lib/cn.ts` | the `cn()` class-merge helper |
 | `apps/web/src/ui/shadcn/*.tsx` | generated primitives, focus rings stripped |
 | `apps/web/src/ui/field.ts` | `useField` — id generation and ARIA wiring for form controls |
-| `apps/web/src/ui/reported.ts` | `ValueTier`, `absenceTier` |
+| `apps/web/src/ui/valueTier.ts` | `ValueTier`, `absenceTier` |
 | `apps/web/src/ui/Reported.tsx` | the `<Reported>` component that applies a tier |
 | `apps/web/src/ui/Reported.test.tsx` | taxonomy tests, including the `20+, capped` case |
-| `apps/web/src/ui/field.test.ts` | ARIA wiring tests |
+| `apps/web/src/ui/field.test.tsx` | ARIA wiring tests |
 
 **Modified in Wave 0:** `apps/web/src/index.css` (tokens replaced, accessibility baseline preserved), `apps/web/src/ui/Button.tsx` (+`asChild`), `apps/web/package.json`, `package-lock.json`, `LIMITATIONS.md`.
 
@@ -264,7 +270,7 @@ Replace the existing `:root` declarations inside `@layer base`. **Keep the `body
 
     /* Text, and recorded data. */
     --color-ink: #16232B;       /* ~14.7:1 */
-    --color-ink-muted: #455761; /* ~6.6:1 */
+    --color-ink-muted: #455761; /* ~6.9:1 */
 
     /* State. */
     --color-signal: #0B5F63;    /* white on this fill is ~7.4:1 */
@@ -275,9 +281,20 @@ Replace the existing `:root` declarations inside `@layer base`. **Keep the `body
     --color-destructive: #8C2F1B;
     --color-destructive-text: #FFFFFF;
 
-    /* Focus ring: unchanged from the previous palette. Pure black clears
-     * >= 3:1 against every background this palette uses, including directly
-     * against --color-signal, so one token works everywhere. */
+    /*
+     * Focus ring. `outline-offset: 2px` paints the ring entirely outside a
+     * control's border box, so it never renders on that control's own fill —
+     * only on whatever surrounds it. Against both surfaces this palette uses
+     * for that, pure black is far clear of any threshold: ~19.2:1 on
+     * --color-paper and 21:1 on --color-card.
+     *
+     * Recorded limitation: black does NOT clear 3:1 against two of this
+     * palette's fills — ~2.8:1 on --color-signal and ~2.5:1 on
+     * --color-destructive. That only bites if a focusable control is ever
+     * nested inside a signal- or destructive-filled surface, which no screen
+     * in this app does today. If one is ever introduced, that surface needs
+     * its own ring colour; do not assume this token covers it.
+     */
     --color-focus-ring: #000000;
 
     --radius: 0.375rem;
@@ -458,7 +475,9 @@ If the CLI reports it cannot find configuration, confirm `components.json` from 
 
 - [ ] **Step 4: Strip every `focus-visible:` utility**
 
-Each generated component carries a cluster like `focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]`. Remove those utilities and leave the rest of each class string untouched. Do not replace them with anything — the global rule in `index.css` already covers every interactive element.
+Each generated component carries a cluster like `focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]`. Remove those utilities, every other `focus*:` variant, and every `outline-none` / `outline-hidden`; leave the rest of each class string untouched. Do not replace them with anything — the global rule in `index.css` already covers every interactive element. The one exception is `SelectItem`: its `focus:bg-accent focus:text-accent-foreground` becomes `data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground`, which is the listbox's active-option state rather than a focus ring, and matches the app's existing Radix listbox items.
+
+**Corrected 2026-09-17, after the Task 4 review.** As first written this step stripped only `focus-visible:*` and said to leave everything else untouched. shadcn pairs an unconditional `outline-none` with the ring it draws instead, and Tailwind 4 declares `@layer theme, base, components, utilities`, so the surviving `outline-none` (utilities layer) cancelled the global `:focus-visible` outline (base layer) on eight components, which then had no keyboard focus indicator at all. The `sed` below is also unsafe as written: on `dark:focus-visible:ring-destructive/40` it leaves an orphan `dark:`. Use a pattern that consumes the variant chain — `/(?:[a-zA-Z-]+:)*focus-visible:[a-zA-Z0-9:/[\]._-]+ ?/g` — and then check every class string for leading, trailing or doubled spaces. The convention test in Step 1 gained two per-file assertions for this, `/outline-(?:none|hidden)\b/` and `/\bfocus(?:-[a-z]+)*:/`; `apps/web/src/ui/shadcn/conventions.test.ts` is the as-built file. The shadcn CLI also wrote `import { cn } from "cn"` and added an unpinned `cn` dependency; both were removed by hand and will recur on any regeneration.
 
 ```bash
 cd apps/web/src/ui/shadcn
@@ -622,10 +641,12 @@ export function Button({ variant = 'primary', type, asChild = false, className, 
 }
 ```
 
+**As built.** The three doc comments the existing file carried — on `variant`, on `ref` (why Radix `asChild` triggers need it, with the `e2e/a11y/keyboard-review.spec.ts` evidence) and above the function — were kept; the block above omits them for brevity only, and the function comment now says `type="button"` is applied only when a real `<button>` renders. `Button.test.tsx` registers `afterEach(cleanup)` (see Global Constraints).
+
 - [ ] **Step 4: Run the full Button suite**
 
 Run: `npm run test -w @attention-lab/web -- Button`
-Expected: PASS, including the three pre-existing tests.
+Expected: PASS — the one pre-existing test (`Button primary renders type=button with data-variant=primary and its accessible name`) plus the two new ones. The file already imports `render`, `screen`, `describe`, `expect` and `it`, so the new cases need no added imports.
 
 - [ ] **Step 5: Verify no consumer broke**
 
@@ -644,7 +665,7 @@ git commit -m "Add asChild to Button via Radix Slot, keeping data-variant and th
 ### Task 6: The value taxonomy — absenceTier and Reported
 
 **Files:**
-- Create: `apps/web/src/ui/reported.ts`, `apps/web/src/ui/Reported.tsx`, `apps/web/src/ui/Reported.test.tsx`
+- Create: `apps/web/src/ui/valueTier.ts`, `apps/web/src/ui/Reported.tsx`, `apps/web/src/ui/Reported.test.tsx`
 
 **Interfaces:**
 - Consumes: `cn()` (Task 1).
@@ -672,7 +693,7 @@ The third case is the one this whole component exists for.
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { absenceTier } from './reported.js'
+import { absenceTier } from './valueTier.js'
 import { Reported } from './Reported.js'
 
 describe('absenceTier', () => {
@@ -726,7 +747,7 @@ Expected: FAIL — module not found.
 Matching is against an explicit closed set, never a substring or a heuristic. `20+, capped` and any numeric string fall through to `recorded` by design.
 
 ```ts
-// apps/web/src/ui/reported.ts
+// apps/web/src/ui/valueTier.ts
 
 /**
  * Which of the three visual registers a rendered value belongs to.
@@ -741,7 +762,14 @@ Matching is against an explicit closed set, never a substring or a heuristic. `2
  */
 export type ValueTier = 'recorded' | 'absent' | 'uncertain'
 
-const ABSENT = new Set(['Not reported', 'not yet reported', 'Not finalized', '—', 'Percentage: not applicable'])
+const ABSENT = new Set([
+  'Not reported',
+  'not yet reported',
+  'Not finalized',
+  '—',
+  'Percentage: not applicable',
+  'No intended output recorded',
+])
 const UNCERTAIN = new Set(['Unknown', 'Timing uncertain'])
 
 export function absenceTier(text: string): ValueTier {
@@ -762,19 +790,23 @@ export function absenceTier(text: string): ValueTier {
 import type { ReactElement } from 'react'
 
 import { cn } from '../lib/cn.js'
-import { absenceTier, type ValueTier } from './reported.js'
+import { absenceTier, type ValueTier } from './valueTier.js'
 
 export interface ReportedProps {
   readonly children: string
-  /** Tabular figures. Only for the three contexts mono is permitted in. */
+  /**
+   * Tabular figures, for the three contexts mono is permitted in. Applied only
+   * to a recorded value: a status word such as 'Not reported' or 'Unknown'
+   * stays in the sans face, even inside a table that sets mono on an ancestor.
+   */
   readonly mono?: boolean
   readonly className?: string
 }
 
 const TIER_CLASS: Record<ValueTier, string> = {
   recorded: 'text-ink',
-  absent: 'text-ink-muted border-b border-dashed border-rule',
-  uncertain: 'text-attention',
+  absent: 'font-sans text-ink-muted border-b border-dashed border-rule',
+  uncertain: 'font-sans text-attention',
 }
 
 /**
@@ -787,7 +819,7 @@ export function Reported({ children, mono = false, className }: ReportedProps): 
   return (
     <span
       data-tier={tier}
-      className={cn(TIER_CLASS[tier], mono ? 'font-mono tabular-nums' : undefined, className)}
+      className={cn(TIER_CLASS[tier], mono && tier === 'recorded' ? 'font-mono tabular-nums' : undefined, className)}
     >
       {children}
     </span>
@@ -800,10 +832,12 @@ export function Reported({ children, mono = false, className }: ReportedProps): 
 Run: `npm run test -w @attention-lab/web -- Reported`
 Expected: PASS, all seven cases.
 
+**As built (Task 6 fix round, 2026-09-17).** The code blocks above are the as-built code, which differs from the first draft in two ways the Task 6 review found. `mono` takes effect only on a recorded value, and the absent and uncertain tiers always carry `font-sans`, so a `Not reported` cell stays sans even inside a table that sets `font-mono` on an ancestor (spec U18). `ABSENT` gained an eighth string, `No intended output recorded`, the Focus header's missing-output placeholder (spec U19; Task 34 wraps it). `Reported.test.tsx` registers `afterEach(cleanup)` and carries five further cases for those two rules, twelve in all.
+
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/web/src/ui/reported.ts apps/web/src/ui/Reported.tsx apps/web/src/ui/Reported.test.tsx
+git add apps/web/src/ui/valueTier.ts apps/web/src/ui/Reported.tsx apps/web/src/ui/Reported.test.tsx
 git commit -m "Add the three-tier value taxonomy, keeping 20+, capped as a recorded measurement"
 ```
 
@@ -6747,7 +6781,7 @@ EOF
 - Modify: `apps/web/src/features/focus/Focus.test.tsx`
 
 **Interfaces:**
-- Consumes: nothing new from the frozen list — this task is a pure token/size change. (No `Reported`/`useField`/shadcn primitive touches any file in this task.)
+- Consumes: `Reported` (`../../ui/Reported.js`) for exactly one line, `SessionHeader`'s missing-intended-output placeholder (amended 2026-09-17, see Step 3). Otherwise this task is a pure token/size change: no `useField` and no shadcn primitive touches any file in it.
 - Produces: `TimerDisplayProps.tone?: 'ink' | 'signal'` — an optional prop later tasks (Benchmark Running, a different unit) may pass `'signal'` to render the live-benchmark petrol countdown; every existing caller (`Recall.tsx` line 351, `Focus.tsx` line 270, and `apps/web/src/features/benchmark/Running.tsx` line 176) omits `tone` entirely and so keeps the default `'ink'`, visually unchanged by this addition. `Running.tsx` is the one of the three a later benchmark-unit task will pass `tone="signal"` from — out of scope here since `src/features/benchmark/` is a different Wave-1 unit's file ownership.
 
 `SyncStatus.tsx` needs **no code change** in this task: it already contains zero `var(--color-*)` references (confirmed by inspection — its only styling is `flex flex-wrap items-center gap-2 text-sm` plus the shared `Button`). The "quiet utility strip separated only by hairlines" requirement is carried entirely by Focus.tsx's own wrapping `<div>`s, not by anything inside `SyncStatus.tsx`.
@@ -6791,7 +6825,18 @@ Add to `Focus.test.tsx`, inside `describe('Focus', ...)`, right after the existi
     const hairlines = container.querySelectorAll('.border-t.border-rule')
     expect(hairlines).toHaveLength(2)
   })
+
+  it('a session with no intended output draws the placeholder in the absent tier, never as ink', async () => {
+    const session = makeSession({ id: 'session-no-output', intendedOutput: null })
+    respond('sessions.get', session)
+
+    renderFocus(session.id)
+    const placeholder = await screen.findByText('No intended output recorded')
+    expect(placeholder).toHaveAttribute('data-tier', 'absent')
+  })
 ```
+
+The second case was added on 2026-09-17 with the Step 3 amendment below. In Step 2 it fails on `toHaveAttribute('data-tier', 'absent')`, because the `<p>` that matches the text carries no `data-tier` until the placeholder is wrapped.
 
 - [ ] **Step 2: Run it and watch it fail**
 
@@ -6874,7 +6919,11 @@ export function TimerDisplay({ remainingSeconds, hidden: hiddenProp, onToggleHid
 }
 ```
 
-In `Focus.tsx`, convert `SessionHeader`'s tokens and restructure the running-session body into two hairline-separated groups below the countdown and the one primary logging button. Before:
+In `Focus.tsx`, convert `SessionHeader`'s tokens and restructure the running-session body into two hairline-separated groups below the countdown and the one primary logging button.
+
+**Amended 2026-09-17 (Task 6 review, spec U19).** The missing-output placeholder is wrapped in `<Reported>` so it draws in the absent tier instead of full ink: it is the null branch of a field the user never filled in, and `'No intended output recorded'` is in `valueTier.ts`'s `ABSENT` set for exactly this line. Add `import { Reported } from '../../ui/Reported.js'` to `Focus.tsx`. The string itself is unchanged, so every existing text assertion still passes.
+
+Before:
 
 ```tsx
 export function SessionHeader({ intendedOutput, targetSeconds }: SessionHeaderProps) {
@@ -6897,7 +6946,9 @@ export function SessionHeader({ intendedOutput, targetSeconds }: SessionHeaderPr
   return (
     <header className="space-y-1">
       <h1 className="text-lg font-semibold text-ink">Practice block</h1>
-      <p className="text-sm text-ink">{intendedOutput ?? 'No intended output recorded'}</p>
+      <p className="text-sm text-ink">
+        {intendedOutput ?? <Reported>No intended output recorded</Reported>}
+      </p>
       <p className="text-sm text-ink-muted">{`Target: ${targetMinutes} min`}</p>
     </header>
   )
@@ -9601,7 +9652,7 @@ Replace the component's entire `return (...)` statement — starting at the `ret
 Four deliberate decisions worth naming explicitly, since a reviewer needs the reasoning, not just the diff:
 1. The recorded-time line (`{elapsedMinutes} min recorded of {targetMinutes} min target ...`) is **not** wrapped in `<Reported>`. `elapsedSeconds`/`targetSeconds` are non-nullable numbers with no absent/uncertain state to represent, and `PracticeReview.test.tsx`'s existing `'recorded-time line reads X min recorded...'` test asserts the whole sentence as one `getByText` string — splitting it across a nested `<span>` would break that exact-string match for no taxonomy benefit.
 2. The three `dd` tally values are left as plain numbers (not wrapped in `<Reported>`) for the same reason: `tallies.offTask/external/agentChecks` are non-nullable, so their tier is trivially always `'recorded'`, and the existing `.nextElementSibling?.textContent` assertions expect the `dd`'s only content to be the bare number.
-3. `Timing uncertain` is wrapped in `<Reported>` inside the `Badge` rather than styled by hand with a bespoke amber className. Design.md's three-tier taxonomy (`## 5. The three-tier value taxonomy`) already classifies `Timing uncertain` as an uncertain-tier string alongside `Unknown` (the `UNCERTAIN` set in `docs/superpowers/plans/2026-09-09-shadcn-ui-rework.md`'s `reported.ts`), so routing it through the same `<Reported>` component keeps one taxonomy implementation instead of a second hand-rolled amber class, and gives Step 1's test a real, non-internal signal (`data-tier="uncertain"`) to assert on.
+3. `Timing uncertain` is wrapped in `<Reported>` inside the `Badge` rather than styled by hand with a bespoke amber className. Design.md's three-tier taxonomy (`## 5. The three-tier value taxonomy`) already classifies `Timing uncertain` as an uncertain-tier string alongside `Unknown` (the `UNCERTAIN` set in `docs/superpowers/plans/2026-09-09-shadcn-ui-rework.md`'s `valueTier.ts`), so routing it through the same `<Reported>` component keeps one taxonomy implementation instead of a second hand-rolled amber class, and gives Step 1's test a real, non-internal signal (`data-tier="uncertain"`) to assert on.
 4. The `role="status"` sync message (`statusMessage(...)`) becomes `text-attention` rather than staying neutral `text-ink`: "Some entries have not been saved yet" and "The review could not be saved. Retry." are both need-you states with a visible Retry action, which is exactly the job design.md's Colour table (§3) scopes the `attention` token to — its `attention` row reads "Amber. Needs-you, and uncertainty." This is a visual-only change with no dedicated test — verify by opening `/review/:id` after forcing `mockApi.sessions.finalize` to reject (or, live, triggering an `event_count_mismatch`) and confirming the message renders in amber, not the page's default ink.
 
 - [ ] **Step 4: Run the tests**

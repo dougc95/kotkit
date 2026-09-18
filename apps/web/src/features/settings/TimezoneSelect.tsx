@@ -1,18 +1,17 @@
-import { useId } from 'react'
+import { useField } from '../../ui/field.js'
+import { Label } from '../../ui/shadcn/label.js'
 
 /**
- * The timezone picker on Settings (task 8.9.2). Purely presentational: the
- * caller (`Preferences.tsx`) owns the value, the candidate zone list and any
- * field error, so this component never calls `Intl.supportedValuesOf`
- * itself — one place computes that list (`listTimezones` below, exported for
- * `Preferences.tsx`), matching `features/setup/PlanForm.tsx`'s
- * `listTimezones`/`detectTimezone` pair for the same reason: a host whose
- * list happens to omit the currently-stored zone must still show it selected
- * rather than silently falling back to whatever option is first.
+ * The timezone picker on Settings. Purely presentational: the caller
+ * (`Preferences.tsx`) owns the value, the candidate zone list and any field
+ * error. Stays a native `<select>` rather than the generated Select
+ * primitive — the option list can be several hundred IANA zone names, and
+ * `user.selectOptions`/`toHaveValue` in `Preferences.test.tsx` exercise it
+ * as a native control.
  *
- * The helper copy is the fixed string program-setup's decision record and
- * this task's brief both require verbatim — timezone corrections must never
- * read as "your program restarts."
+ * The helper copy is a fixed string program-setup's decision record
+ * requires verbatim — timezone corrections must never read as "your
+ * program restarts."
  */
 const HELPER_TEXT = 'Changing your timezone does not move program days'
 
@@ -33,24 +32,20 @@ export interface TimezoneSelectProps {
 }
 
 export function TimezoneSelect({ value, zones, onChange, error }: TimezoneSelectProps) {
-  const selectId = useId()
-  const helpId = useId()
-  const errorId = useId()
+  const field = useField({ name: 'timezone', description: HELPER_TEXT, error: error ?? null })
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={selectId} className="text-sm font-medium text-[var(--color-text)]">
+      <Label {...field.labelProps} className="text-sm font-medium text-ink">
         Timezone
-      </label>
+      </Label>
       <select
-        id={selectId}
+        {...field.controlProps}
         value={value}
         onChange={(event) => {
           onChange(event.target.value)
         }}
-        aria-invalid={error !== undefined ? true : undefined}
-        aria-describedby={[helpId, error !== undefined ? errorId : undefined].filter(Boolean).join(' ') || undefined}
-        className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+        className="min-h-11 rounded-md border border-rule bg-transparent px-3 py-2 text-base text-ink md:text-sm"
       >
         {zones.map((zone) => (
           <option key={zone} value={zone}>
@@ -58,11 +53,13 @@ export function TimezoneSelect({ value, zones, onChange, error }: TimezoneSelect
           </option>
         ))}
       </select>
-      <p id={helpId} className="text-sm text-[var(--color-text-muted)]">
-        {HELPER_TEXT}
-      </p>
-      {error !== undefined ? (
-        <p id={errorId} role="alert" className="text-sm">
+      {field.descriptionProps !== undefined ? (
+        <p {...field.descriptionProps} className="text-sm text-ink-muted">
+          {HELPER_TEXT}
+        </p>
+      ) : null}
+      {field.errorProps !== undefined ? (
+        <p {...field.errorProps} className="text-sm text-attention">
           {error}
         </p>
       ) : null}

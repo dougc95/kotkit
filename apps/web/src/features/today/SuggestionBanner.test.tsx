@@ -3,7 +3,7 @@ import { cleanup, screen, waitFor } from '@testing-library/react'
 import type { CreateRevisionBodyValue, RevisionResponseValue, TodayResponseValue } from '@attention-lab/shared'
 
 import type { CreateRevisionResult } from '../../lib/api/client.js'
-import { mockApi, respond } from '../../test/mockClient.js'
+import { mockApi, reject, respond } from '../../test/mockClient.js'
 import { renderWithProviders } from '../../test/renderWithProviders.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { SuggestionBanner } from './SuggestionBanner.js'
@@ -210,5 +210,22 @@ describe('SuggestionBanner', () => {
 
     const banner = screen.getByTestId('suggestion-banner')
     expect(banner.textContent ?? '').not.toMatch(/streak|unlock|level/i)
+  })
+
+  it('Accept renders as the secondary variant so it is never a second primary alongside BlockCard\'s Start', () => {
+    mount()
+
+    expect(screen.getByRole('button', { name: 'Accept' })).toHaveAttribute('data-variant', 'secondary')
+  })
+
+  it('a 409 mutation failure keeps role=alert but takes text-attention, never plain ink or red (spec U15a)', async () => {
+    reject('programs.createRevision', { status: 409, code: 'stale_version' })
+    const { user } = mount()
+
+    await user.click(screen.getByRole('button', { name: 'Accept' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('This program changed elsewhere. Refresh and try again.')
+    expect(alert).toHaveClass('text-attention')
   })
 })

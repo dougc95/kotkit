@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, screen } from '@testing-library/react'
 import type { SessionResponseValue } from '@attention-lab/shared'
@@ -168,6 +171,27 @@ describe('ActiveSessionCard', () => {
     expect(lifecycleIndex).toBeGreaterThan(noticeIndex)
   })
 
+  it('the Return control renders through Button asChild: a primary anchor, never a button wrapping it', () => {
+    const session = makeSession({ id: 'session-a', kind: 'practice', lifecycle: 'running' })
+
+    renderWithProviders(<ActiveSessionCard session={session} />)
+
+    const link = screen.getByRole('link', { name: 'Return to your session' })
+    expect(link).toHaveAttribute('data-variant', 'primary')
+    expect(link.closest('button')).toBeNull()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('the card root uses rounded-lg, not the Card primitive\'s rounded-xl, so a measurement record does not look pillowy (task V3)', () => {
+    const session = makeSession({ id: 'session-a', kind: 'practice', lifecycle: 'running' })
+
+    renderWithProviders(<ActiveSessionCard session={session} />)
+
+    const card = screen.getByTestId('active-session-card')
+    expect(card).toHaveClass('rounded-lg')
+    expect(card).not.toHaveClass('rounded-xl')
+  })
+
   it('a stale awaiting_review current renders the Finish-review link, not the stale running one', () => {
     // The caller's own transition attempted `end` on a `running` session and
     // received 409 stale_version; `details.current` (D18) is already
@@ -183,5 +207,32 @@ describe('ActiveSessionCard', () => {
       '/review/session-h',
     )
     expect(screen.queryByRole('link', { name: 'Return to your session' })).not.toBeInTheDocument()
+  })
+})
+
+describe('ActiveSessionCard token migration', () => {
+  // `new URL('./ActiveSessionCard.tsx', import.meta.url)` alone is rewritten
+  // by Vite's asset transform; wrapping `import.meta.url` in its own `URL`
+  // first is the form that actually resolves to the source file on disk.
+  function readSource(): string {
+    return readFileSync(fileURLToPath(new URL('./ActiveSessionCard.tsx', new URL(import.meta.url))), 'utf8')
+  }
+
+  it('the card container and its text no longer reference the retired --color-border/surface/text-muted/text tokens', () => {
+    const source = readSource()
+
+    expect(source).not.toMatch(/--color-border/)
+    expect(source).not.toMatch(/--color-surface/)
+    expect(source).not.toMatch(/--color-text-muted/)
+    expect(source).not.toMatch(/--color-text\)/)
+    expect(source).toContain('<Card')
+    expect(source).not.toContain('CONTAINER_CLASSES')
+  })
+
+  it('no legacy --color- custom property remains anywhere in the file', () => {
+    const source = readSource()
+
+    expect(source).not.toMatch(/--color-/)
+    expect(source).not.toContain('LINK_CLASSES')
   })
 })

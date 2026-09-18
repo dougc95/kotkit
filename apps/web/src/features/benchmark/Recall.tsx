@@ -79,6 +79,12 @@ import { newIdempotencyKey } from '../../lib/api/newIdempotencyKey.js'
 import { serverNowMs, type ClockAnchor } from '../../lib/clock/remaining.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { ErrorState } from '../../ui/ErrorState.js'
+import { LoadingState } from '../../ui/LoadingState.js'
+import { useField } from '../../ui/field.js'
+import { Badge } from '../../ui/shadcn/badge.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { Textarea } from '../../ui/shadcn/textarea.js'
 import { TimerDisplay } from '../focus/TimerDisplay.js'
 
 const RECALL_TARGET_SECONDS = 180
@@ -97,32 +103,60 @@ export interface RecallPointsProps {
   readonly disabled: boolean
 }
 
+/**
+ * Shared with Scoring.tsx's `PointRow`: the blank textarea here, the locked
+ * sentence there, and the scored-blank row there must all sit inside this
+ * exact shape, so the eye tracks continuity across the recall -> scoring
+ * transition instead of a page reset (the rework spec §8, "Benchmark: recall and
+ * scoring"). `data-point-shell="true"` is a new, non-preserved-contract
+ * marker used only so tests can confirm the shape actually matches.
+ */
+export const POINT_SHELL_CLASSNAME = 'space-y-2 rounded-md border border-rule px-4 py-3'
+
+interface RecallPointFieldProps {
+  readonly index: number
+  readonly value: string
+  readonly disabled: boolean
+  readonly onChange: (index: number, value: string) => void
+}
+
+function RecallPointField({ index, value, disabled, onChange }: RecallPointFieldProps) {
+  // Pass `useField` the same string the counter below actually renders (the
+  // `Ready.tsx` `ReplacementReasonField` precedent), rather than a fixed
+  // placeholder — the hook only tests it for truthiness, so the DOM is
+  // byte-identical either way, but a future reader should not have to check
+  // that. This is what wires the counter's `aria-describedby` that defect #2
+  // in the rework spec §9 flags as missing today.
+  const field = useField({ name: `recall-point-${index + 1}`, description: `${value.length}/${MAX_POINT_LENGTH}` })
+  return (
+    <div className={POINT_SHELL_CLASSNAME} data-point-shell="true">
+      <Label {...field.labelProps} className="text-sm font-medium text-ink">
+        Point {index + 1}
+      </Label>
+      <Textarea
+        {...field.controlProps}
+        value={value}
+        maxLength={MAX_POINT_LENGTH}
+        rows={2}
+        disabled={disabled}
+        onChange={(event) => onChange(index, event.target.value)}
+      />
+      {field.descriptionProps !== undefined ? (
+        <p {...field.descriptionProps} className="text-xs text-ink-muted">
+          {value.length}/{MAX_POINT_LENGTH}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
 /** Five blank-allowed textareas, "Point 1".."Point 5" — blank is a valid, sent value, never coerced to anything else. */
 export function RecallPoints({ values, onChange, disabled }: RecallPointsProps) {
   return (
     <div className="space-y-4">
-      {values.map((value, index) => {
-        const id = `recall-point-${index + 1}`
-        return (
-          <div key={id} className="space-y-1">
-            <label htmlFor={id} className="block text-sm font-medium text-[var(--color-text)]">
-              Point {index + 1}
-            </label>
-            <textarea
-              id={id}
-              value={value}
-              maxLength={MAX_POINT_LENGTH}
-              rows={2}
-              disabled={disabled}
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] disabled:opacity-70"
-              onChange={(event) => onChange(index, event.target.value)}
-            />
-            <p className="text-xs text-[var(--color-text-muted)]">
-              {value.length}/{MAX_POINT_LENGTH}
-            </p>
-          </div>
-        )
-      })}
+      {values.map((value, index) => (
+        <RecallPointField key={index} index={index} value={value} disabled={disabled} onChange={onChange} />
+      ))}
     </div>
   )
 }
@@ -266,27 +300,22 @@ export function Recall() {
     return <p>Session not found</p>
   }
 
-  if (sessionQuery.isPending || session === undefined) {
+  if (sessionQuery.isError) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-6" aria-busy="true">
-        Loading recall
+      <div className="mx-auto max-w-xl px-4 py-6">
+        <ErrorState
+          onRetry={() => {
+            void sessionQuery.refetch()
+          }}
+        >
+          The recall could not be loaded.
+        </ErrorState>
       </div>
     )
   }
 
-  if (sessionQuery.isError) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-6 space-y-4">
-        <p>The recall could not be loaded.</p>
-        <Button
-          onClick={() => {
-            void sessionQuery.refetch()
-          }}
-        >
-          Retry
-        </Button>
-      </div>
-    )
+  if (sessionQuery.isPending || session === undefined) {
+    return <LoadingState className="mx-auto max-w-xl px-4 py-6">Loading recall</LoadingState>
   }
 
   if (session.review.recallLockedAt !== null) {
@@ -327,14 +356,20 @@ export function Recall() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-6 space-y-6">
-      <h1 className="text-lg font-semibold text-[var(--color-text)]">Recall</h1>
+      <h1 className="text-lg font-semibold text-ink">Recall</h1>
 
       {phase === 'confirm' ? (
         <div className="space-y-4">
           {session.completeInterval === false ? (
-            <p className="inline-block rounded-full border border-[var(--color-border)] px-2 py-0.5 text-xs text-[var(--color-text-muted)]">
+            // A recorded fact about this session (D25), not a live warning —
+            // ink, per "Recorded data is ink, not a colour" (the rework spec §3).
+            // variant="outline" is just a plain bordered container;
+            // className="text-ink" overrides Badge's default text-foreground
+            // so this never reads as the muted "not reported" tier or the
+            // amber "uncertain" one.
+            <Badge variant="outline" className="text-ink">
               Incomplete attempt
-            </p>
+            </Badge>
           ) : null}
           <p>Is your reading material closed?</p>
           <div className="flex flex-wrap gap-3">
@@ -349,7 +384,11 @@ export function Recall() {
       ) : (
         <div className="space-y-6">
           <TimerDisplay remainingSeconds={remainingSeconds} />
-          {timeIsUp ? <p role="status">Time is up — save when you are ready</p> : null}
+          {timeIsUp ? (
+            <p role="status" className="text-sm text-ink-muted">
+              Time is up — save when you are ready
+            </p>
+          ) : null}
 
           <RecallPoints values={points} disabled={false} onChange={handlePointChange} />
 
@@ -358,8 +397,11 @@ export function Recall() {
               Save recall
             </Button>
             {showRetryRow ? (
-              <div role="status" className="flex items-center gap-3 text-sm text-[var(--color-text)]">
-                <p>The recall could not be saved. Retry.</p>
+              <div role="status" className="flex items-center gap-3 text-sm">
+                {/* U15a: an error/save-failure message takes the attention
+                    tier, never red and never neutral ink — the row container
+                    itself carries no text-colour utility. */}
+                <p className="text-attention">The recall could not be saved. Retry.</p>
                 <Button variant="secondary" onClick={handleRetry}>
                   Retry
                 </Button>

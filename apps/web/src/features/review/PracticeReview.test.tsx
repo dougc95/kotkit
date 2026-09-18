@@ -286,7 +286,14 @@ describe('PracticeReview', () => {
 
     const second = renderReview(typedSession.id)
     await waitForLoaded()
-    await second.user.type(screen.getByLabelText('What did you finish? (optional)'), 'drafted the outline')
+    // `user.type` dispatches one real per-character timer-scheduled keystroke
+    // per letter; under load that is slow enough to push this file past its
+    // test timeout (same defect and fix as ReadinessForm.test.tsx, commit
+    // 01fb558). Nothing here asserts on keystroke-by-keystroke behaviour, so
+    // a single paste is equivalent.
+    const secondOutputNoteInput = screen.getByLabelText('What did you finish? (optional)')
+    await second.user.click(secondOutputNoteInput)
+    await second.user.paste('drafted the outline')
     await selectOutputQuality(second.user, 'Yes')
     await second.user.click(screen.getByRole('button', { name: 'Save review' }))
     await waitFor(() => expect(mockApi.sessions.finalize).toHaveBeenCalledTimes(2))
@@ -301,8 +308,14 @@ describe('PracticeReview', () => {
     const { user } = renderReview(session.id)
     await waitForLoaded()
 
-    await user.type(screen.getByLabelText('What did you finish? (optional)'), 'drafted the outline')
-    await user.type(screen.getByLabelText('Notes (optional)'), 'felt distracted by chat notifications')
+    // Same per-character-timer defect and fix as above (commit 01fb558);
+    // neither field is asserted keystroke-by-keystroke.
+    const outputNoteInput = screen.getByLabelText('What did you finish? (optional)')
+    await user.click(outputNoteInput)
+    await user.paste('drafted the outline')
+    const reviewNoteInput = screen.getByLabelText('Notes (optional)')
+    await user.click(reviewNoteInput)
+    await user.paste('felt distracted by chat notifications')
     await selectOutputQuality(user, 'Yes')
     await user.click(screen.getByRole('button', { name: 'Save review' }))
 
@@ -358,6 +371,62 @@ describe('PracticeReview', () => {
     expect(mockApi.sessions.finalize).not.toHaveBeenCalled()
   })
 
+  it('the blocked-submit error on output quality stays wired to the fieldset via aria-describedby and role=alert', async () => {
+    const session = makeSession()
+    respond('sessions.get', session)
+
+    const { user } = renderReview(session.id)
+    await waitForLoaded()
+
+    const yesRadio = screen.getByRole('radio', { name: 'Yes' })
+
+    await user.click(screen.getByRole('button', { name: 'Save review' }))
+
+    const errorMessage = await screen.findByText('Choose Yes, Partly or No')
+    expect(errorMessage).toHaveAttribute('role', 'alert')
+    const fieldset = yesRadio.closest('fieldset')
+    expect(fieldset).not.toBeNull()
+    expect(fieldset).toHaveAttribute('aria-describedby', errorMessage.id)
+  })
+
+  it('the output-quality options sit in a named radiogroup', async () => {
+    const session = makeSession()
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    expect(screen.getByRole('radiogroup', { name: 'Did you produce the planned output?' })).toBeInTheDocument()
+  })
+
+  it('pins the literal output-quality radio ids the Playwright suite tabs through', async () => {
+    const session = makeSession()
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    // e2e/practice-review.spec.ts:262 tabs until document.activeElement.id
+    // starts with 'output-quality-', then presses Space to answer it — these
+    // three ids must stay exactly these literals and nothing else focusable
+    // may take an id starting with 'output-quality-'.
+    expect(document.getElementById('output-quality-yes')).toBe(screen.getByRole('radio', { name: 'Yes' }))
+  })
+
+  it('the blocked-submit error row is attention-coloured, never red', async () => {
+    const session = makeSession()
+    respond('sessions.get', session)
+
+    const { user } = renderReview(session.id)
+    await waitForLoaded()
+
+    await user.click(screen.getByRole('button', { name: 'Save review' }))
+
+    const errorMessage = await screen.findByText('Choose Yes, Partly or No')
+    expect(errorMessage).toHaveClass('text-attention')
+    expect(errorMessage).not.toHaveClass('text-red-600')
+  })
+
   it('a 409 event_count_mismatch renders Some entries have not been saved yet with Retry and keeps the typed values', async () => {
     const session = makeSession()
     respond('sessions.get', session)
@@ -374,7 +443,11 @@ describe('PracticeReview', () => {
     const { user } = renderReview(session.id)
     await waitForLoaded()
 
-    await user.type(screen.getByLabelText('What did you finish? (optional)'), 'kept typing through the retry')
+    // Same per-character-timer defect and fix as above (commit 01fb558); this
+    // value is only ever asserted on as a whole string after Retry.
+    const retryOutputNoteInput = screen.getByLabelText('What did you finish? (optional)')
+    await user.click(retryOutputNoteInput)
+    await user.paste('kept typing through the retry')
     await selectOutputQuality(user, 'Yes')
     await user.click(screen.getByRole('button', { name: 'Save review' }))
 
@@ -396,6 +469,33 @@ describe('PracticeReview', () => {
     expect(screen.getByRole('link', { name: /today/i })).toHaveAttribute('href', '/today')
   })
 
+  it('a non-404 load error renders inside an alert region, not a bare paragraph', async () => {
+    mockApi.sessions.get.mockRejectedValue(new Error('network exploded'))
+
+    renderReview('77777777-7777-4777-8777-777777777777')
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('The review could not be loaded.')
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+
+    const message = within(alert).getByText('The review could not be loaded.')
+    expect(message).toHaveClass('text-attention')
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(1)
+  })
+
+  it('the pending session query renders multiple static ruled placeholder rows rather than a bare loading sentence', async () => {
+    mockApi.sessions.get.mockImplementation(() => new Promise(() => {}))
+
+    const { container } = renderReview('88888888-8888-4888-8888-888888888888')
+
+    const busyRegion = container.querySelector('[aria-busy="true"]')
+    expect(busyRegion).not.toBeNull()
+    expect(busyRegion?.children.length ?? 0).toBeGreaterThan(1)
+    expect(screen.getByText('Loading review')).toBeInTheDocument()
+
+    expect(within(busyRegion as HTMLElement).getByText('Loading review')).toBeVisible()
+  })
+
   it('expectNoIdentifiers passes on the rendered screen', async () => {
     const session = makeSession({ tallies: { offTask: 1, external: 1, agentChecks: 1 } })
     respond('sessions.get', session)
@@ -404,5 +504,101 @@ describe('PracticeReview', () => {
     await waitForLoaded()
 
     expectNoIdentifiers(document.body)
+  })
+
+  it('count and note fields move onto shadcn Input/Textarea/Label while keeping their pinned DOM ids, and the count input grows to share the tallies grid column width', async () => {
+    const session = makeSession({ tallies: { offTask: 1, external: 0, agentChecks: 0 } })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    const episodeInput = screen.getByLabelText('How many times did you switch away?')
+    expect(episodeInput).toHaveAttribute('id', 'episode-count')
+    expect(episodeInput.className).toMatch(/\bw-full\b/)
+    expect(episodeInput.className).not.toMatch(/\bw-28\b/)
+
+    const outputNoteInput = screen.getByLabelText('What did you finish? (optional)')
+    expect(outputNoteInput).toHaveAttribute('id', 'output-note')
+
+    const reviewNoteInput = screen.getByLabelText('Notes (optional)')
+    expect(reviewNoteInput).toHaveAttribute('id', 'review-note')
+  })
+
+  it('the Timing uncertain flag renders inside a Badge as the uncertain tier, not a plain chip', async () => {
+    const session = makeSession({ timerQuality: 'uncertain' })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    const badgeText = screen.getByText('Timing uncertain')
+    expect(badgeText).toHaveAttribute('data-tier', 'uncertain')
+  })
+
+  it('a session with no intended output shows Planned output: Not reported in the absent tier, never the old None recorded string', async () => {
+    const session = makeSession({ intendedOutput: null })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    expect(screen.queryByText('None recorded', { exact: false })).not.toBeInTheDocument()
+    const value = screen.getByText('Not reported')
+    expect(value).toHaveAttribute('data-tier', 'absent')
+  })
+
+  // Controller deviation from the brief: `<Reported>` wraps ONLY the
+  // placeholder ('Not reported'), never the user's own `intendedOutput`
+  // text — a user whose planned output literally reads "Unknown" must see
+  // their own words rendered plain, not amber. This guards that: if
+  // `intendedOutput` were ever wrapped in `<Reported>` again, "Unknown"
+  // would render inside a separate `data-tier="uncertain"` element instead
+  // of as part of the paragraph's own direct text.
+  it('an intended output of exactly "Unknown" renders as plain text, never the uncertain tier', async () => {
+    const session = makeSession({ intendedOutput: 'Unknown' })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    const plannedOutputParagraph = screen.getByText(/Planned output:/).closest('p')
+    expect(plannedOutputParagraph).not.toBeNull()
+
+    // `within(p)` includes `p` itself as a candidate (it matches the '*'
+    // selector) alongside any descendants. Unwrapped, "Unknown" is a bare
+    // text node directly inside `p`, so the only match is `p` itself
+    // (substring match against its own text "Planned output: Unknown").
+    // Wrapped in `<Reported>`, the match would instead be the nested
+    // `data-tier` span.
+    const match = within(plannedOutputParagraph as HTMLElement).queryByText('Unknown', { exact: false })
+    expect(match === plannedOutputParagraph || match?.hasAttribute('data-tier') === false).toBe(true)
+  })
+
+  it('the recorded tallies and the counts you attest to share one three-column grid so their values line up', async () => {
+    const session = makeSession({ tallies: { offTask: 1, external: 0, agentChecks: 0 } })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    const tallies = screen.getByTestId('recorded-tallies')
+    const attested = screen.getByTestId('attested-counts')
+    expect(tallies.className).toMatch(/grid-cols-3/)
+    expect(attested.className).toMatch(/grid-cols-3/)
+  })
+
+  it('CountField uses CSS subgrid so labels, inputs and hints share rows at every width (pre-existing)', async () => {
+    const session = makeSession({ tallies: { offTask: 1, external: 0, agentChecks: 0 } })
+    respond('sessions.get', session)
+
+    renderReview(session.id)
+    await waitForLoaded()
+
+    const episodeInput = screen.getByLabelText('How many times did you switch away?')
+    const root = episodeInput.parentElement
+    expect(root).not.toBeNull()
+    expect(root?.className).toContain('grid-rows-subgrid')
+    expect(root?.className).toContain('row-span-3')
   })
 })

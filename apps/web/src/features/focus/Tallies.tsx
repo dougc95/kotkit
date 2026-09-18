@@ -17,16 +17,16 @@ export function Tallies({ offTask, external, agentChecks }: TalliesProps) {
   return (
     <dl className="flex flex-wrap gap-4 text-sm">
       <div className="flex items-baseline gap-1">
-        <dt className="text-[var(--color-text-muted)]">Off-task</dt>
+        <dt className="text-ink-muted">Off-task</dt>
         <dd className="font-medium tabular-nums">{offTask}</dd>
       </div>
       <div className="flex items-baseline gap-1">
-        <dt className="text-[var(--color-text-muted)]">External interruptions</dt>
+        <dt className="text-ink-muted">External interruptions</dt>
         <dd className="font-medium tabular-nums">{external}</dd>
       </div>
       {agentChecks !== undefined && (
         <div className="flex items-baseline gap-1">
-          <dt className="text-[var(--color-text-muted)]">Agent checks</dt>
+          <dt className="text-ink-muted">Agent checks</dt>
           <dd className="font-medium tabular-nums">{agentChecks}</dd>
         </div>
       )}

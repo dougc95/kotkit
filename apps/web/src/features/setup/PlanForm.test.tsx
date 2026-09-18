@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
 import type { CreateProgramBodyValue } from '@attention-lab/shared'
 
@@ -59,6 +59,16 @@ function lastCreateCall(): [CreateProgramBodyValue, { idempotencyKey: string }] 
 }
 
 describe('PlanForm', () => {
+  it('heading matches every other page heading: text-lg font-semibold text-ink, not text-xl (task V5)', () => {
+    mount()
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Set up your plan' })
+    expect(heading.className).toContain('text-lg')
+    expect(heading.className).toContain('font-semibold')
+    expect(heading.className).toContain('text-ink')
+    expect(heading.className).not.toContain('text-xl')
+  })
+
   it('omits feedEstimateMinutes when blank', async () => {
     respond('programs.create', { program: { id: 'p1' }, revision: { id: 'r1' } })
     const { user } = mount()
@@ -159,14 +169,16 @@ describe('PlanForm', () => {
     expect(active.router.state.location.pathname).toBe('/today')
   })
 
-  it('network failure shows could-not-save and does not navigate', async () => {
+  it('network failure shows could-not-save, colored for attention (U15a), and does not navigate', async () => {
     reject('programs.create', { status: 0, code: 'network_error' })
     const { user, router } = mount()
 
     await fillBaseline(user)
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    await screen.findByText('Could not save the plan')
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Could not save the plan')
+    expect(alert).toHaveClass('text-attention')
     expect(router.state.location.pathname).toBe('/setup')
   })
 
@@ -212,5 +224,111 @@ describe('PlanForm', () => {
     const message = await screen.findByText('Not a valid timezone.')
     const select = screen.getByLabelText('Timezone')
     expect(select).toHaveAttribute('aria-describedby', message.id)
+  })
+
+  it('shows the blank feed estimate as Not reported, and a typed value as recorded', async () => {
+    mount()
+
+    const blank = screen.getByText('Not reported')
+    expect(blank).toHaveAttribute('data-tier', 'absent')
+
+    const feedInput = screen.getByLabelText('Current daily feed time (estimate)')
+    fireEvent.change(feedInput, { target: { value: '0' } })
+
+    const recorded = await screen.findByText('0 min/day')
+    expect(recorded).toHaveAttribute('data-tier', 'recorded')
+    expect(screen.queryByText('Not reported')).not.toBeInTheDocument()
+  })
+
+  it('previews 007 honestly as 7 min/day, not the raw string the form would never actually send', async () => {
+    mount()
+
+    const feedInput = screen.getByLabelText('Current daily feed time (estimate)')
+    fireEvent.change(feedInput, { target: { value: '007' } })
+
+    const recorded = await screen.findByText('7 min/day')
+    expect(recorded).toHaveAttribute('data-tier', 'recorded')
+    expect(screen.queryByText('007 min/day')).not.toBeInTheDocument()
+  })
+
+  it('previews nothing for -5 (validate() rejects it, so no tier is a truthful preview of it)', async () => {
+    mount()
+
+    const feedInput = screen.getByLabelText('Current daily feed time (estimate)')
+    fireEvent.change(feedInput, { target: { value: '-5' } })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Not reported')).not.toBeInTheDocument()
+    })
+    const wrapper = feedInput.closest('div')
+    expect(wrapper).not.toBeNull()
+    expect(wrapper!.querySelector('[data-tier]')).toBeNull()
+  })
+
+  // task-21-amendment.md's replacement test list (supersedes the brief's
+  // Step 1/Step 2, which withdrew the Timezone Select conversion).
+
+  it('the duration radios sit inside a radiogroup named by the legend', () => {
+    mount()
+
+    const group = screen.getByRole('radiogroup', { name: 'Practice block duration' })
+    expect(within(group).getByRole('radio', { name: '5 minutes' })).toBeInTheDocument()
+    expect(within(group).getByRole('radio', { name: '10 minutes' })).toBeInTheDocument()
+    expect(within(group).getByRole('radio', { name: '15 minutes' })).toBeInTheDocument()
+  })
+
+  it('accepts 15-minute duration as practiceTargetSeconds 900', async () => {
+    respond('programs.create', { program: { id: 'p1' }, revision: { id: 'r1' } })
+    const { user } = mount()
+
+    await fillBaseline(user)
+    await user.click(screen.getByRole('radio', { name: '15 minutes' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(mockApi.programs.create).toHaveBeenCalledTimes(1))
+    const [body] = lastCreateCall()
+    expect(body.practiceTargetSeconds).toBe(900)
+  })
+
+  it('the timezone error is attention-coloured and associated with the select', async () => {
+    respond('programs.create', { program: { id: 'p1' }, revision: { id: 'r1' } })
+    const { user } = mount()
+
+    await fillBaseline(user, { confirm: false })
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    const message = screen.getByText('Confirm your timezone before saving.')
+    expect(message).toHaveClass('text-attention')
+    const select = screen.getByLabelText('Timezone')
+    expect(select).toHaveAttribute('aria-describedby', message.id)
+  })
+
+  // Pin, not a red case: e2e/acceptance/new-user.spec.ts reads this control
+  // with page.getByLabel('Timezone', { exact: true }).inputValue(), which
+  // only works on a native <input>/<textarea>/<select> — never convert this
+  // to a Radix Select.
+  it('the Timezone control stays a native select', () => {
+    mount()
+
+    expect(screen.getByLabelText('Timezone', { exact: true }).tagName).toBe('SELECT')
+  })
+
+  it('the Timezone select sits on the page ground like every other field, not raised card white (task V5)', () => {
+    mount()
+
+    const select = screen.getByLabelText('Timezone', { exact: true })
+    expect(select.className).toContain('bg-transparent')
+    expect(select.className).not.toContain('bg-card')
+    expect(select.className).toContain('text-base')
+    expect(select.className).toContain('md:text-sm')
+  })
+
+  it('Confirm timezone is still operable by its label', async () => {
+    const { user } = mount()
+
+    const checkbox = screen.getByLabelText('Confirm timezone')
+    await user.click(checkbox)
+
+    expect(checkbox).toHaveAttribute('aria-checked', 'true')
   })
 })

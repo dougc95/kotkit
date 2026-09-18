@@ -7,6 +7,12 @@ import { api } from '../../lib/api/client.js'
 import { newIdempotencyKey } from '../../lib/api/newIdempotencyKey.js'
 import { queryKeys } from '../../lib/query/keys.js'
 import { Button } from '../../ui/Button.js'
+import { useField } from '../../ui/field.js'
+import { Checkbox } from '../../ui/shadcn/checkbox.js'
+import { Input } from '../../ui/shadcn/input.js'
+import { Label } from '../../ui/shadcn/label.js'
+import { RadioGroup, RadioGroupItem } from '../../ui/shadcn/radio-group.js'
+import { Reported } from '../../ui/Reported.js'
 
 /**
  * Setup's basic-plan step (task 8.1.2; program-setup: "Basic plan captures
@@ -56,6 +62,17 @@ const DURATION_OPTIONS: ReadonlyArray<{ minutes: 5 | 10 | 15; seconds: 300 | 600
 ]
 
 const DEFAULT_LEISURE_ALLOWANCE_MINUTES = 20
+
+/**
+ * Radix `RadioGroup`'s `onValueChange` delivers a plain string; only a value
+ * matching one of `DURATION_OPTIONS`' minutes is accepted, mirroring
+ * `parseDurationSeconds` in `features/settings/ChangePracticeDuration.tsx` —
+ * no `as` cast on an untyped string.
+ */
+function parseDurationMinutes(value: string): 5 | 10 | 15 | undefined {
+  const minutes = Number(value)
+  return DURATION_OPTIONS.find((option) => option.minutes === minutes)?.minutes
+}
 
 /** `Intl.DateTimeFormat().resolvedOptions().timeZone`, guarded for an environment where it throws. */
 function detectTimezone(): string {
@@ -119,26 +136,33 @@ interface TimezoneConfirmProps {
   readonly error: string | undefined
 }
 
-/** Timezone select + its explicit confirm checkbox (program-setup: "Timezone is confirmed, not assumed"). */
+/**
+ * Timezone select + its explicit confirm checkbox (program-setup: "Timezone
+ * is confirmed, not assumed").
+ *
+ * The select stays a native `<select>` restyled on the new tokens and wired
+ * through `useField` — following `features/settings/TimezoneSelect.tsx` as
+ * built — rather than converting to the generated Radix `Select`:
+ * `e2e/acceptance/new-user.spec.ts` reads this control with
+ * `page.getByLabel('Timezone', { exact: true }).inputValue()`, which only
+ * works on a native `<input>`/`<textarea>`/`<select>` and throws on a Radix
+ * `SelectTrigger` (a `button role="combobox"`). The confirm checkbox does
+ * convert to the generated `Checkbox`.
+ */
 function TimezoneConfirm({ value, confirmed, onChange, onConfirm, zones, error }: TimezoneConfirmProps) {
-  const selectId = useId()
-  const checkboxId = useId()
-  const errorId = useId()
+  const timezoneField = useField({ name: 'timezone', error })
+  const confirmField = useField({ name: 'confirmTimezone' })
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={selectId} className="text-sm font-medium">
-        Timezone
-      </label>
+      <Label {...timezoneField.labelProps}>Timezone</Label>
       <select
-        id={selectId}
+        {...timezoneField.controlProps}
         value={value}
         onChange={(event) => {
           onChange(event.target.value)
         }}
-        aria-invalid={error !== undefined ? true : undefined}
-        aria-describedby={error !== undefined ? errorId : undefined}
-        className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+        className="min-h-11 rounded-md border border-rule bg-transparent px-3 py-2 text-base text-ink md:text-sm"
       >
         {zones.map((zone) => (
           <option key={zone} value={zone}>
@@ -147,20 +171,21 @@ function TimezoneConfirm({ value, confirmed, onChange, onConfirm, zones, error }
         ))}
       </select>
 
-      <label htmlFor={checkboxId} className="flex items-center gap-2 text-sm">
-        <input
-          id={checkboxId}
-          type="checkbox"
+      <div className="flex items-center gap-2">
+        <Checkbox
           checked={confirmed}
-          onChange={(event) => {
-            onConfirm(event.target.checked)
+          onCheckedChange={(checked) => {
+            onConfirm(checked === true)
           }}
+          {...confirmField.controlProps}
         />
-        Confirm timezone
-      </label>
+        <Label {...confirmField.labelProps} className="flex min-h-11 items-center text-sm font-normal text-ink">
+          Confirm timezone
+        </Label>
+      </div>
 
-      {error !== undefined ? (
-        <p id={errorId} role="alert" className="text-sm">
+      {timezoneField.errorProps !== undefined ? (
+        <p {...timezoneField.errorProps} className="text-sm text-attention">
           {error}
         </p>
       ) : null}
@@ -198,9 +223,33 @@ function validate(
   return errors
 }
 
+/** "Unknown is not zero" made visible at the point of entry: a blank field
+ * previews as the same `Not reported` string `absenceTier` recognizes as
+ * the "not a value" tier; a value matching what `validate()` accepts
+ * (`/^\d+$/`) previews as the number it will actually send — `Number(...)`,
+ * not the raw string, so `007` previews `7 min/day` rather than repeating
+ * its own leading zero — and `0` previews `0 min/day` because an explicit
+ * zero is a measurement, never coalesced away. Anything `validate()` would
+ * reject (`-5`, `1.5`, non-digits) gets no preview at all: `null` means
+ * render nothing, rather than showing a tier for a value the form will
+ * never send. */
+function feedEstimatePreviewText(rawValue: string): string | null {
+  const trimmed = rawValue.trim()
+  if (trimmed === '') {
+    return 'Not reported'
+  }
+  if (/^\d+$/.test(trimmed)) {
+    return `${Number(trimmed)} min/day`
+  }
+  return null
+}
+
 export function PlanForm() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+
+  const durationLegendId = useId()
+  const durationIdBase = useId()
 
   const [baselineDate, setBaselineDate] = useState('')
   const [timezone, setTimezone] = useState(() => detectTimezone())
@@ -224,13 +273,13 @@ export function PlanForm() {
     idempotencyKeyRef.current = newIdempotencyKey()
   }
 
-  const dateId = useId()
-  const dateErrorId = useId()
-  const leisureId = useId()
-  const leisureErrorId = useId()
-  const feedId = useId()
-  const feedHelpId = useId()
-  const feedErrorId = useId()
+  const dateField = useField({ name: 'baselineDate', error: fieldErrors.baselineDate })
+  const leisureField = useField({ name: 'leisureAllowanceMinutes', error: fieldErrors.leisureAllowanceMinutes })
+  const feedField = useField({
+    name: 'feedEstimateMinutes',
+    description: 'leave blank if you do not know',
+    error: fieldErrors.feedEstimateMinutes,
+  })
 
   const createProgram = useMutation({
     mutationFn: (body: CreateProgramBodyValue) =>
@@ -303,33 +352,29 @@ export function PlanForm() {
   }
 
   const isPending = createProgram.isPending
+  const feedEstimatePreview = feedEstimatePreviewText(feedEstimateMinutes)
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex max-w-md flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold">Set up your plan</h1>
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <h1 className="text-lg font-semibold text-ink">Set up your plan</h1>
+        <p className="text-sm text-ink-muted">
           This saves a draft — nothing starts running yet.
         </p>
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor={dateId} className="text-sm font-medium">
-          Baseline date (Day 0)
-        </label>
-        <input
-          id={dateId}
+        <Label {...dateField.labelProps}>Baseline date (Day 0)</Label>
+        <Input
           type="date"
           value={baselineDate}
           onChange={(event) => {
             setBaselineDate(event.target.value)
           }}
-          aria-invalid={fieldErrors.baselineDate !== undefined ? true : undefined}
-          aria-describedby={fieldErrors.baselineDate !== undefined ? dateErrorId : undefined}
-          className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          {...dateField.controlProps}
         />
-        {fieldErrors.baselineDate !== undefined ? (
-          <p id={dateErrorId} role="alert" className="text-sm">
+        {dateField.errorProps !== undefined ? (
+          <p {...dateField.errorProps} className="text-sm text-attention">
             {fieldErrors.baselineDate}
           </p>
         ) : null}
@@ -345,31 +390,37 @@ export function PlanForm() {
       />
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium">Practice block duration</legend>
-        <div className="flex gap-4">
-          {DURATION_OPTIONS.map((option) => (
-            <label key={option.minutes} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="duration"
-                value={option.minutes}
-                checked={durationMinutes === option.minutes}
-                onChange={() => {
-                  setDurationMinutes(option.minutes)
-                }}
-              />
-              {option.minutes} minutes
-            </label>
-          ))}
-        </div>
+        <legend id={durationLegendId} className="text-sm font-medium text-ink">
+          Practice block duration
+        </legend>
+        <RadioGroup
+          aria-labelledby={durationLegendId}
+          className="flex gap-4"
+          value={String(durationMinutes)}
+          onValueChange={(next) => {
+            const minutes = parseDurationMinutes(next)
+            if (minutes !== undefined) {
+              setDurationMinutes(minutes)
+            }
+          }}
+        >
+          {DURATION_OPTIONS.map((option) => {
+            const itemId = `${durationIdBase}-${option.minutes}`
+            return (
+              <div key={option.minutes} className="flex items-center gap-2">
+                <RadioGroupItem id={itemId} value={String(option.minutes)} />
+                <Label htmlFor={itemId} className="flex min-h-11 items-center text-sm font-normal text-ink">
+                  {option.minutes} minutes
+                </Label>
+              </div>
+            )
+          })}
+        </RadioGroup>
       </fieldset>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor={leisureId} className="text-sm font-medium">
-          Leisure allowance (minutes)
-        </label>
-        <input
-          id={leisureId}
+        <Label {...leisureField.labelProps}>Leisure allowance (minutes)</Label>
+        <Input
           type="number"
           min={0}
           step={1}
@@ -378,23 +429,18 @@ export function PlanForm() {
           onChange={(event) => {
             setLeisureAllowanceMinutes(event.target.value)
           }}
-          aria-invalid={fieldErrors.leisureAllowanceMinutes !== undefined ? true : undefined}
-          aria-describedby={fieldErrors.leisureAllowanceMinutes !== undefined ? leisureErrorId : undefined}
-          className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          {...leisureField.controlProps}
         />
-        {fieldErrors.leisureAllowanceMinutes !== undefined ? (
-          <p id={leisureErrorId} role="alert" className="text-sm">
+        {leisureField.errorProps !== undefined ? (
+          <p {...leisureField.errorProps} className="text-sm text-attention">
             {fieldErrors.leisureAllowanceMinutes}
           </p>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor={feedId} className="text-sm font-medium">
-          Current daily feed time (estimate)
-        </label>
-        <input
-          id={feedId}
+        <Label {...feedField.labelProps}>Current daily feed time (estimate)</Label>
+        <Input
           type="number"
           min={0}
           step={1}
@@ -403,26 +449,25 @@ export function PlanForm() {
           onChange={(event) => {
             setFeedEstimateMinutes(event.target.value)
           }}
-          aria-invalid={fieldErrors.feedEstimateMinutes !== undefined ? true : undefined}
-          aria-describedby={
-            [feedHelpId, fieldErrors.feedEstimateMinutes !== undefined ? feedErrorId : undefined]
-              .filter((id): id is string => id !== undefined)
-              .join(' ') || undefined
-          }
-          className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm"
+          {...feedField.controlProps}
         />
-        <p id={feedHelpId} className="text-sm text-[var(--color-text-muted)]">
-          leave blank if you do not know
-        </p>
-        {fieldErrors.feedEstimateMinutes !== undefined ? (
-          <p id={feedErrorId} role="alert" className="text-sm">
+        {feedField.descriptionProps !== undefined ? (
+          <p {...feedField.descriptionProps} className="text-sm text-ink-muted">
+            leave blank if you do not know
+          </p>
+        ) : null}
+        {feedEstimatePreview !== null ? (
+          <Reported className="text-sm">{feedEstimatePreview}</Reported>
+        ) : null}
+        {feedField.errorProps !== undefined ? (
+          <p {...feedField.errorProps} className="text-sm text-attention">
             {fieldErrors.feedEstimateMinutes}
           </p>
         ) : null}
       </div>
 
       {saveFailed ? (
-        <p role="alert" className="text-sm">
+        <p role="alert" className="text-sm text-attention">
           Could not save the plan
         </p>
       ) : null}
