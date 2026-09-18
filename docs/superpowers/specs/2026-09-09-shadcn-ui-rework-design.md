@@ -1,7 +1,14 @@
 # Attention Lab — UI rework on shadcn/ui
 
-**Status:** design, approved section by section on 2026-09-09. Not implemented. No application code
-has been written against it.
+**Status:** implemented. Designed and approved section by section on 2026-09-09; built 2026-09-16 to
+2026-09-17 on branch `worktree-shadcn-rework`, forked from `fb6ea47` (the plan commit), 97 non-merge
+commits ending at the Wave 2 gate `6cbdddc` (Wave 0 gate `f38dd70`, Wave 1 gate `ac66dfc`). Verified
+at that commit from a fresh database container: `db:push`, typecheck, the three unit suites, the
+production build and the 166-test Playwright run, with `e2e/` byte-identical to `master`. One
+caveat, recorded in §12: `npm run verify:all` itself stopped at its test stage on 13 failures in
+`apps/api/test/sessions/finalize-eligibility.test.ts`, which fail identically on `master` during
+the evening hours when this machine's local date and the UTC date differ; the stages after it were
+run individually. The visual-pass and verification notes are at the end of §12.
 **Scope:** `apps/web` only. No API, schema, or contract changes. No OpenSpec spec revisions.
 **Supersedes:** nothing. This is additive to the P0 implementation described in `README.md`.
 
@@ -463,6 +470,52 @@ Every wave is Sonnet-driven, as is the survey and design work that produced this
   from before this change and are converted in Wave 1. The guard's patterns also miss arbitrary
   variants such as `has-[:focus-visible]:` and the `outline-0` utility.
 
+**Verification notes, 2026-09-17 (Wave 2).** Recorded so the next reader knows what each step was
+worth.
+
+- *What the suites proved.* Typecheck, 2,020 unit tests (shared 233, api 1033, web 754 before the
+  Wave 2 fixes; web 772 after), the production build and the 166-test Playwright run all passed at
+  every gate, with `e2e/` untouched since `b7409ea`. The final `verify:all` from a fresh container
+  passed bring-up, `db:push` and typecheck, then stopped at the test stage: 13 of the 21 cases in
+  `apps/api/test/sessions/finalize-eligibility.test.ts` received an unexpected `timing_deviation`.
+  The same 13 fail on `master` at the same hour, and the file had passed four hours earlier; the
+  fixtures anchor dates with `localDateAt(new Date(), 'UTC')`, and the failure window is the four
+  evening hours in which this machine's local date (UTC−4) and the UTC date disagree. Setting
+  `TZ=UTC` on the process does not clear it, so the disagreement is not the Node timezone alone.
+  It is an `apps/api` test defect outside this change's scope, left for its owner; the web suite
+  (772) passed in the same run, and build and Playwright were then run individually and passed. The contrast figures in §3 recomputed within
+  0.05 of the shipped CSS; the chart palette re-validated `ALL CHECKS PASS` with the same worst pairs
+  the table above records. The primitive layer's cost, measured against the Wave 0 post-font build:
+  JS +49.85 kB raw / +17.41 kB gzip (1,112.58 kB / 325.30 kB), CSS +21.81 kB raw / +3.40 kB gzip
+  (52.43 kB / 9.78 kB).
+- *What only the visual pass caught.* Thirteen defects, none of which any suite could see, walked
+  at 1440, 375 and 320 px across every screen in the plan's list. Four predate this rework and
+  were on `master`: the Progress page scrolled sideways at every width (an `sr-only` table header
+  escaping an unpositioned scroll container); the demo banner rendered as a 431 px left column beside
+  the desktop rail (`RailLayout`'s `md:flex` made it a flex item); the benchmark count placeholder
+  "leave blank if unknown" was cut to "leave blank" in a 112 px input, inverting the instruction; and
+  the practice-review register misaligned at 320 px. Nine were this rework's own: the floating
+  "Abandon session" control lost its opaque ground when it became `quiet`; Readiness kept an unstyled
+  page header and a raw error branch; the daily chart's legend text wore the series colours (three
+  below 4.5:1 as text — the palette was validated as marks, never as text); three native selects sat
+  on card white; eight native checkboxes remained in the conditions block, browser-blue when checked;
+  the check-in's "Incomplete — missing" statement was ink while Today painted the same statement
+  amber; two Settings triggers were stretched; a quiet button had no hover on the white dialog; one
+  live token was written as an arbitrary value. All thirteen are fixed in commits `67d2eb2`,
+  `70b2a23`, `abd4806`, `f71b0f4` and `850a77e`, each re-measured in Chromium afterwards.
+- *What the pass confirmed.* Exactly one petrol-filled control on every surface (a dialog counts as
+  its own surface); no running animation on any screen; every absent value in the ruled slot, none
+  rendered as `0` or an empty cell; the first Tab stop is "Skip to content" and every stop settles on
+  one 2 px black outline; `prefers-reduced-motion` collapses every transition to effectively zero.
+- *Left open, on purpose.* `font-medium` (61 uses, including every `Label` and `Button`) renders at
+  400 because only Plex 400 and 600 are loaded — the approved look; loading 500 would re-weight every
+  label. Button `transition-colors` includes `outline-color`, so a focus ring fades from the text
+  colour to black over 150 ms. Primary `Save`/`Start` are full-width on Setup, check-in, Settings and
+  Today but compact on Readiness and the practice review. With a practice session from the previous
+  day still awaiting review, Today shows both the pending-review card and the new day's Start form
+  (a gating rule, not a styling matter). "Day 15 of 14" appears when the demo clock runs past the
+  programme.
+
 ## 13. Decision log
 
 | # | Date | Decision |
@@ -488,3 +541,7 @@ Every wave is Sonnet-driven, as is the survey and design work that produced this
 | U18 | 2026-09-17 | `<Reported mono>` takes effect only on a recorded value; absent and uncertain values always render sans, even under an ancestor's `font-mono`. Makes §4's "never for status words" hold inside the dense tables, which is where those cells live. Found by the Task 6 review. |
 | U19 | 2026-09-17 | `No intended output recorded` joins the not-a-value tier, an eighth string. It is the null branch of a field the user never filled in, and the Focus header drew it in full ink. `None recorded` is not added, because Wave 1 replaces it with `Not reported`. |
 | U20 | 2026-09-17 | The taxonomy predicate lives in `src/ui/valueTier.ts`. `reported.ts` beside `Reported.tsx` differs only in case, and on a case-insensitive filesystem `./Reported.js` resolves to the wrong file (TS1149, TS2305). |
+| U21 | 2026-09-17 | Native `<select>` stays where a Playwright suite reads it natively (`selectOption`, `inputValue`: the check-in device field, the plan and settings timezones), because the suites pass unmodified. It sits on the page ground like every other field; card white is for raised surfaces only. Found by the Wave 2 visual pass. |
+| U22 | 2026-09-17 | Chart legend text wears ink; only the swatch carries the series colour. The palette clears 3:1 as marks and was never validated as text (three of five fall below 4.5:1). Found by the Wave 2 contrast re-check. |
+| U23 | 2026-09-17 | A statement that names what the user still owes is amber wherever it appears: "Incomplete — missing: sleep, feed" on the check-in page is the same statement as Today's "Still needed" and takes the same `attention`. A terminal state with nothing to do stays ink. Applies U15a; found by the Wave 2 visual pass. |
+| U24 | 2026-09-17 | The last native checkboxes (the benchmark conditions block) become the shadcn `Checkbox` with 44 px label rows. Playwright's `check()` and label locators resolve on the Radix button exactly as they do for "Confirm timezone", so the suites stay unmodified. |

@@ -98,3 +98,8 @@ fails as a known packaging defect — it is listed in the manifest, but the file
 is HANDOFF.md, which has no manifest entry (see "Reading order and authority" above). The manifest is
 deliberately **not** regenerated: it is a fixed record of the originally packaged design-handoff
 bundle, and updating it would erase the evidence of what has changed since.
+
+The shadcn/ui rework of `apps/web` (2026-09-17; design in
+`docs/superpowers/specs/2026-09-09-shadcn-ui-rework-design.md`) touched `apps/web`, `LIMITATIONS.md`, its
+own spec and plan, and this paragraph. Of those only README.md is manifest-listed, and it has failed
+its checksum since the P0 rewrite, so the count stays at 4 of 9 OK and the reasons above are unchanged.
