@@ -134,8 +134,21 @@ describe('ReviewAttestation', () => {
   it('disruption starts unanswered and the note is capped at 500', async () => {
     const { user } = renderWithProviders(<Harness />)
 
-    expect(screen.getByRole('radio', { name: 'Yes' })).not.toBeChecked()
-    expect(screen.getByRole('radio', { name: 'No' })).not.toBeChecked()
+    const yesRadio = screen.getByRole('radio', { name: 'Yes' })
+    const noRadio = screen.getByRole('radio', { name: 'No' })
+    expect(yesRadio).not.toBeChecked()
+    expect(noRadio).not.toBeChecked()
+    // The shared radio-group primitive (D-I2) renders each item as a real
+    // <button role="radio">, with its label a min-h-11 target — the same
+    // shape Scoring.tsx's PointRow radios already use.
+    expect(yesRadio.tagName).toBe('BUTTON')
+    expect(noRadio.tagName).toBe('BUTTON')
+    const yesLabel = screen.getByText('Yes')
+    const noLabel = screen.getByText('No')
+    expect(yesLabel.tagName).toBe('LABEL')
+    expect(noLabel.tagName).toBe('LABEL')
+    expect(yesLabel.className).toContain('min-h-11')
+    expect(noLabel.className).toContain('min-h-11')
     expect(screen.getByTestId('can-finalize')).toHaveTextContent('false')
 
     const note = screen.getByLabelText('Disruption note (optional)')
@@ -196,6 +209,7 @@ describe('ReviewAttestation', () => {
 
     expect(onChange).toHaveBeenNthCalledWith(1, 'yes', '')
     expect(onChange).toHaveBeenNthCalledWith(2, 'no', '')
+    expect(noRadio).toBeChecked()
   })
 
   it('E=2 with disruption No keeps the eligibility preview eligible', async () => {
